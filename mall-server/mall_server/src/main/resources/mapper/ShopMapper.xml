@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.ShopMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO shop (user_id, shop_name, logo, description, license_image, status)
+        VALUES (#{userId}, #{shopName}, #{logo}, #{description}, #{licenseImage}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE shop
+        <set>
+            <if test="shopName != null">shop_name = #{shopName},</if>
+            <if test="logo != null">logo = #{logo},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="licenseImage != null">license_image = #{licenseImage},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="rating != null">rating = #{rating},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.Shop">
+        SELECT * FROM shop WHERE id = #{id}
+    </select>
+
+    <select id="findByUserId" resultType="com.ngsz.mall_server.pojo.Shop">
+        SELECT * FROM shop WHERE user_id = #{userId}
+    </select>
+
+    <select id="findByCondition" resultType="com.ngsz.mall_server.pojo.Shop">
+        SELECT * FROM shop WHERE 1=1
+        <if test="keyword != null and keyword != ''">
+            AND shop_name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY create_time DESC
+    </select>
+</mapper>

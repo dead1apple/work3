@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.ReviewMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO review (user_id, order_item_id, product_id, sku_id, rating, content, images, is_anonymous)
+        VALUES (#{userId}, #{orderItemId}, #{productId}, #{skuId}, #{rating}, #{content}, #{images}, #{isAnonymous})
+    </insert>
+
+    <update id="updateReply">
+        UPDATE review SET reply = #{reply} WHERE id = #{id}
+    </update>
+
+    <select id="findByProductId" resultType="com.ngsz.mall_server.pojo.Review">
+        SELECT * FROM review WHERE product_id = #{productId} ORDER BY create_time DESC
+        <if test="offset != null and size != null">LIMIT #{offset}, #{size}</if>
+    </select>
+
+    <select id="countByProductId" resultType="int">
+        SELECT COUNT(*) FROM review WHERE product_id = #{productId}
+    </select>
+
+    <select id="findByOrderItemId" resultType="com.ngsz.mall_server.pojo.Review">
+        SELECT * FROM review WHERE order_item_id = #{orderItemId}
+    </select>
+</mapper>

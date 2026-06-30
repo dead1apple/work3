@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.ProductMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO product (category_id, brand_id, shop_id, name, subtitle, main_image, images, detail, status, sort_order)
+        VALUES (#{categoryId}, #{brandId}, #{shopId}, #{name}, #{subtitle}, #{mainImage}, #{images}, #{detail}, #{status}, #{sortOrder})
+    </insert>
+
+    <update id="update">
+        UPDATE product
+        <set>
+            <if test="categoryId != null">category_id = #{categoryId},</if>
+            <if test="brandId != null">brand_id = #{brandId},</if>
+            <if test="name != null">name = #{name},</if>
+            <if test="subtitle != null">subtitle = #{subtitle},</if>
+            <if test="mainImage != null">main_image = #{mainImage},</if>
+            <if test="images != null">images = #{images},</if>
+            <if test="detail != null">detail = #{detail},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateSalesCount">
+        UPDATE product SET sales_count = sales_count + #{quantity} WHERE id = #{id}
+    </update>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.Product">
+        SELECT * FROM product WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="findByCondition" resultType="com.ngsz.mall_server.pojo.Product">
+        SELECT * FROM product WHERE deleted = 0
+        <if test="categoryId != null">AND category_id = #{categoryId}</if>
+        <if test="brandId != null">AND brand_id = #{brandId}</if>
+        <if test="status != null">AND status = #{status}</if>
+        <if test="shopId != null">AND shop_id = #{shopId}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR subtitle LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <choose>
+            <when test="sortBy == 'sales'">ORDER BY sales_count DESC</when>
+            <when test="sortBy == 'price_asc'">ORDER BY (SELECT MIN(price) FROM sku WHERE sku.product_id = product.id AND sku.deleted=0) ASC</when>
+            <when test="sortBy == 'price_desc'">ORDER BY (SELECT MIN(price) FROM sku WHERE sku.product_id = product.id AND sku.deleted=0) DESC</when>
+            <when test="sortBy == 'new'">ORDER BY create_time DESC</when>
+            <otherwise>ORDER BY sort_order ASC, create_time DESC</otherwise>
+        </choose>
+        <if test="offset != null and size != null">LIMIT #{offset}, #{size}</if>
+    </select>
+
+    <select id="countByCondition" resultType="int">
+        SELECT COUNT(*) FROM product WHERE deleted = 0
+        <if test="categoryId != null">AND category_id = #{categoryId}</if>
+        <if test="brandId != null">AND brand_id = #{brandId}</if>
+        <if test="status != null">AND status = #{status}</if>
+        <if test="shopId != null">AND shop_id = #{shopId}</if>
+        <if test="keyword != null and keyword != ''">
+            AND (name LIKE CONCAT('%', #{keyword}, '%') OR subtitle LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+</mapper>

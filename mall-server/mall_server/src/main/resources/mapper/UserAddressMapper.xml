@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.UserAddressMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_address (user_id, receiver_name, receiver_phone, province, city, district, detail_address, is_default)
+        VALUES (#{userId}, #{receiverName}, #{receiverPhone}, #{province}, #{city}, #{district}, #{detailAddress}, #{isDefault})
+    </insert>
+
+    <update id="update">
+        UPDATE user_address
+        <set>
+            <if test="receiverName != null">receiver_name = #{receiverName},</if>
+            <if test="receiverPhone != null">receiver_phone = #{receiverPhone},</if>
+            <if test="province != null">province = #{province},</if>
+            <if test="city != null">city = #{city},</if>
+            <if test="district != null">district = #{district},</if>
+            <if test="detailAddress != null">detail_address = #{detailAddress},</if>
+            <if test="isDefault != null">is_default = #{isDefault},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <update id="resetDefault">
+        UPDATE user_address SET is_default = 0 WHERE user_id = #{userId}
+    </update>
+
+    <update id="setDefault">
+        UPDATE user_address SET is_default = 1 WHERE id = #{id}
+    </update>
+
+    <select id="findByUserId" resultType="com.ngsz.mall_server.pojo.UserAddress">
+        SELECT * FROM user_address WHERE user_id = #{userId} ORDER BY is_default DESC, create_time DESC
+    </select>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.UserAddress">
+        SELECT * FROM user_address WHERE id = #{id}
+    </select>
+
+    <select id="findDefault" resultType="com.ngsz.mall_server.pojo.UserAddress">
+        SELECT * FROM user_address WHERE user_id = #{userId} AND is_default = 1 LIMIT 1
+    </select>
+
+    <delete id="deleteById">
+        DELETE FROM user_address WHERE id = #{id}
+    </delete>
+</mapper>

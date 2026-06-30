@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.SkuMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sku (product_id, sku_name, spec_values, price, market_price, cost_price, stock, image, sku_code, weight, status)
+        VALUES (#{productId}, #{skuName}, #{specValues}, #{price}, #{marketPrice}, #{costPrice}, #{stock}, #{image}, #{skuCode}, #{weight}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE sku
+        <set>
+            <if test="skuName != null">sku_name = #{skuName},</if>
+            <if test="specValues != null">spec_values = #{specValues},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="marketPrice != null">market_price = #{marketPrice},</if>
+            <if test="costPrice != null">cost_price = #{costPrice},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="image != null">image = #{image},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateStock">
+        UPDATE sku SET stock = stock + #{quantity} WHERE id = #{id}
+    </update>
+
+    <update id="lockStock">
+        UPDATE sku SET locked_stock = locked_stock + #{quantity} WHERE id = #{id} AND stock - locked_stock >= #{quantity}
+    </update>
+
+    <update id="unlockStock">
+        UPDATE sku SET locked_stock = locked_stock - #{quantity} WHERE id = #{id}
+    </update>
+
+    <update id="deductStock">
+        UPDATE sku SET stock = stock - #{quantity}, locked_stock = locked_stock - #{quantity} WHERE id = #{id}
+    </update>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.Sku">
+        SELECT * FROM sku WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="findByProductId" resultType="com.ngsz.mall_server.pojo.Sku">
+        SELECT * FROM sku WHERE product_id = #{productId} AND deleted = 0 ORDER BY price ASC
+    </select>
+</mapper>

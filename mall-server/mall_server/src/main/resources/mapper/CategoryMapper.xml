@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.CategoryMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO category (parent_id, name, level, icon, sort_order, status)
+        VALUES (#{parentId}, #{name}, #{level}, #{icon}, #{sortOrder}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE category
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="icon != null">icon = #{icon},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="findByParentId" resultType="com.ngsz.mall_server.pojo.Category">
+        SELECT * FROM category WHERE parent_id = #{parentId} AND status = 1 ORDER BY sort_order ASC
+    </select>
+
+    <select id="findAll" resultType="com.ngsz.mall_server.pojo.Category">
+        SELECT * FROM category WHERE status = 1 ORDER BY level ASC, sort_order ASC
+    </select>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.Category">
+        SELECT * FROM category WHERE id = #{id}
+    </select>
+</mapper>

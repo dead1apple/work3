@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.BrandMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO brand (name, logo, description, sort_order, status)
+        VALUES (#{name}, #{logo}, #{description}, #{sortOrder}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE brand
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="logo != null">logo = #{logo},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="sortOrder != null">sort_order = #{sortOrder},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="findAll" resultType="com.ngsz.mall_server.pojo.Brand">
+        SELECT * FROM brand WHERE status = 1 ORDER BY sort_order ASC
+    </select>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.Brand">
+        SELECT * FROM brand WHERE id = #{id}
+    </select>
+</mapper>

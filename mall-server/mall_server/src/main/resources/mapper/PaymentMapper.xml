@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.PaymentMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO payment (payment_no, order_no, user_id, pay_type, amount, status)
+        VALUES (#{paymentNo}, #{orderNo}, #{userId}, #{payType}, #{amount}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE payment
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="thirdPartyNo != null">third_party_no = #{thirdPartyNo},</if>
+            <if test="payTime != null">pay_time = #{payTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="findByPaymentNo" resultType="com.ngsz.mall_server.pojo.Payment">
+        SELECT * FROM payment WHERE payment_no = #{paymentNo}
+    </select>
+
+    <select id="findByOrderNo" resultType="com.ngsz.mall_server.pojo.Payment">
+        SELECT * FROM payment WHERE order_no = #{orderNo}
+    </select>
+</mapper>

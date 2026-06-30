@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.UserCouponMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user_coupon (user_id, coupon_template_id, status)
+        VALUES (#{userId}, #{couponTemplateId}, #{status})
+    </insert>
+
+    <update id="update">
+        UPDATE user_coupon
+        <set>
+            <if test="status != null">status = #{status},</if>
+            <if test="orderNo != null">order_no = #{orderNo},</if>
+            <if test="useTime != null">use_time = #{useTime},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <select id="findByUserId" resultType="com.ngsz.mall_server.pojo.UserCoupon">
+        SELECT * FROM user_coupon WHERE user_id = #{userId}
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY receive_time DESC
+    </select>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.UserCoupon">
+        SELECT * FROM user_coupon WHERE id = #{id}
+    </select>
+
+    <select id="countByUserAndTemplate" resultType="int">
+        SELECT COUNT(*) FROM user_coupon WHERE user_id = #{userId} AND coupon_template_id = #{templateId}
+    </select>
+</mapper>

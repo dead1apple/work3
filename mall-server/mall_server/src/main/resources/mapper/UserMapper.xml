@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.UserMapper">
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO user (username, password, nickname, phone, email, avatar, gender, birthday, status, role)
+        VALUES (#{username}, #{password}, #{nickname}, #{phone}, #{email}, #{avatar}, #{gender}, #{birthday}, #{status}, #{role})
+    </insert>
+
+    <update id="update">
+        UPDATE user
+        <set>
+            <if test="nickname != null">nickname = #{nickname},</if>
+            <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
+            <if test="avatar != null">avatar = #{avatar},</if>
+            <if test="gender != null">gender = #{gender},</if>
+            <if test="birthday != null">birthday = #{birthday},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="role != null">role = #{role},</if>
+            <if test="password != null">password = #{password},</if>
+        </set>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="updateLoginInfo">
+        UPDATE user SET last_login_time = #{lastLoginTime}, last_login_ip = #{lastLoginIp} WHERE id = #{id}
+    </update>
+
+    <select id="findByUsername" resultType="com.ngsz.mall_server.pojo.User">
+        SELECT * FROM user WHERE username = #{username} AND deleted = 0
+    </select>
+
+    <select id="findByPhone" resultType="com.ngsz.mall_server.pojo.User">
+        SELECT * FROM user WHERE phone = #{phone} AND deleted = 0
+    </select>
+
+    <select id="findById" resultType="com.ngsz.mall_server.pojo.User">
+        SELECT * FROM user WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="findAll" resultType="com.ngsz.mall_server.pojo.User">
+        SELECT * FROM user WHERE deleted = 0 ORDER BY create_time DESC
+    </select>
+
+    <select id="findByCondition" resultType="com.ngsz.mall_server.pojo.User">
+        SELECT * FROM user WHERE deleted = 0
+        <if test="keyword != null and keyword != ''">
+            AND (username LIKE CONCAT('%', #{keyword}, '%') OR nickname LIKE CONCAT('%', #{keyword}, '%') OR phone LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="role != null">AND role = #{role}</if>
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="countAll" resultType="int">
+        SELECT COUNT(*) FROM user WHERE deleted = 0
+    </select>
+</mapper>
