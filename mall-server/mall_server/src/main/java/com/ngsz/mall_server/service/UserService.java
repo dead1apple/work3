@@ -9,7 +9,7 @@ import java.util.Map;
 public interface UserService {
     Map<String, Object> login(LoginDTO dto, String ip);
     void register(RegisterDTO dto);
-    void sendVerifyCode(String phone);
+    String sendVerifyCode(String phone);
     User getUserInfo(Long userId);
     void updateUserInfo(User user);
     PageResult<User> listUsers(String keyword, Integer role, Integer status, Integer page, Integer size);

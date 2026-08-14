@@ -66,12 +66,13 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
-    public void sendVerifyCode(String phone) {
+    public String sendVerifyCode(String phone) {
         if (redisUtils.exists("sms:lock:" + phone)) throw new BusinessException("验证码发送过于频繁，请稍后再试");
         String code = String.format("%06d", (int) (Math.random() * 1000000));
         redisUtils.set("sms:code:" + phone, code, 300);
         redisUtils.set("sms:lock:" + phone, "1", 60);
         log.info("【模拟短信】手机号: {} 验证码: {}", phone, code);
+        return smsMock ? code : null;
     }
 
     @Override

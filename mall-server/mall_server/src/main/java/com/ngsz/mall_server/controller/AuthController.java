@@ -45,7 +45,14 @@ public class AuthController {
             description = "向指定手机号发送注册/登录用的短信验证码，开发模式下可在响应或 mock 接口中查看验证码")
     @PostMapping("/send-code")
     public Result<?> sendCode(@Valid @RequestBody SendCodeDTO dto) {
-        userService.sendVerifyCode(dto.getPhone());
+        String code = userService.sendVerifyCode(dto.getPhone());
+        if (code != null) {
+            return Result.success("验证码已发送", Map.of(
+                    "mock", true,
+                    "code", code,
+                    "expiresIn", 300
+            ));
+        }
         return Result.success("验证码已发送");
     }
 

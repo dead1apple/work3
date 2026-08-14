@@ -21,24 +21,29 @@ public class PayServiceImpl implements PayService {
     @Value("${mall.pay.mock:true}") private boolean payMock;
 
     @Override
+    @Transactional
     public Map<String, Object> createPayment(String orderNo, Integer payType, Long userId) {
         Order order = orderMapper.findByOrderNo(orderNo);
         if (order == null || !order.getUserId().equals(userId)) throw new BusinessException("订单不存在");
-        if (order.getStatus() != 0) throw new BusinessException("订单状态不允许支付");
         Payment existing = paymentMapper.findByOrderNo(orderNo);
-        if (existing != null && existing.getStatus() == 0) {
-            Map<String, Object> r = new HashMap<>(); r.put("payment", existing);
-            if (payMock) r.put("mockTip", "模拟支付环境，点击确认即完成支付");
-            return r;
+        if (order.getStatus() == 1 && existing != null && existing.getStatus() == 1) {
+            return buildPaymentResult(existing);
         }
-        Payment payment = new Payment();
-        payment.setPaymentNo("PAY" + IdUtil.getSnowflakeNextIdStr());
-        payment.setOrderNo(orderNo); payment.setUserId(userId); payment.setPayType(payType);
-        payment.setAmount(order.getPayAmount()); payment.setStatus(0);
-        paymentMapper.insert(payment);
-        Map<String, Object> r = new HashMap<>(); r.put("payment", payment);
-        if (payMock) r.put("mockTip", "模拟支付环境，点击确认即完成支付");
-        return r;
+        if (order.getStatus() != 0) throw new BusinessException("订单状态不允许支付");
+
+        Payment payment;
+        if (existing != null && existing.getStatus() == 0) {
+            payment = existing;
+        } else {
+            payment = new Payment();
+            payment.setPaymentNo("PAY" + IdUtil.getSnowflakeNextIdStr());
+            payment.setOrderNo(orderNo); payment.setUserId(userId); payment.setPayType(payType);
+            payment.setAmount(order.getPayAmount()); payment.setStatus(0);
+            paymentMapper.insert(payment);
+        }
+
+        if (payMock) completePayment(payment, order);
+        return buildPaymentResult(payment);
     }
 
     @Override @Transactional
@@ -46,15 +51,28 @@ public class PayServiceImpl implements PayService {
         Payment payment = paymentMapper.findByPaymentNo(paymentNo);
         if (payment == null || !payment.getUserId().equals(userId)) throw new BusinessException("支付单不存在");
         if (payment.getStatus() != 0) throw new BusinessException("支付单状态异常");
+        Order order = orderMapper.findByOrderNo(payment.getOrderNo());
+        completePayment(payment, order);
+    }
+
+    private void completePayment(Payment payment, Order order) {
         payment.setStatus(1); payment.setPayTime(LocalDateTime.now());
         payment.setThirdPartyNo("MOCK_" + IdUtil.fastSimpleUUID());
         paymentMapper.update(payment);
-        Order order = orderMapper.findByOrderNo(payment.getOrderNo());
         if (order != null) {
             order.setStatus(1); order.setPayType(payment.getPayType()); order.setPayTime(LocalDateTime.now());
             orderMapper.update(order);
         }
         orderItemMapper.findByOrderNo(payment.getOrderNo()).forEach(i -> skuMapper.deductStock(i.getSkuId(), i.getQuantity()));
+    }
+
+    private Map<String, Object> buildPaymentResult(Payment payment) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("payment", payment);
+        result.put("paid", payment.getStatus() == 1);
+        result.put("mock", payMock);
+        if (payMock) result.put("mockTip", "模拟支付已完成");
+        return result;
     }
 
     @Override

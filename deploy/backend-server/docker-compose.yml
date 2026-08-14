@@ -1,0 +1,24 @@
+name: jd-mall-backend
+
+services:
+  backend-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: jd-mall-backend:backend-server
+    container_name: jd-mall-backend
+    network_mode: host
+    env_file:
+      - ${ENV_FILE:-.env}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'exec 3<>/dev/tcp/127.0.0.1/$${SERVER_PORT}'"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "3"
