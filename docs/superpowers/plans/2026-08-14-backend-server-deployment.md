@@ -119,7 +119,7 @@ Create database `jd_mall`, user `jd_mall_app@localhost`, and grant only `jd_mall
 
 - [ ] **Step 2: Upload and import schema plus seed data**
 
-Upload `docx/database.sql` and `docx/seed-data.sql`, execute both, and verify expected row counts (8 users, 12 products, 30 SKUs, and 8 orders).
+Upload `docx/database.sql` and `docx/seed-data.sql`, execute both, and verify expected row counts (8 users, 12 products, 23 SKUs, and 8 orders).
 
 - [ ] **Step 3: Upload JAR and Compose configuration**
 

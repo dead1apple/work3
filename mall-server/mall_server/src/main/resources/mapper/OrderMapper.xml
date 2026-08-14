@@ -3,14 +3,14 @@
 <mapper namespace="com.ngsz.mall_server.mapper.OrderMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO order (order_no, user_id, shop_id, total_amount, pay_amount, freight_amount, discount_amount, coupon_id, status,
+        INSERT INTO `order` (order_no, user_id, shop_id, total_amount, pay_amount, freight_amount, discount_amount, coupon_id, status,
             receiver_name, receiver_phone, receiver_address, remark)
         VALUES (#{orderNo}, #{userId}, #{shopId}, #{totalAmount}, #{payAmount}, #{freightAmount}, #{discountAmount}, #{couponId}, #{status},
             #{receiverName}, #{receiverPhone}, #{receiverAddress}, #{remark})
     </insert>
 
     <update id="update">
-        UPDATE order
+        UPDATE `order`
         <set>
             <if test="status != null">status = #{status},</if>
             <if test="payType != null">pay_type = #{payType},</if>
@@ -26,31 +26,31 @@
     </update>
 
     <update id="updateStatus">
-        UPDATE order SET status = #{status} WHERE order_no = #{orderNo}
+        UPDATE `order` SET status = #{status} WHERE order_no = #{orderNo}
     </update>
 
     <select id="findByOrderNo" resultType="com.ngsz.mall_server.pojo.Order">
-        SELECT * FROM order WHERE order_no = #{orderNo} AND deleted = 0
+        SELECT * FROM `order` WHERE order_no = #{orderNo} AND deleted = 0
     </select>
 
     <select id="findById" resultType="com.ngsz.mall_server.pojo.Order">
-        SELECT * FROM order WHERE id = #{id} AND deleted = 0
+        SELECT * FROM `order` WHERE id = #{id} AND deleted = 0
     </select>
 
     <select id="findByUserId" resultType="com.ngsz.mall_server.pojo.Order">
-        SELECT * FROM order WHERE user_id = #{userId} AND deleted = 0
+        SELECT * FROM `order` WHERE user_id = #{userId} AND deleted = 0
         <if test="status != null">AND status = #{status}</if>
         ORDER BY create_time DESC
         <if test="offset != null and size != null">LIMIT #{offset}, #{size}</if>
     </select>
 
     <select id="countByUserId" resultType="int">
-        SELECT COUNT(*) FROM order WHERE user_id = #{userId} AND deleted = 0
+        SELECT COUNT(*) FROM `order` WHERE user_id = #{userId} AND deleted = 0
         <if test="status != null">AND status = #{status}</if>
     </select>
 
     <select id="findByCondition" resultType="com.ngsz.mall_server.pojo.Order">
-        SELECT * FROM order WHERE deleted = 0
+        SELECT * FROM `order` WHERE deleted = 0
         <if test="keyword != null and keyword != ''">
             AND (order_no LIKE CONCAT('%', #{keyword}, '%') OR receiver_name LIKE CONCAT('%', #{keyword}, '%'))
         </if>
@@ -61,7 +61,7 @@
     </select>
 
     <select id="countByCondition" resultType="int">
-        SELECT COUNT(*) FROM order WHERE deleted = 0
+        SELECT COUNT(*) FROM `order` WHERE deleted = 0
         <if test="keyword != null and keyword != ''">
             AND (order_no LIKE CONCAT('%', #{keyword}, '%') OR receiver_name LIKE CONCAT('%', #{keyword}, '%'))
         </if>
