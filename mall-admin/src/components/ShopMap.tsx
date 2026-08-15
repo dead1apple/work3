@@ -48,16 +48,18 @@ export function ShopMap({ points, loading, error, onRetry, tall }: ShopMapProps)
           .filter((entry): entry is { point: ShopMapPoint, lngLat: [number, number] } => entry.lngLat != null)
 
         markers = located.map(({ point, lngLat }) => {
+          const openDetail = () => {
+            infoWindow?.setContent?.(createInfoContent(point, lngLat))
+            infoWindow?.open(map, marker)
+          }
           const marker = new AMap.Marker({
             position: lngLat,
             title: point.shopName,
-            content: createMarkerContent(point),
+            content: createMarkerContent(point, openDetail),
           })
           marker.setMap(map)
-          marker.on?.('click', () => {
-            infoWindow?.setContent?.(createInfoContent(point, lngLat))
-            infoWindow?.open(map, marker)
-          })
+          // 自定义 content 会拦截 marker 原生事件，官方 API 兜底绑定
+          AMap.event?.addListener?.(marker, 'click', openDetail)
           return marker
         })
         if (markers.length) {
@@ -107,7 +109,7 @@ export function ShopMap({ points, loading, error, onRetry, tall }: ShopMapProps)
   )
 }
 
-function createMarkerContent(point: ShopMapPoint) {
+function createMarkerContent(point: ShopMapPoint, onClick: () => void) {
   const tone = statusTone(point.status, 'shop')
   const color = tone === 'success' ? '#10b981' : tone === 'danger' ? '#ef4444' : tone === 'warning' ? '#f59e0b' : '#94a3b8'
   const badge = document.createElement('div')
@@ -116,6 +118,11 @@ function createMarkerContent(point: ShopMapPoint) {
   badge.innerHTML = `
     <span class="amap-marker-dot" style="background:${color}"></span>
     <span class="amap-marker-name">${escapeHtml(point.shopName)}</span>`
+  badge.addEventListener('click', (event) => {
+    event.stopPropagation()
+    event.preventDefault()
+    onClick()
+  })
   return badge
 }
 

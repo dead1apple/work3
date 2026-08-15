@@ -538,6 +538,9 @@ select:focus { border-color: #9cc5e4; box-shadow: 0 0 0 3px #edf6fc; }
 }
 
 /* ---- 高德 InfoWindow 详情卡片 ---- */
+.amap-info-contentContainer { border-radius: 12px; background: transparent; }
+.amap-info-outer { background: transparent; border: 0; box-shadow: none; padding: 0; border-radius: 12px; }
+.amap-info-content { background: transparent; padding: 0; line-height: 1.5; }
 .amap-info-card {
   min-width: 210px;
   max-width: 270px;
