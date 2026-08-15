@@ -28,6 +28,12 @@ public class AdminShopController {
         return Result.success(shopService.listShops(keyword, status, page, size));
     }
 
+    @Operation(summary = "店铺地图点位", description = "返回全部店铺的位置信息用于地图展示")
+    @GetMapping("/map")
+    public Result<?> mapPoints() {
+        return Result.success(adminPlatformService.listShopMapPoints());
+    }
+
     @Operation(summary = "审核或管理店铺状态", description = "目标状态：1 通过/恢复，2 禁用，3 拒绝")
     @PutMapping("/{id}/audit")
     public Result<?> audit(

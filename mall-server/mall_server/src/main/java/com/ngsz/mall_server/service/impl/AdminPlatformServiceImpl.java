@@ -519,6 +519,16 @@ public class AdminPlatformServiceImpl implements AdminPlatformService {
     }
 
     @Override
+    public List<Map<String, Object>> listShopMapPoints() {
+        return jdbcTemplate.queryForList("""
+                SELECT id, shop_name AS shopName, location, address,
+                       status, rating, logo
+                FROM shop
+                ORDER BY id
+                """);
+    }
+
+    @Override
     public Map<String, Object> orderDetail(String orderNo) {
         String normalizedOrderNo = requiredText(orderNo, "订单号不能为空");
         List<Map<String, Object>> orders = jdbcTemplate.queryForList(orderSelect()

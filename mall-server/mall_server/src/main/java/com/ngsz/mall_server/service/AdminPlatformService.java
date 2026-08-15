@@ -30,6 +30,8 @@ public interface AdminPlatformService {
 
     Map<String, Object> shopDetail(Long id);
 
+    java.util.List<Map<String, Object>> listShopMapPoints();
+
     Map<String, Object> orderDetail(String orderNo);
 
     void deliverOrder(String orderNo, AdminDeliverRequest request);

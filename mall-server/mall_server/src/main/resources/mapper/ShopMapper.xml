@@ -3,8 +3,8 @@
 <mapper namespace="com.ngsz.mall_server.mapper.ShopMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO shop (user_id, shop_name, logo, description, license_image, status)
-        VALUES (#{userId}, #{shopName}, #{logo}, #{description}, #{licenseImage}, #{status})
+        INSERT INTO shop (user_id, shop_name, logo, description, license_image, status, location, address)
+        VALUES (#{userId}, #{shopName}, #{logo}, #{description}, #{licenseImage}, #{status}, #{location}, #{address})
     </insert>
 
     <update id="update">
@@ -16,6 +16,8 @@
             <if test="licenseImage != null">license_image = #{licenseImage},</if>
             <if test="status != null">status = #{status},</if>
             <if test="rating != null">rating = #{rating},</if>
+            <if test="location != null">location = #{location},</if>
+            <if test="address != null">address = #{address},</if>
         </set>
         WHERE id = #{id}
     </update>

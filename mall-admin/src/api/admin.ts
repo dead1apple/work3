@@ -24,6 +24,7 @@ import type {
   RiskAlert,
   Shop,
   ShopDetail,
+  ShopMapPoint,
   SystemConfig,
   UserDetail,
 } from './types'
@@ -44,6 +45,7 @@ export const adminApi = {
 
   shops: (params: ListParams = {}) => apiRequest<PageResult<Shop>>(`/api/admin/shops${buildQuery(params)}`),
   auditShop: (id: number, status: number) => apiRequest<string>(`/api/admin/shops/${id}/audit${buildQuery({ status })}`, { method: 'PUT' }),
+  shopMapPoints: () => apiRequest<ShopMapPoint[]>('/api/admin/shops/map'),
 
   coupons: () => apiRequest<Coupon[]>('/api/admin/coupons/available'),
 

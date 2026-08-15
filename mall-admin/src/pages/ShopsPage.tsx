@@ -1,12 +1,13 @@
 import { useDeferredValue, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Eye, PackageCheck, ReceiptText, Search, ShieldX, Star, Store } from 'lucide-react'
+import { Check, Eye, List, Map as MapIcon, PackageCheck, ReceiptText, Search, ShieldX, Star, Store } from 'lucide-react'
 import { adminApi } from '../api/admin'
 import type { Shop } from '../api/types'
 import { ConfirmDialog } from '../components/ConfirmDialog'
 import { Drawer } from '../components/Drawer'
 import { PageTitle } from '../components/PageTitle'
 import { Pagination } from '../components/Pagination'
+import { ShopMap } from '../components/ShopMap'
 import { StatePanel } from '../components/StatePanel'
 import { StatusBadge } from '../components/StatusBadge'
 import { currency, initials, orderStatusNames, shopStatusNames, shortDate, shortDateTime, statusTone } from '../utils/format'
@@ -16,6 +17,7 @@ type ShopAction = { shop: Shop, nextStatus: number, label: string } | null
 
 export function ShopsPage() {
   const queryClient = useQueryClient()
+  const [view, setView] = useState<'list' | 'map'>('list')
   const [keyword, setKeyword] = useState('')
   const deferredKeyword = useDeferredValue(keyword)
   const [status, setStatus] = useState<number | ''>('')
@@ -26,6 +28,11 @@ export function ShopsPage() {
   const query = useQuery({
     queryKey: ['shops', deferredKeyword, status, page],
     queryFn: () => adminApi.shops({ keyword: deferredKeyword, status, page, size: PAGE_SIZE }),
+  })
+  const mapQuery = useQuery({
+    queryKey: ['shops-map'],
+    queryFn: () => adminApi.shopMapPoints(),
+    enabled: view === 'map',
   })
   const detailQuery = useQuery({
     queryKey: ['shop-detail', detailId],
@@ -38,6 +45,7 @@ export function ShopsPage() {
       setNotice(`${variables.shop.shopName} 已${variables.label}`)
       setAction(null)
       queryClient.invalidateQueries({ queryKey: ['shops'] })
+      queryClient.invalidateQueries({ queryKey: ['shops-map'] })
       queryClient.invalidateQueries({ queryKey: ['admin-snapshot'] })
     },
   })
@@ -46,6 +54,15 @@ export function ShopsPage() {
     <div className="page-stack">
       <PageTitle title="店铺管理" description="审核入驻店铺并维护平台经营状态" actions={<span className="summary-label"><Store />平台店铺 {query.data?.total ?? 0}</span>} />
       {notice && <div className="feedback-banner" role="status"><Store />{notice}<button onClick={() => setNotice('')}>知道了</button></div>}
+      <div className="view-switch" role="tablist" aria-label="店铺视图切换">
+        <button type="button" role="tab" aria-selected={view === 'list'} className={view === 'list' ? 'view-switch-item active' : 'view-switch-item'} onClick={() => setView('list')}><List />列表</button>
+        <button type="button" role="tab" aria-selected={view === 'map'} className={view === 'map' ? 'view-switch-item active' : 'view-switch-item'} onClick={() => setView('map')}><MapIcon />地图分布</button>
+      </div>
+      {view === 'map' ? (
+        <section className="content-section">
+          <ShopMap points={mapQuery.data ?? []} loading={mapQuery.isLoading} error={mapQuery.isError ? (mapQuery.error?.message ?? '加载失败') : null} onRetry={() => mapQuery.refetch()} />
+        </section>
+      ) : (
       <section className="content-section table-section">
         <div className="table-toolbar">
           <div className="search-box"><Search /><input aria-label="搜索店铺" placeholder="搜索店铺名称" value={keyword} onChange={(event) => { setKeyword(event.target.value); setPage(1) }} /></div>
@@ -75,6 +92,7 @@ export function ShopsPage() {
           </>
         )}
       </section>
+      )}
       <Drawer open={detailId != null} title={detailQuery.data?.shop.shopName || '店铺详情'} subtitle={detailQuery.data ? `店铺 ID ${detailQuery.data.shop.id} · 店主 #${detailQuery.data.shop.userId || '-'}` : '正在加载店铺资料'} width="wide" onClose={() => setDetailId(null)}>
         {detailQuery.isLoading ? <StatePanel type="loading" /> : detailQuery.isError || !detailQuery.data ? <StatePanel type="error" message={detailQuery.error?.message} onRetry={() => detailQuery.refetch()} /> : <>
           <section className="detail-block entity-overview">{detailQuery.data.shop.logo ? <img src={detailQuery.data.shop.logo} alt="" /> : <span className="entity-overview-placeholder"><Store /></span>}<div><StatusBadge tone={statusTone(detailQuery.data.shop.status, 'shop')}>{shopStatusNames[detailQuery.data.shop.status]}</StatusBadge><p>{detailQuery.data.shop.description || '暂无店铺介绍'}</p></div></section>

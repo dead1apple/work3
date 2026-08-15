@@ -34,6 +34,12 @@ public class Shop {
     @Schema(description = "店铺综合评分（0~5）", example = "4.8")
     private BigDecimal rating;
 
+    @Schema(description = "店铺经纬度（经度,纬度），如 116.397428,39.90923")
+    private String location;
+
+    @Schema(description = "店铺地址文本")
+    private String address;
+
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "创建时间")
     private LocalDateTime createTime;

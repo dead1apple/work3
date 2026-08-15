@@ -76,7 +76,19 @@ export interface Shop {
   licenseImage?: string
   status: number
   rating: number
+  location?: string
+  address?: string
   createTime: string
+}
+
+export interface ShopMapPoint {
+  id: number
+  shopName: string
+  location?: string
+  address?: string
+  status: number
+  rating: number
+  logo?: string
 }
 
 export interface Coupon {
