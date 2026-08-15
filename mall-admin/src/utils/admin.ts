@@ -14,6 +14,16 @@ export function auditActionPresentation(action: string) {
   return auditActions[action] ?? { label: action, tone: 'muted' as const }
 }
 
+const refundStatuses: Record<number, { label: string, tone: AdminStatusTone | 'warning' }> = {
+  0: { label: '处理中', tone: 'warning' },
+  1: { label: '已退款', tone: 'success' },
+  2: { label: '退款失败', tone: 'danger' },
+}
+
+export function refundStatusPresentation(status: number) {
+  return refundStatuses[status] ?? { label: `状态 ${status}`, tone: 'muted' as const }
+}
+
 export function summarizeCoupons(coupons: Coupon[]) {
   const issued = coupons.reduce((sum, coupon) => sum + Number(coupon.issuedCount || 0), 0)
   const used = coupons.reduce((sum, coupon) => sum + Number(coupon.usedCount || 0), 0)
