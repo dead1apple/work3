@@ -6,8 +6,8 @@
 /** @typedef {{ id?: number, receiverName: string, receiverPhone: string, province?: string, city?: string, district?: string, detailAddress: string, isDefault?: number }} AddressDTO */
 /** @typedef {{ skuId: number, quantity: number }} CartDTO */
 /** @typedef {{ id?: number, skuName?: string, specValues?: string, price?: number, marketPrice?: number, stock?: number, image?: string }} SkuDTO */
-/** @typedef {{ cartItemIds?: number[], addressId?: number, couponId?: number, remark?: string }} CreateOrderDTO */
-/** @typedef {{ orderNo: string, skuId?: number, score: number, content: string, images?: string[] }} ReviewDTO */
+/** @typedef {{ cartIds?: number[], addressId?: number, couponId?: number, remark?: string }} CreateOrderDTO */
+/** @typedef {{ orderNo?: string, orderItemId: number, rating: number, content: string, images?: string[], isAnonymous?: boolean }} ReviewDTO */
 /** @typedef {{ skuId: number, quantity: number, addressId?: number, couponId?: number, remark?: string }} BuyNowDTO */
 /** @typedef {{ id?: number, shopName?: string, logo?: string, description?: string, licenseImage?: string, status?: number, rating?: number }} Shop */
 /** @typedef {{ id?: number, categoryId?: number, brandId?: number, name?: string, subtitle?: string, mainImage?: string, images?: string[], detail?: string, status?: number, skuList?: SkuDTO[] }} ProductDTO */

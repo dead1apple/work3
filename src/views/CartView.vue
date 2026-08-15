@@ -1,9 +1,11 @@
 <script setup>
 import { computed, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
+import { useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart.js'
 
 const cartStore = useCartStore()
+const router = useRouter()
 const allChecked = computed(() => cartStore.cartList.length > 0 && cartStore.cartList.every((item) => item.checked))
 const formatPrice = (value) => Number(value || 0).toFixed(2)
 
@@ -55,7 +57,7 @@ const checkout = () => {
     ElMessage.warning('请先选择要结算的商品')
     return
   }
-  ElMessage.info('即将跳转到结算页')
+  router.push('/checkout/cart')
 }
 
 onMounted(loadCart)

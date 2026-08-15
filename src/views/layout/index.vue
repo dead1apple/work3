@@ -23,7 +23,7 @@ const displayName = computed(() => currentUser.value.nickname || currentUser.val
 
 const handleSearch = () => {
   const value = keyword.value.trim()
-  router.push({ path: '/home', query: value ? { keyword: value } : {} })
+  router.push({ path: '/products', query: value ? { keyword: value } : {} })
 }
 </script>
 

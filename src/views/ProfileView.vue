@@ -19,13 +19,13 @@
       <el-card class="order-card" shadow="never">
         <div class="section-heading">
           <h2>我的订单</h2>
-          <button class="view-all" type="button" @click="showMessage('跳转订单列表')">
+          <button class="view-all" type="button" @click="router.push('/orders')">
             查看全部 <span aria-hidden="true">›</span>
           </button>
         </div>
         <el-row :gutter="8" class="order-grid">
           <el-col v-for="item in orderItems" :key="item.label" :span="6">
-            <button class="order-item" type="button" @click="showMessage('跳转到对应订单列表')">
+            <button class="order-item" type="button" @click="router.push({ path: '/orders', query: { status: item.status } })">
               <el-badge :value="item.count" :hidden="item.count === 0" class="order-badge">
                 <el-icon :size="24" class="order-icon"><component :is="item.icon" /></el-icon>
               </el-badge>
@@ -41,7 +41,7 @@
           :key="item.label"
           class="menu-item"
           type="button"
-          @click="showMessage(item.message)"
+          @click="router.push(item.path)"
         >
           <span class="menu-leading">
             <el-icon :size="19"><component :is="item.icon" /></el-icon>
@@ -73,7 +73,7 @@ import {
   Ticket,
   Van,
 } from '@element-plus/icons-vue'
-import { getUserInfo } from '../api/index.js'
+import { getUserInfo, logout } from '../api/index.js'
 import { useUserStore } from '../store/user.js'
 
 const router = useRouter()
@@ -91,17 +91,17 @@ const fallbackUser = {
 const user = ref({ ...fallbackUser })
 
 const orderItems = [
-  { label: '待付款', count: 0, icon: Clock },
-  { label: '待发货', count: 0, icon: Van },
-  { label: '待收货', count: 0, icon: CircleCheck },
-  { label: '待评价', count: 0, icon: ChatDotRound },
+  { label: '待付款', count: 0, icon: Clock, status: '1' },
+  { label: '待发货', count: 0, icon: Van, status: '2' },
+  { label: '待收货', count: 0, icon: CircleCheck, status: '3' },
+  { label: '待评价', count: 0, icon: ChatDotRound, status: '4' },
 ]
 
 const menuItems = [
-  { label: '我的订单', message: '跳转订单列表', icon: ShoppingBag },
-  { label: '收货地址', message: '跳转地址管理', icon: Location },
-  { label: '优惠券', message: '跳转优惠券', icon: Ticket },
-  { label: '设置', message: '跳转设置', icon: Setting },
+  { label: '我的订单', path: '/orders', icon: ShoppingBag },
+  { label: '收货地址', path: '/address', icon: Location },
+  { label: '优惠券', path: '/coupons', icon: Ticket },
+  { label: '编辑资料', path: '/profile/edit', icon: Setting },
 ]
 
 const avatarText = computed(() => (user.value.nickname || '用户').trim().slice(0, 1).toUpperCase())
@@ -125,10 +125,6 @@ function normalizeUser(payload) {
   }
 }
 
-function showMessage(message) {
-  ElMessage.info(message)
-}
-
 async function loadUserInfo() {
   loading.value = true
   try {
@@ -150,6 +146,7 @@ async function handleLogout() {
       confirmButtonText: '确认',
       cancelButtonText: '取消',
     })
+    try { await logout() } catch { /* 本地会话仍应在服务端登出失败时清理。 */ }
     userStore.clearSession()
     localStorage.removeItem('token')
     ElMessage.success('已退出登录')

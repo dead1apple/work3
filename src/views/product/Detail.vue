@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { getProductDetail, getProductReviews } from '../../api/index.js'
+import { addFavorite, checkFavorite, getProductDetail, getProductReviews, removeFavorite } from '../../api/index.js'
 import { useCartStore } from '../../store/cart.js'
 
 const route = useRoute()
@@ -13,6 +13,7 @@ const product = ref(null)
 const selectedOptions = ref({})
 const quantity = ref(1)
 const activeTab = ref('detail')
+const isFavorite = ref(false)
 const selectedSku = computed(() => {
   if (!product.value?.skuList?.length) return null
   return product.value.skuList.find((sku) => {
@@ -75,6 +76,10 @@ const loadProduct = async () => {
     product.value = normalizeProduct(detailResult)
     if (!product.value.id) throw new Error('product not found')
     product.value.options.forEach((option) => { selectedOptions.value[option.label] = option.values[0] })
+    try {
+      const favoriteResult = await checkFavorite(id)
+      isFavorite.value = Boolean(favoriteResult?.favorite ?? favoriteResult?.isFavorite ?? favoriteResult)
+    } catch { isFavorite.value = false }
 
     try {
       const reviewResult = await getProductReviews(id, { page: 1, size: 10 })
@@ -110,7 +115,19 @@ const handleAddToCart = async () => {
   }
 }
 
-const handleBuyNow = () => ElMessage.info('即将跳转到结算页')
+const handleBuyNow = () => {
+  const sku = selectedSku.value
+  router.push({ path: '/checkout/buy-now', query: { productId: product.value.id, skuId: sku?.id || product.value.id, quantity: quantity.value } })
+}
+
+const toggleFavorite = async () => {
+  try {
+    if (isFavorite.value) await removeFavorite(product.value.id)
+    else await addFavorite(product.value.id)
+    isFavorite.value = !isFavorite.value
+    ElMessage.success(isFavorite.value ? '已收藏' : '已取消收藏')
+  } catch (error) { ElMessage.error(error.message || '收藏操作失败') }
+}
 
 onMounted(loadProduct)
 </script>
@@ -139,7 +156,7 @@ onMounted(loadProduct)
             <el-radio-group v-model="selectedOptions[option.label]" size="large"><el-radio-button v-for="value in option.values" :key="value" :value="value">{{ value }}</el-radio-button></el-radio-group>
           </div>
           <div class="option-row quantity-row"><span class="option-label">数量</span><el-input-number v-model="quantity" :min="1" :max="99" size="large" /><span class="stock-note">库存以接口返回为准</span></div>
-          <el-row :gutter="12" class="action-row"><el-col :span="12"><el-button class="cart-button" type="primary" size="large" @click="handleAddToCart">加入购物车</el-button></el-col><el-col :span="12"><el-button class="buy-button" type="danger" size="large" @click="handleBuyNow">立即购买</el-button></el-col></el-row>
+          <el-row :gutter="12" class="action-row"><el-col :span="8"><el-button class="cart-button" type="primary" size="large" @click="handleAddToCart">加入购物车</el-button></el-col><el-col :span="8"><el-button class="buy-button" type="danger" size="large" @click="handleBuyNow">立即购买</el-button></el-col><el-col :span="8"><el-button size="large" @click="toggleFavorite">{{ isFavorite ? '已收藏' : '收藏' }}</el-button></el-col></el-row>
           <p class="service-note">支持 7 天无理由退货 · 京东物流 · 正品保障</p>
         </div>
       </section>
