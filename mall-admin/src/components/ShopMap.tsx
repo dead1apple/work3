@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, Navigation } from 'lucide-react'
+import { MapPin, Navigation, Store } from 'lucide-react'
 import type { ShopMapPoint } from '../api/types'
 import { shopStatusNames, statusTone } from '../utils/format'
 import { loadAmap, parseLocation } from '../utils/amap'
@@ -10,6 +10,7 @@ interface ShopMapProps {
   loading: boolean
   error: string | null
   onRetry?: () => void
+  tall?: boolean
 }
 
 interface AmapInstance {
@@ -17,7 +18,7 @@ interface AmapInstance {
   setFitView(markers: unknown[]): void
 }
 
-export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
+export function ShopMap({ points, loading, error, onRetry, tall }: ShopMapProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
 
@@ -25,7 +26,7 @@ export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
     let disposed = false
     let mapInstance: AmapInstance | null = null
     let markers: { setMap(map: unknown | null): void }[] = []
-    let infoWindow: { open(map: unknown, marker?: unknown): void; close(): void } | null = null
+    let infoWindow: { open(map: unknown, marker?: unknown): void; close(): void; setContent?(content: string | HTMLElement): void } | null = null
 
     async function initMap() {
       if (!containerRef.current) return
@@ -39,7 +40,7 @@ export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
           resizeEnable: true,
         })
         mapInstance = map
-        infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -30) })
+        infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -12) })
 
         const located = points
           .map((point) => ({ point, lngLat: parseLocation(point.location) }))
@@ -49,10 +50,11 @@ export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
           const marker = new AMap.Marker({
             position: lngLat,
             title: point.shopName,
-            content: createMarkerContent(point, lngLat),
+            content: createMarkerContent(point),
           })
           marker.setMap(map)
           marker.on?.('click', () => {
+            infoWindow?.setContent?.(createInfoContent(point, lngLat))
             infoWindow?.open(map, marker)
           })
           return marker
@@ -90,11 +92,11 @@ export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
       <div className="map-view-header">
         <div>
           <strong><MapPin />店铺分布地图</strong>
-          <span>共 {points.length} 家店铺，其中 {locatedCount} 家已标注位置</span>
+          <span>共 {points.length} 家店铺，其中 {locatedCount} 家已标注位置 · 点击标记查看详情</span>
         </div>
         <a className="map-hint" href="https://lbs.amap.com" target="_blank" rel="noreferrer"><Navigation />高德地图</a>
       </div>
-      <div className="map-canvas" ref={containerRef} role="application" aria-label="店铺分布地图" />
+      <div className={`map-canvas ${tall ? 'map-canvas-tall' : ''}`} ref={containerRef} role="application" aria-label="店铺分布地图" />
       <div className="map-legend">
         {Object.entries(shopStatusNames).map(([value, label]) => (
           <span key={value}><i className={`legend-dot legend-${value}`} />{label}</span>
@@ -104,20 +106,31 @@ export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
   )
 }
 
-function createMarkerContent(point: ShopMapPoint, lngLat: [number, number]) {
+function createMarkerContent(point: ShopMapPoint) {
   const tone = statusTone(point.status, 'shop')
   const color = tone === 'success' ? '#16a34a' : tone === 'danger' ? '#dc2626' : tone === 'warning' ? '#d97706' : '#6b7280'
   const badge = document.createElement('div')
-  badge.className = 'amap-marker'
+  badge.className = 'amap-marker amap-marker-compact'
   badge.style.borderColor = color
   badge.innerHTML = `
-    <div class="amap-marker-pin" style="background:${color}"></div>
-    <div class="amap-marker-card">
-      <strong>${escapeHtml(point.shopName)}</strong>
-      <span>${escapeHtml(point.address || '未设置地址')}</span>
-      <small>${escapeHtml(shopStatusNames[point.status] || '未知状态')} · ${Number(point.rating).toFixed(1)} 分 · ${lngLat[0].toFixed(4)}, ${lngLat[1].toFixed(4)}</small>
-    </div>`
+    <span class="amap-marker-dot" style="background:${color}"></span>
+    <span class="amap-marker-name">${escapeHtml(point.shopName)}</span>`
   return badge
+}
+
+function createInfoContent(point: ShopMapPoint, lngLat: [number, number]) {
+  const tone = statusTone(point.status, 'shop')
+  const color = tone === 'success' ? '#16a34a' : tone === 'danger' ? '#dc2626' : tone === 'warning' ? '#d97706' : '#6b7280'
+  return `
+    <div class="amap-info-card">
+      <div class="amap-info-head" style="border-color:${color}">
+        <span class="amap-info-dot" style="background:${color}"></span>
+        <strong>${escapeHtml(point.shopName)}</strong>
+      </div>
+      <div class="amap-info-row"><Store size="13" />${escapeHtml(point.address || '未设置地址')}</div>
+      <div class="amap-info-row"><span>${escapeHtml(shopStatusNames[point.status] || '未知状态')}</span><span>评分 ${Number(point.rating).toFixed(1)}</span></div>
+      <div class="amap-info-coord">${lngLat[0].toFixed(6)}, ${lngLat[1].toFixed(6)}</div>
+    </div>`
 }
 
 function escapeHtml(value: string) {

@@ -35,6 +35,7 @@ export interface AmapMarker {
 export interface AmapInfoWindow {
   open(map: AmapMap, marker?: unknown): void
   close(): void
+  setContent?(content: string | HTMLElement): void
 }
 export interface AmapApi {
   Map: new (container: HTMLElement, options?: AmapMapOptions) => AmapMap

@@ -10,6 +10,7 @@ const UsersPage = lazy(() => import('./pages/UsersPage').then((module) => ({ def
 const ProductsPage = lazy(() => import('./pages/ProductsPage').then((module) => ({ default: module.ProductsPage })))
 const OrdersPage = lazy(() => import('./pages/OrdersPage').then((module) => ({ default: module.OrdersPage })))
 const ShopsPage = lazy(() => import('./pages/ShopsPage').then((module) => ({ default: module.ShopsPage })))
+const ShopMapPage = lazy(() => import('./pages/ShopMapPage').then((module) => ({ default: module.ShopMapPage })))
 const CouponsPage = lazy(() => import('./pages/CouponsPage').then((module) => ({ default: module.CouponsPage })))
 const AuditCenterPage = lazy(() => import('./pages/AuditCenterPage').then((module) => ({ default: module.AuditCenterPage })))
 const CatalogPage = lazy(() => import('./pages/CatalogPage').then((module) => ({ default: module.CatalogPage })))
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="products" element={<ProductsPage />} />
           <Route path="orders" element={<OrdersPage />} />
           <Route path="shops" element={<ShopsPage />} />
+          <Route path="shop-map" element={<ShopMapPage />} />
           <Route path="coupons" element={<CouponsPage />} />
           <Route path="audits" element={<AuditCenterPage />} />
           <Route path="catalog" element={<CatalogPage />} />
