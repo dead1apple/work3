@@ -1,6 +1,7 @@
 package com.ngsz.mall_server.controller.admin;
 
 import com.ngsz.mall_server.common.result.Result;
+import com.ngsz.mall_server.service.AdminPlatformService;
 import com.ngsz.mall_server.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminUserController {
 
     @Autowired private UserService userService;
+    @Autowired private AdminPlatformService adminPlatformService;
 
     @Operation(summary = "分页查询用户", description = "管理员分页查询用户，可按用户名关键字、角色、状态过滤")
     @GetMapping
@@ -33,5 +35,10 @@ public class AdminUserController {
             @Parameter(description = "目标状态：0 禁用，1 启用", example = "0") @RequestParam Integer status) {
         userService.updateUserStatus(id, status);
         return Result.success("操作成功");
+    }
+
+    @GetMapping("/{id}/detail")
+    public Result<?> detail(@PathVariable Long id) {
+        return Result.success(adminPlatformService.userDetail(id));
     }
 }

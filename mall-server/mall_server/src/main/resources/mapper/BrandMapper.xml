@@ -23,6 +23,10 @@
         SELECT * FROM brand WHERE status = 1 ORDER BY sort_order ASC
     </select>
 
+    <select id="findAllForAdmin" resultType="com.ngsz.mall_server.pojo.Brand">
+        SELECT * FROM brand ORDER BY sort_order ASC, id ASC
+    </select>
+
     <select id="findById" resultType="com.ngsz.mall_server.pojo.Brand">
         SELECT * FROM brand WHERE id = #{id}
     </select>

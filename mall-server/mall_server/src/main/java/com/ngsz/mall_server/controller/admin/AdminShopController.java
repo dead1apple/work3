@@ -1,6 +1,8 @@
 package com.ngsz.mall_server.controller.admin;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.ngsz.mall_server.common.result.Result;
+import com.ngsz.mall_server.service.AdminPlatformService;
 import com.ngsz.mall_server.service.ShopService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminShopController {
 
     @Autowired private ShopService shopService;
+    @Autowired private AdminPlatformService adminPlatformService;
 
     @Operation(summary = "分页查询店铺", description = "管理员查看平台所有店铺，支持关键字和状态过滤")
     @GetMapping
@@ -25,12 +28,17 @@ public class AdminShopController {
         return Result.success(shopService.listShops(keyword, status, page, size));
     }
 
-    @Operation(summary = "审核店铺", description = "修改店铺状态：0 待审核，1 营业中，2 禁用，3 拒绝")
+    @Operation(summary = "审核或管理店铺状态", description = "目标状态：1 通过/恢复，2 禁用，3 拒绝")
     @PutMapping("/{id}/audit")
     public Result<?> audit(
             @Parameter(description = "店铺 ID", example = "100") @PathVariable Long id,
-            @Parameter(description = "目标状态：0 待审核，1 营业中，2 禁用，3 拒绝", example = "1") @RequestParam Integer status) {
-        shopService.auditShop(id, status);
-        return Result.success("审核完成");
+            @Parameter(description = "目标状态：1 通过/恢复，2 禁用，3 拒绝", example = "1") @RequestParam Integer status) {
+        adminPlatformService.updateShopStatus(StpUtil.getLoginIdAsLong(), id, status);
+        return Result.success("操作完成");
+    }
+
+    @GetMapping("/{id}/detail")
+    public Result<?> detail(@PathVariable Long id) {
+        return Result.success(adminPlatformService.shopDetail(id));
     }
 }

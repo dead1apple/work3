@@ -1,11 +1,11 @@
 package com.ngsz.mall_server.controller;
 
 import com.ngsz.mall_server.common.result.Result;
-import com.ngsz.mall_server.common.utils.RedisUtils;
 import com.ngsz.mall_server.pojo.dto.LoginDTO;
 import com.ngsz.mall_server.pojo.dto.RegisterDTO;
 import com.ngsz.mall_server.pojo.dto.SendCodeDTO;
 import com.ngsz.mall_server.service.UserService;
+import com.ngsz.mall_server.service.VerificationCodeStore;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,12 +22,12 @@ import java.util.Map;
 public class AuthController {
 
     @Autowired private UserService userService;
-    @Autowired private RedisUtils redisUtils;
+    @Autowired private VerificationCodeStore verificationCodeStore;
 
     @Operation(summary = "用户名密码登录",
             description = "使用用户名和密码登录，成功后返回 token（写入请求头 Authorization）以及用户基本信息")
     @PostMapping("/login")
-    public Result<?> login(@Valid @RequestBody LoginDTO dto,
+    public Result<?> login(@RequestBody LoginDTO dto,
                            @Parameter(hidden = true) HttpServletRequest request) {
         Map<String, Object> data = userService.login(dto, request.getRemoteAddr());
         return Result.success(data);
@@ -60,7 +60,7 @@ public class AuthController {
             description = "开发环境下用于查询已发送的短信验证码，方便联调，部署到生产前应移除")
     @GetMapping("/mock-code")
     public Result<?> getMockCode(@Parameter(description = "手机号", example = "13800138000") @RequestParam String phone) {
-        String code = redisUtils.getString("sms:code:" + phone);
+        String code = verificationCodeStore.get(phone);
         return Result.success(code != null ? code : "验证码已过期");
     }
 }

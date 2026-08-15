@@ -1,6 +1,8 @@
 package com.ngsz.mall_server.controller.admin;
 
+import cn.dev33.satoken.stp.StpUtil;
 import com.ngsz.mall_server.common.result.Result;
+import com.ngsz.mall_server.service.AdminPlatformService;
 import com.ngsz.mall_server.service.ProductService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 public class AdminProductController {
 
     @Autowired private ProductService productService;
+    @Autowired private AdminPlatformService adminPlatformService;
 
     @Operation(summary = "分页查询商品", description = "管理员查看平台所有商品，可按分类、关键字、状态过滤")
     @GetMapping
@@ -26,12 +29,17 @@ public class AdminProductController {
         return Result.success(productService.listProducts(categoryId, null, keyword, "default", status, page, size));
     }
 
-    @Operation(summary = "审核商品", description = "修改商品状态：0 下架，1 上架，2 拒绝")
+    @Operation(summary = "审核或管理商品状态", description = "目标状态：0 下架/拒绝，1 上架/通过")
     @PutMapping("/{id}/audit")
     public Result<?> audit(
             @Parameter(description = "商品 ID", example = "1") @PathVariable Long id,
-            @Parameter(description = "目标状态：0 下架，1 上架，2 拒绝", example = "1") @RequestParam Integer status) {
-        productService.updateStatus(id, status, null);
-        return Result.success("审核完成");
+            @Parameter(description = "目标状态：0 拒绝，1 通过", example = "1") @RequestParam Integer status) {
+        adminPlatformService.updateProductStatus(StpUtil.getLoginIdAsLong(), id, status);
+        return Result.success("操作完成");
+    }
+
+    @GetMapping("/{id}/detail")
+    public Result<?> detail(@PathVariable Long id) {
+        return Result.success(adminPlatformService.productDetail(id));
     }
 }

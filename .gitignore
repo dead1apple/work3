@@ -1,0 +1,12 @@
+# Logs
+*.log
+
+# Archives
+*.rar
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Local environment overrides
+.env
+.env.local

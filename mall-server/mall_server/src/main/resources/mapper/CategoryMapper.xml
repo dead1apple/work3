@@ -10,7 +10,9 @@
     <update id="update">
         UPDATE category
         <set>
+            <if test="parentId != null">parent_id = #{parentId},</if>
             <if test="name != null">name = #{name},</if>
+            <if test="level != null">level = #{level},</if>
             <if test="icon != null">icon = #{icon},</if>
             <if test="sortOrder != null">sort_order = #{sortOrder},</if>
             <if test="status != null">status = #{status},</if>
@@ -24,6 +26,10 @@
 
     <select id="findAll" resultType="com.ngsz.mall_server.pojo.Category">
         SELECT * FROM category WHERE status = 1 ORDER BY level ASC, sort_order ASC
+    </select>
+
+    <select id="findAllForAdmin" resultType="com.ngsz.mall_server.pojo.Category">
+        SELECT * FROM category ORDER BY level ASC, sort_order ASC, id ASC
     </select>
 
     <select id="findById" resultType="com.ngsz.mall_server.pojo.Category">

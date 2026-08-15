@@ -9,10 +9,15 @@
 
     <update id="update">
         UPDATE coupon_template
-        <set>
-            <if test="name != null">name = #{name},</if>
-            <if test="status != null">status = #{status},</if>
-        </set>
+        SET shop_id = #{shopId},
+            name = #{name},
+            type = #{type},
+            amount = #{amount},
+            min_amount = #{minAmount},
+            total_count = #{totalCount},
+            start_time = #{startTime},
+            end_time = #{endTime},
+            status = #{status}
         WHERE id = #{id}
     </update>
 
@@ -32,5 +37,18 @@
         SELECT * FROM coupon_template WHERE status = 1 AND issued_count &lt; total_count AND NOW() BETWEEN start_time AND end_time
         <if test="shopId != null">AND (shop_id = #{shopId} OR shop_id IS NULL)</if>
         ORDER BY create_time DESC
+    </select>
+
+    <select id="findByCondition" resultType="com.ngsz.mall_server.pojo.CouponTemplate">
+        SELECT * FROM coupon_template
+        <where>
+            <if test="keyword != null and keyword != ''">
+                name LIKE CONCAT('%', #{keyword}, '%')
+            </if>
+            <if test="status != null">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC, id DESC
     </select>
 </mapper>

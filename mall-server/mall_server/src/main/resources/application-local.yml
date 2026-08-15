@@ -1,0 +1,18 @@
+server:
+  port: 8081
+
+spring:
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/jd_mall_admin_dev?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  data:
+    redis:
+      connect-timeout: 500ms
+      timeout: 500ms
+      repositories:
+        enabled: false
+
+# Sa-Token uses its in-memory token DAO in this project. Admin login and
+# management requests therefore do not require a live Redis connection.

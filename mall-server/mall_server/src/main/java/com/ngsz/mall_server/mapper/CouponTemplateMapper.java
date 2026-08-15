@@ -9,6 +9,8 @@ import java.util.List;
 public interface CouponTemplateMapper {
     CouponTemplate findById(@Param("id") Long id);
     List<CouponTemplate> findAvailable(@Param("shopId") Long shopId);
+    List<CouponTemplate> findByCondition(
+            @Param("keyword") String keyword, @Param("status") Integer status);
     void insert(CouponTemplate template);
     void update(CouponTemplate template);
     void incrementIssuedCount(@Param("id") Long id);
