@@ -4,7 +4,7 @@
 
 **Goal:** Replace the category placeholder with a responsive, API-backed JD-style category page.
 
-**Architecture:** Normalize the category-tree and product-list payloads in a pure utility module. `CategoryView.vue` owns selection, requests, loading, errors, navigation, and responsive presentation.
+**Architecture:** Normalize the category-tree and product-list payloads in a pure utility module. Since the backend's first-level category filter returns no child products, `CategoryView.vue` aggregates product requests for the selected category's children, and owns selection, loading, errors, navigation, and responsive presentation.
 
 **Tech Stack:** Vue 3 Composition API, Vue Router, Element Plus, Node.js built-in test runner.
 
@@ -64,7 +64,7 @@ Run: `git add src/utils/category.js tests/category.test.js && git commit -m "fea
 - Test: `tests/category.test.js`
 
 **Interfaces:**
-- Consumes `getCategoryTree()`, `getProductList({ categoryId, page, size })`, and Task 1 helpers.
+- Consumes `getCategoryTree()`, one `getProductList({ categoryId, page, size })` request per child category, and Task 1 helpers.
 - Produces an interactive `/category` page routing children to `/home?categoryId=<id>` and products to `/product/<id>`.
 
 - [ ] **Step 1: Extend the failing test**
@@ -84,7 +84,7 @@ Expected: FAIL until missing payloads are handled.
 
 - [ ] **Step 3: Implement the view**
 
-Use `selectedCategoryId`, category and product loading refs, and a computed selected category. Load the category tree on mount, select its first item, then fetch eight products for the selected ID. Render an `el-menu` desktop sidebar, mobile horizontal category bar, `el-row`/`el-col` children grid, responsive product-card grid, skeletons, empty state, and `ElMessage.error` request feedback.
+Use `selectedCategoryId`, category and product loading refs, and a computed selected category. Load the category tree on mount, select its first item, then request products for every child category in parallel, de-duplicate them by product ID, and keep eight recommendations. Render an `el-menu` desktop sidebar, mobile horizontal category bar, `el-row`/`el-col` children grid, responsive product-card grid, skeletons, empty state, and `ElMessage.error` request feedback.
 
 - [ ] **Step 4: Run focused tests and build**
 

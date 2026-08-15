@@ -7,7 +7,7 @@
 ## 数据与交互
 
 - 首次调用 `getCategoryTree()`，从返回树中提取一级分类及其二级分类，默认选择第一项。
-- 选中一级分类时调用 `getProductList({ categoryId, page: 1, size: 8 })` 获取推荐商品。
+- 后端按一级分类 ID 查询商品会返回空列表，因此选中一级分类时会并行调用其各二级分类的 `getProductList({ categoryId, page: 1, size: 8 })`，去重后展示最多八个推荐商品。
 - 二级分类跳转至 `/home?categoryId=<id>`；商品跳转至已有的 `/product/:id` 详情路由。
 - 接口加载期间显示骨架屏，商品列表为空时显示空状态；异常使用 `ElMessage.error`。
 
