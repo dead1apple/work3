@@ -12,10 +12,12 @@ const queryClient = new QueryClient({
   },
 })
 
+const basePath = import.meta.env.VITE_BASE_PATH || '/'
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter basename={basePath}>
         <AuthProvider><App /></AuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
