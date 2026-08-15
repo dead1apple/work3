@@ -50,6 +50,17 @@ class AdminSecurityInterceptorTest {
     }
 
     @Test
+    void allowsCorsPreflightWithoutLogin() throws Exception {
+        AdminSecurityInterceptor interceptor = new AdminSecurityInterceptor(securityService);
+        MockHttpServletRequest request = new MockHttpServletRequest("OPTIONS", "/api/admin/users");
+
+        assertThat(interceptor.preHandle(
+                request, new MockHttpServletResponse(), new Object())).isTrue();
+
+        verifyNoInteractions(securityService);
+    }
+
+    @Test
     void delegatesLoggedInRequestToPermissionService() throws Exception {
         AdminSecurityInterceptor interceptor = new AdminSecurityInterceptor(securityService);
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/admin/users");

@@ -31,6 +31,10 @@ public class AdminSecurityInterceptor implements HandlerInterceptor {
     @Override
     public boolean preHandle(
             HttpServletRequest request, HttpServletResponse response, Object handler) {
+        // CORS 预检请求不携带认证头，必须在鉴权前放行
+        if ("OPTIONS".equalsIgnoreCase(request.getMethod())) {
+            return true;
+        }
         if (!StpUtil.isLogin()) {
             throw new BusinessException("请先登录管理员账号");
         }
