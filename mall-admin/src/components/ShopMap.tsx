@@ -51,6 +51,7 @@ export function ShopMap({ points, loading, error, onRetry }: ShopMapProps) {
             title: point.shopName,
             content: createMarkerContent(point, lngLat),
           })
+          marker.setMap(map)
           marker.on?.('click', () => {
             infoWindow?.open(map, marker)
           })
