@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, Navigation, Store } from 'lucide-react'
+import { MapPin, Navigation } from 'lucide-react'
 import type { ShopMapPoint } from '../api/types'
 import { shopStatusNames, statusTone } from '../utils/format'
 import { loadAmap, parseLocation } from '../utils/amap'
@@ -38,6 +38,7 @@ export function ShopMap({ points, loading, error, onRetry, tall }: ShopMapProps)
           center: [113.4, 30.6],
           viewMode: '2D',
           resizeEnable: true,
+          mapStyle: 'amap://styles/whitesmoke',
         })
         mapInstance = map
         infoWindow = new AMap.InfoWindow({ offset: new AMap.Pixel(0, -12) })
@@ -108,10 +109,10 @@ export function ShopMap({ points, loading, error, onRetry, tall }: ShopMapProps)
 
 function createMarkerContent(point: ShopMapPoint) {
   const tone = statusTone(point.status, 'shop')
-  const color = tone === 'success' ? '#16a34a' : tone === 'danger' ? '#dc2626' : tone === 'warning' ? '#d97706' : '#6b7280'
+  const color = tone === 'success' ? '#10b981' : tone === 'danger' ? '#ef4444' : tone === 'warning' ? '#f59e0b' : '#94a3b8'
   const badge = document.createElement('div')
   badge.className = 'amap-marker amap-marker-compact'
-  badge.style.borderColor = color
+  badge.style.setProperty('--marker-color', color)
   badge.innerHTML = `
     <span class="amap-marker-dot" style="background:${color}"></span>
     <span class="amap-marker-name">${escapeHtml(point.shopName)}</span>`
@@ -120,16 +121,20 @@ function createMarkerContent(point: ShopMapPoint) {
 
 function createInfoContent(point: ShopMapPoint, lngLat: [number, number]) {
   const tone = statusTone(point.status, 'shop')
-  const color = tone === 'success' ? '#16a34a' : tone === 'danger' ? '#dc2626' : tone === 'warning' ? '#d97706' : '#6b7280'
+  const color = tone === 'success' ? '#10b981' : tone === 'danger' ? '#ef4444' : tone === 'warning' ? '#f59e0b' : '#94a3b8'
+  const label = shopStatusNames[point.status] || '未知状态'
   return `
-    <div class="amap-info-card">
-      <div class="amap-info-head" style="border-color:${color}">
+    <div class="amap-info-card" style="--marker-color:${color}">
+      <div class="amap-info-head">
         <span class="amap-info-dot" style="background:${color}"></span>
         <strong>${escapeHtml(point.shopName)}</strong>
+        <em>${escapeHtml(label)}</em>
       </div>
-      <div class="amap-info-row"><Store size="13" />${escapeHtml(point.address || '未设置地址')}</div>
-      <div class="amap-info-row"><span>${escapeHtml(shopStatusNames[point.status] || '未知状态')}</span><span>评分 ${Number(point.rating).toFixed(1)}</span></div>
-      <div class="amap-info-coord">${lngLat[0].toFixed(6)}, ${lngLat[1].toFixed(6)}</div>
+      <div class="amap-info-rows">
+        <div class="amap-info-row"><span class="amap-info-ico">◆</span>${escapeHtml(point.address || '未设置地址')}</div>
+        <div class="amap-info-row"><span class="amap-info-ico">★</span>评分 ${Number(point.rating).toFixed(1)}</div>
+        <div class="amap-info-row"><span class="amap-info-ico">◎</span>${lngLat[0].toFixed(6)}, ${lngLat[1].toFixed(6)}</div>
+      </div>
     </div>`
 }
 

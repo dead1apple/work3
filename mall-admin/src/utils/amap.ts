@@ -9,6 +9,7 @@ export interface AmapMapOptions {
   zoom?: number
   resizeEnable?: boolean
   viewMode?: string
+  mapStyle?: string
 }
 export interface AmapMarkerOptions {
   position?: [number, number]
