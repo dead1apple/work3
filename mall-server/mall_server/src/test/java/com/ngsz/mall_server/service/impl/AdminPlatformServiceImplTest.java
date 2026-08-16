@@ -411,12 +411,13 @@ class AdminPlatformServiceImplTest {
         service.closeOrder("O-1", request);
 
         ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
-        verify(jdbcTemplate, org.mockito.Mockito.times(2))
+        verify(jdbcTemplate, org.mockito.Mockito.times(3))
                 .update(sql.capture(), any(Object[].class));
         assertThat(sql.getAllValues().get(0))
                 .contains("SUM(quantity)")
                 .contains("GREATEST(0, s.locked_stock - oi.quantity)");
-        assertThat(sql.getAllValues().get(1)).contains("status = 4").contains("cancel_reason");
+        assertThat(sql.getAllValues().get(1)).contains("UPDATE payment").contains("status = 4");
+        assertThat(sql.getAllValues().get(2)).contains("status = 4").contains("cancel_reason");
     }
 
     @Test

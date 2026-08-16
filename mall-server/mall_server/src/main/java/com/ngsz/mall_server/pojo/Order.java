@@ -37,6 +37,10 @@ public class Order {
     @Schema(description = "使用的优惠券 ID，未使用为 null", example = "1")
     private Long couponId;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "支付截止时间")
+    private LocalDateTime payDeadline;
+
     @Schema(description = "订单状态：0 待付款，1 待发货，2 待收货，3 已完成，4 已取消，5 已退款", example = "0")
     private Integer status;
 

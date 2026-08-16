@@ -21,7 +21,18 @@
         SELECT * FROM payment WHERE payment_no = #{paymentNo}
     </select>
 
+    <select id="findByPaymentNoForUpdate" resultType="com.ngsz.mall_server.pojo.Payment">
+        SELECT * FROM payment WHERE payment_no = #{paymentNo} FOR UPDATE
+    </select>
+
     <select id="findByOrderNo" resultType="com.ngsz.mall_server.pojo.Payment">
         SELECT * FROM payment WHERE order_no = #{orderNo}
     </select>
+
+    <update id="expirePendingByOrderNo">
+        UPDATE payment
+        SET status = 4
+        WHERE order_no = #{orderNo}
+          AND status = 0
+    </update>
 </mapper>

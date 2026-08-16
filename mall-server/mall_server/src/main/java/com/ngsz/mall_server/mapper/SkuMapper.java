@@ -12,7 +12,7 @@ public interface SkuMapper {
     void insert(Sku sku);
     void update(Sku sku);
     void updateStock(@Param("id") Long id, @Param("quantity") Integer quantity);
-    void lockStock(@Param("id") Long id, @Param("quantity") Integer quantity);
-    void unlockStock(@Param("id") Long id, @Param("quantity") Integer quantity);
-    void deductStock(@Param("id") Long id, @Param("quantity") Integer quantity);
+    int lockStock(@Param("id") Long id, @Param("quantity") Integer quantity);
+    int unlockStock(@Param("id") Long id, @Param("quantity") Integer quantity);
+    int deductStock(@Param("id") Long id, @Param("quantity") Integer quantity);
 }

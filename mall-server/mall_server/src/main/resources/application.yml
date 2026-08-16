@@ -49,6 +49,10 @@ springdoc:
 
 # Custom Config
 mall:
+  order:
+    payment-timeout-minutes: ${MALL_ORDER_PAYMENT_TIMEOUT_MINUTES:30}
+    timeout-scan-delay-ms: ${MALL_ORDER_TIMEOUT_SCAN_DELAY_MS:60000}
+    timeout-scan-batch-size: ${MALL_ORDER_TIMEOUT_SCAN_BATCH_SIZE:100}
   sms:
     mock: ${MALL_SMS_MOCK:true}
   pay:

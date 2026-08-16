@@ -3,9 +3,9 @@
 <mapper namespace="com.ngsz.mall_server.mapper.OrderMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO `order` (order_no, user_id, shop_id, total_amount, pay_amount, freight_amount, discount_amount, coupon_id, status,
+        INSERT INTO `order` (order_no, user_id, shop_id, total_amount, pay_amount, freight_amount, discount_amount, coupon_id, pay_deadline, status,
             receiver_name, receiver_phone, receiver_address, remark)
-        VALUES (#{orderNo}, #{userId}, #{shopId}, #{totalAmount}, #{payAmount}, #{freightAmount}, #{discountAmount}, #{couponId}, #{status},
+        VALUES (#{orderNo}, #{userId}, #{shopId}, #{totalAmount}, #{payAmount}, #{freightAmount}, #{discountAmount}, #{couponId}, #{payDeadline}, #{status},
             #{receiverName}, #{receiverPhone}, #{receiverAddress}, #{remark})
     </insert>
 
@@ -35,6 +35,22 @@
 
     <select id="findById" resultType="com.ngsz.mall_server.pojo.Order">
         SELECT * FROM `order` WHERE id = #{id} AND deleted = 0
+    </select>
+
+    <select id="findByIdForUpdate" resultType="com.ngsz.mall_server.pojo.Order">
+        SELECT * FROM `order` WHERE id = #{id} AND deleted = 0 FOR UPDATE
+    </select>
+
+    <select id="findExpiredUnpaid" resultType="com.ngsz.mall_server.pojo.Order">
+        SELECT * FROM `order`
+        WHERE status = 0
+          AND (
+              (pay_deadline IS NOT NULL AND pay_deadline &lt;= #{now})
+              OR (pay_deadline IS NULL AND create_time &lt;= #{fallbackDeadline})
+          )
+          AND deleted = 0
+        ORDER BY create_time ASC
+        LIMIT #{limit}
     </select>
 
     <select id="findByUserId" resultType="com.ngsz.mall_server.pojo.Order">

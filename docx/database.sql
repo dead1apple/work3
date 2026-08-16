@@ -184,6 +184,7 @@ CREATE TABLE `order` (
   `freight_amount` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '运费',
   `discount_amount` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '优惠金额',
   `coupon_id` BIGINT DEFAULT NULL COMMENT '优惠券ID',
+  `pay_deadline` DATETIME DEFAULT NULL COMMENT '支付截止时间',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态:0待付款 1待发货 2待收货 3已完成 4已取消 5已退款',
   `receiver_name` VARCHAR(50) NOT NULL COMMENT '收货人',
   `receiver_phone` VARCHAR(20) NOT NULL COMMENT '收货电话',
@@ -204,7 +205,8 @@ CREATE TABLE `order` (
   UNIQUE KEY `uk_order_no` (`order_no`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_shop_id` (`shop_id`),
-  KEY `idx_status` (`status`)
+  KEY `idx_status` (`status`),
+  KEY `idx_status_pay_deadline` (`status`, `pay_deadline`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单主表';
 
 -- 订单商品明细表

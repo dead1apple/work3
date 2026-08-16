@@ -11,6 +11,8 @@ public interface OrderService {
     Map<String, Object> getOrderDetail(Long userId, String orderNo);
     PageResult<Order> listUserOrders(Long userId, Integer status, Integer page, Integer size);
     void cancelOrder(Long userId, String orderNo);
+    int cancelExpiredOrders();
+    boolean cancelExpiredOrder(String orderNo);
     void confirmReceive(Long userId, String orderNo);
     void deleteOrder(Long userId, String orderNo);
     PageResult<Order> listOrders(String keyword, Integer status, Long shopId, Integer page, Integer size);

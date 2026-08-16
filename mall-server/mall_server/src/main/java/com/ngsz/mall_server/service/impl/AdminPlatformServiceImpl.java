@@ -607,6 +607,11 @@ public class AdminPlatformServiceImpl implements AdminPlatformService {
                     SET s.locked_stock = GREATEST(0, s.locked_stock - oi.quantity),
                         s.update_time = CURRENT_TIMESTAMP
                     """, new Object[]{value(order, "id")});
+            jdbcTemplate.update("""
+                    UPDATE payment
+                    SET status = 4, update_time = CURRENT_TIMESTAMP
+                    WHERE order_no = ? AND status = 0
+                    """, new Object[]{value(order, "orderNo")});
         }
         int updated = jdbcTemplate.update("""
                 UPDATE `order`

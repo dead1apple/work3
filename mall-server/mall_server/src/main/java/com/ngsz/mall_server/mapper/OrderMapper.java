@@ -3,12 +3,17 @@ package com.ngsz.mall_server.mapper;
 import com.ngsz.mall_server.pojo.Order;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Mapper
 public interface OrderMapper {
     Order findByOrderNo(@Param("orderNo") String orderNo);
     Order findById(@Param("id") Long id);
+    Order findByIdForUpdate(@Param("id") Long id);
+    List<Order> findExpiredUnpaid(@Param("now") LocalDateTime now,
+                                  @Param("fallbackDeadline") LocalDateTime fallbackDeadline,
+                                  @Param("limit") Integer limit);
     List<Order> findByUserId(@Param("userId") Long userId, @Param("status") Integer status, @Param("offset") Integer offset, @Param("size") Integer size);
     int countByUserId(@Param("userId") Long userId, @Param("status") Integer status);
     List<Order> findByCondition(@Param("keyword") String keyword, @Param("status") Integer status,

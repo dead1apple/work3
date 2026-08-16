@@ -31,11 +31,18 @@
     </update>
 
     <update id="unlockStock">
-        UPDATE sku SET locked_stock = locked_stock - #{quantity} WHERE id = #{id}
+        UPDATE sku
+        SET locked_stock = locked_stock - #{quantity}
+        WHERE id = #{id}
+          AND locked_stock &gt;= #{quantity}
     </update>
 
     <update id="deductStock">
-        UPDATE sku SET stock = stock - #{quantity}, locked_stock = locked_stock - #{quantity} WHERE id = #{id}
+        UPDATE sku
+        SET stock = stock - #{quantity}, locked_stock = locked_stock - #{quantity}
+        WHERE id = #{id}
+          AND stock &gt;= #{quantity}
+          AND locked_stock &gt;= #{quantity}
     </update>
 
     <select id="findById" resultType="com.ngsz.mall_server.pojo.Sku">

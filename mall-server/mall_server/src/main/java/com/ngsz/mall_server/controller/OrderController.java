@@ -52,7 +52,7 @@ public class OrderController {
         return Result.success(orderService.getOrderDetail(StpUtil.getLoginIdAsLong(), orderNo));
     }
 
-    @Operation(summary = "取消订单", description = "取消待付款或待发货的订单")
+    @Operation(summary = "取消订单", description = "取消待付款的订单")
     @PutMapping("/{orderNo}/cancel")
     public Result<?> cancel(@Parameter(description = "订单号", example = "202606300001") @PathVariable String orderNo) {
         orderService.cancelOrder(StpUtil.getLoginIdAsLong(), orderNo);
