@@ -30,3 +30,9 @@ test('calculates checkout amounts with a coupon without producing a negative pay
     goodsAmount: 50, discountAmount: 50, payableAmount: 0, totalCount: 3,
   })
 })
+
+test('calculates checkout totals for a percentage discount coupon', () => {
+  const totals = calculateCheckoutTotals([{ price: 1000, quantity: 1 }], { type: 2, amount: 90 })
+  assert.equal(totals.discountAmount, 100)
+  assert.equal(totals.payableAmount, 900)
+})

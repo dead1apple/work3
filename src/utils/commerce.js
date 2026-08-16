@@ -1,3 +1,5 @@
+import { getCouponDiscountAmount } from './coupon.js'
+
 const asList = (payload) => Array.isArray(payload) ? payload : (payload?.list || payload?.records || [])
 
 export function normalizeAddressList(payload) {
@@ -38,8 +40,7 @@ export function normalizeOrderList(payload) {
 export function calculateCheckoutTotals(items, coupon) {
   const normalized = items || []
   const goodsAmount = normalized.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0)
-  const couponAmount = Number(coupon?.amount || coupon?.discountAmount || 0)
-  const discountAmount = Math.min(goodsAmount, couponAmount)
+  const discountAmount = getCouponDiscountAmount(coupon, goodsAmount)
   return {
     goodsAmount,
     discountAmount,

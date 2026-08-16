@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { clearAuthStorage } from './auth.js'
 
 const request = axios.create({
   baseURL: '/api',
@@ -9,8 +10,7 @@ const request = axios.create({
 const getToken = () => localStorage.getItem('token') || localStorage.getItem('access_token')
 
 const redirectToLogin = () => {
-  localStorage.removeItem('token')
-  localStorage.removeItem('access_token')
+  clearAuthStorage()
   if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
     const redirect = `${window.location.pathname}${window.location.search}`
     window.location.href = `/login?redirect=${encodeURIComponent(redirect)}`

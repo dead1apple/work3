@@ -87,7 +87,7 @@ onMounted(loadCategories)
     <el-skeleton v-if="loadingCategories" :rows="10" animated class="page-skeleton" />
     <el-empty v-else-if="!categories.length" description="暂时没有可浏览的分类" />
     <section v-else class="category-shell">
-      <aside class="category-nav" aria-label="一级分类">
+      <aside class="category-nav" aria-label="商品分类">
         <el-menu :default-active="String(selectedCategoryId)" @select="selectCategory">
           <el-menu-item v-for="category in navigationCategories" :key="category.id" :index="String(category.id)" :class="{ 'is-child-category': category.depth > 0 }">
             <span v-if="category.depth > 0" class="nav-marker" aria-hidden="true">—</span>
@@ -148,7 +148,7 @@ onMounted(loadCategories)
 <style scoped>
 .category-page {
   min-height: calc(100vh - 136px);
-  padding: 16px;
+  padding: 0;
   box-sizing: border-box;
   background: #f5f5f5;
   color: #303133;
@@ -175,7 +175,7 @@ onMounted(loadCategories)
   border-right: 1px solid #ebeef5;
 }
 
-.category-nav :deep(.el-menu) { height: 100%; border-right: 0; background: transparent; }
+.category-nav :deep(.el-menu) { height: 100%; margin: 0; padding: 0; border-right: 0; background: transparent; }
 
 .category-nav :deep(.el-menu-item) {
   display: flex;
@@ -227,7 +227,7 @@ onMounted(loadCategories)
 .children-section { margin-bottom: 16px; }
 .children-section h2,
 .section-heading h2 { margin: 0; color: #303133; font-size: 18px; }
-.children-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-top: 18px; }
+.children-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 260px)); justify-content: space-between; gap: 14px; margin-top: 18px; }
 .children-grid :deep(.el-col) { width: auto; max-width: none; }
 
 .child-card {

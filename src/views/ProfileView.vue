@@ -63,21 +63,23 @@ import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElAvatar, ElIcon, ElMessage, ElMessageBox, ElTag } from 'element-plus'
 import {
-  Box,
   ChatDotRound,
   CircleCheck,
   Clock,
   Location,
   Setting,
   ShoppingBag,
+  Star,
   Ticket,
   Van,
 } from '@element-plus/icons-vue'
 import { getUserInfo, logout } from '../api/index.js'
+import { useCartStore } from '../store/cart.js'
 import { useUserStore } from '../store/user.js'
 
 const router = useRouter()
 const userStore = useUserStore()
+const cartStore = useCartStore()
 const loading = ref(true)
 
 const fallbackUser = {
@@ -99,6 +101,7 @@ const orderItems = [
 
 const menuItems = [
   { label: '我的订单', path: '/orders', icon: ShoppingBag },
+  { label: '我的收藏', path: '/favorites', icon: Star },
   { label: '收货地址', path: '/address', icon: Location },
   { label: '优惠券', path: '/coupons', icon: Ticket },
   { label: '编辑资料', path: '/profile/edit', icon: Setting },
@@ -143,16 +146,30 @@ async function handleLogout() {
   try {
     await ElMessageBox.confirm('确定要退出当前账号吗？', '退出登录', {
       type: 'warning',
-      confirmButtonText: '确认',
-      cancelButtonText: '取消',
+      confirmButtonText: '确认退出',
+      cancelButtonText: '暂不退出',
+      center: true,
     })
-    try { await logout() } catch { /* 本地会话仍应在服务端登出失败时清理。 */ }
-    userStore.clearSession()
-    localStorage.removeItem('token')
-    ElMessage.success('已退出登录')
-    await router.replace('/login')
   } catch (error) {
-    if (error !== 'cancel' && error !== 'close') ElMessage.error('退出登录失败')
+    if (error !== 'cancel' && error !== 'close') ElMessage.error('无法确认退出操作')
+    return
+  }
+
+  let serverLogoutSucceeded = true
+  try {
+    await logout()
+  } catch {
+    serverLogoutSucceeded = false
+  }
+
+  try {
+    cartStore.clearCart()
+    userStore.clearSession()
+    if (serverLogoutSucceeded) ElMessage.success('已安全退出登录')
+    else ElMessage.warning('本地账号已退出，服务器会话暂未同步注销')
+    await router.replace({ name: 'login' })
+  } catch {
+    ElMessage.error('本地登录状态清理失败，请刷新页面重试')
   }
 }
 

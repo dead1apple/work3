@@ -16,6 +16,7 @@ const navigationItems = [
   { label: '购物车', path: '/cart', icon: '🛒' },
   { label: '我的', path: '/profile', icon: '♙' },
 ]
+const desktopNavigationItems = navigationItems.filter((item) => item.path !== '/profile')
 
 const currentLabel = computed(() => route.meta.title || '商城')
 const currentUser = computed(() => userStore.userInfo || {})
@@ -47,6 +48,21 @@ const handleSearch = () => {
           />
           <button type="submit" aria-label="搜索">⌕</button>
         </form>
+
+        <nav class="desktop-nav" aria-label="桌面主导航">
+          <RouterLink
+            v-for="item in desktopNavigationItems"
+            :key="item.path"
+            :to="item.path"
+            class="desktop-nav-item"
+            active-class="desktop-nav-item-active"
+          >
+            <el-badge v-if="item.path === '/cart'" :value="cartStore.totalCount" :hidden="cartStore.totalCount === 0" :max="99">
+              {{ item.label }}
+            </el-badge>
+            <span v-else>{{ item.label }}</span>
+          </RouterLink>
+        </nav>
 
         <RouterLink v-if="!userStore.isLoggedIn" class="login-link" to="/login">登录</RouterLink>
         <RouterLink v-else class="user-entry" to="/profile" :aria-label="`进入${displayName}的个人中心`">
@@ -99,9 +115,9 @@ const handleSearch = () => {
 
 .topbar-inner {
   display: grid;
-  grid-template-columns: auto minmax(180px, 1fr) auto;
+  grid-template-columns: auto minmax(260px, 1fr) auto auto;
   align-items: center;
-  gap: clamp(16px, 4vw, 56px);
+  gap: clamp(14px, 2vw, 28px);
   width: min(1180px, calc(100% - 40px));
   min-height: 72px;
   margin: 0 auto;
@@ -109,21 +125,25 @@ const handleSearch = () => {
 
 .brand { display: inline-flex; align-items: center; gap: 9px; font-weight: 800; white-space: nowrap; }
 .brand-mark { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: #fff; background: var(--jd-red); font-size: 12px; letter-spacing: -1px; }
-.brand-name { font-size: 18px; letter-spacing: -0.04em; }
+.brand-name { font-size: 18px; letter-spacing: normal; }
 
 .search-form { display: flex; height: 40px; overflow: hidden; border: 2px solid var(--jd-red); border-radius: 12px; background: #fff; }
 .search-form input { min-width: 0; flex: 1; padding: 0 14px; border: 0; outline: 0; color: var(--ink); font: inherit; background: transparent; }
 .search-form input::placeholder { color: #a7afb9; }
 .search-form button { width: 48px; border: 0; color: #fff; background: var(--jd-red); font-size: 24px; line-height: 1; cursor: pointer; }
 .search-form button:hover { background: #c91c14; }
+.desktop-nav { display: flex; align-items: center; gap: 4px; }
+.desktop-nav-item { position: relative; padding: 10px 9px; border-radius: 8px; color: #5f6875; font-size: 13px; font-weight: 700; white-space: nowrap; transition: color 160ms ease, background-color 160ms ease; }
+.desktop-nav-item:hover, .desktop-nav-item:focus-visible { color: var(--jd-red); background: #fff1f0; outline: 0; }
+.desktop-nav-item-active { color: var(--jd-red); background: #fff1f0; }
 .login-link { color: var(--jd-red); font-size: 14px; font-weight: 700; }
 .user-entry { display: inline-flex; align-items: center; min-width: 0; color: var(--ink); font-size: 14px; font-weight: 700; }
 .user-entry:hover, .user-entry:focus-visible { color: var(--jd-red); }
 .user-name { max-width: 92px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.content-area { width: min(1180px, calc(100% - 40px)); min-height: calc(100vh - 136px); margin: 0 auto; padding: 28px 0 88px; }
+.content-area { width: min(1180px, calc(100% - 40px)); min-height: calc(100vh - 72px); margin: 0 auto; padding: 28px 0 40px; }
 
-.bottom-nav { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: flex; justify-content: center; gap: clamp(16px, 8vw, 120px); min-height: 64px; padding: 7px 20px max(7px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255, 255, 255, 0.97); box-shadow: 0 -8px 24px rgba(31, 41, 55, 0.05); backdrop-filter: blur(14px); }
+.bottom-nav { display: none; }
 .nav-item { display: flex; min-width: 56px; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: var(--muted); font-size: 12px; font-weight: 600; transition: color 160ms ease, transform 160ms ease; }
 .nav-item:hover, .nav-item:focus-visible { color: var(--jd-red); }
 .nav-item-active { color: var(--jd-red); }
@@ -136,10 +156,12 @@ const handleSearch = () => {
   .topbar-inner, .content-area { width: min(100% - 28px, 1180px); }
   .topbar-inner { grid-template-columns: auto auto; gap: 12px; min-height: 112px; padding: 12px 0; }
   .search-form { grid-column: 1 / -1; grid-row: 2; }
+  .desktop-nav { display: none; }
   .login-link { justify-self: end; }
   .user-entry { justify-self: end; }
   .brand-name { font-size: 16px; }
-  .bottom-nav { justify-content: space-around; gap: 0; }
+  .content-area { min-height: calc(100vh - 176px); padding-bottom: 88px; }
+  .bottom-nav { position: fixed; right: 0; bottom: 0; left: 0; z-index: 10; display: flex; justify-content: space-around; gap: 0; min-height: 64px; padding: 7px 20px max(7px, env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: rgba(255, 255, 255, 0.97); box-shadow: 0 -8px 24px rgba(31, 41, 55, 0.05); backdrop-filter: blur(14px); }
 }
 
 @media (prefers-reduced-motion: reduce) {
