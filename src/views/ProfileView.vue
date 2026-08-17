@@ -93,10 +93,10 @@ const fallbackUser = {
 const user = ref({ ...fallbackUser })
 
 const orderItems = [
-  { label: '待付款', count: 0, icon: Clock, status: '1' },
-  { label: '待发货', count: 0, icon: Van, status: '2' },
-  { label: '待收货', count: 0, icon: CircleCheck, status: '3' },
-  { label: '待评价', count: 0, icon: ChatDotRound, status: '4' },
+  { label: '待付款', count: 0, icon: Clock, status: '0' },
+  { label: '待发货', count: 0, icon: Van, status: '1' },
+  { label: '待收货', count: 0, icon: CircleCheck, status: '2' },
+  { label: '待评价', count: 0, icon: ChatDotRound, status: '3' },
 ]
 
 const menuItems = [

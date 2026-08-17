@@ -1,4 +1,5 @@
 import { getCouponDiscountAmount } from './coupon.js'
+export { normalizeOrderList } from './order.js'
 
 const asList = (payload) => Array.isArray(payload) ? payload : (payload?.list || payload?.records || [])
 
@@ -21,19 +22,6 @@ export function normalizeProductList(payload) {
       sales: Number(product.salesCount || product.sales || 0),
     }
   }).filter((item) => item.id)
-  return { list, total: Number(payload?.total ?? list.length) }
-}
-
-const ORDER_STATUS = { 0: '待付款', 1: '待付款', 2: '待发货', 3: '待收货', 4: '待评价', 5: '已完成', 6: '已取消', 7: '退款中' }
-
-export function normalizeOrderList(payload) {
-  const list = asList(payload).map((item) => ({
-    ...item,
-    orderNo: item.orderNo || item.id,
-    statusText: item.statusName || ORDER_STATUS[item.status] || '订单处理中',
-    totalAmount: Number(item.totalAmount || item.payAmount || 0),
-    items: item.items || item.orderItems || [],
-  }))
   return { list, total: Number(payload?.total ?? list.length) }
 }
 

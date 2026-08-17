@@ -22,7 +22,7 @@ test('normalizes paged product and order responses', () => {
   assert.deepEqual(normalizeProductList({ list: [{ product: { id: 8, name: '耳机', mainImage: '/a.png' }, minPrice: 99 }], total: 1 }), {
     list: [{ id: 8, title: '耳机', image: '/a.png', price: 99, sales: 0 }], total: 1,
   })
-  assert.equal(normalizeOrderList({ list: [{ orderNo: 'JD1', status: 1, totalAmount: 88 }], total: 1 }).list[0].statusText, '待付款')
+  assert.equal(normalizeOrderList({ list: [{ orderNo: 'JD1', status: 1, totalAmount: 88 }], total: 1 }).list[0].statusText, '待发货')
 })
 
 test('calculates checkout amounts with a coupon without producing a negative payable', () => {
