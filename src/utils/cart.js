@@ -1,33 +1,44 @@
+import { readPayloadList, toBoundedPositiveInteger, toNonNegativeMoney } from './response.js'
+
 export const normalizeCartItem = (item = {}) => {
   const sku = item.sku || item.productSku || item.skuInfo || {}
   const product = item.product || sku.product || {}
+  const rawId = item.id ?? item.cartItemId
+  const rawSkuId = item.skuId ?? sku.id ?? item.productId
+  const rawPrice = item.price ?? item.skuPrice ?? sku.price
+  const rawQuantity = item.quantity ?? item.buyQuantity
+  const id = toBoundedPositiveInteger(rawId, { fallback: null, max: Number.MAX_SAFE_INTEGER })
+  const skuId = toBoundedPositiveInteger(rawSkuId, { fallback: null, max: Number.MAX_SAFE_INTEGER })
+  const price = toNonNegativeMoney(rawPrice, 0)
+  const quantity = toBoundedPositiveInteger(rawQuantity, { fallback: 1, max: 99 })
   return {
-    id: item.id,
-    skuId: item.skuId ?? sku.id ?? item.productId,
+    id,
+    skuId,
     name: item.productName || product.name || item.name || sku.skuName || '商品',
     skuName: item.skuName || sku.skuName || '',
     image: item.image || sku.image || product.mainImage || '',
-    price: Number(item.price ?? item.skuPrice ?? sku.price ?? 0),
-    quantity: Math.min(99, Math.max(1, Number(item.quantity ?? item.buyQuantity ?? 1))),
+    price,
+    quantity,
     checked: item.checked === true || item.selected === true || item.selected === 1,
+    isValid: id != null && skuId != null && Number.isFinite(Number(rawPrice)) && Number(rawPrice) >= 0 && Number.isInteger(Number(rawQuantity)) && Number(rawQuantity) > 0,
   }
 }
 
 export const normalizeCartList = (payload) => {
-  const list = Array.isArray(payload) ? payload : payload?.list || payload?.records || []
-  return list.map(normalizeCartItem)
+  return readPayloadList(payload).map(normalizeCartItem)
 }
 
 export const mergeCartItem = (list, item) => {
   const next = list.map((entry) => ({ ...entry }))
   const index = next.findIndex((entry) => entry.skuId === item.skuId)
-  if (index === -1) return [...next, { ...item, quantity: Math.min(99, Math.max(1, item.quantity || 1)), checked: true }]
-  next[index].quantity = Math.min(99, next[index].quantity + (item.quantity || 1))
+  const quantity = toBoundedPositiveInteger(item?.quantity, { fallback: 1, max: 99 })
+  if (index === -1) return [...next, { ...item, quantity, checked: true }]
+  next[index].quantity = Math.min(99, toBoundedPositiveInteger(next[index].quantity, { fallback: 1, max: 99 }) + quantity)
   next[index].checked = true
   return next
 }
 
 export const calculateCartTotals = (list) => list.reduce((totals, item) => ({
-  totalCount: totals.totalCount + Number(item.quantity || 0),
-  totalPrice: item.checked ? totals.totalPrice + Number(item.price || 0) * Number(item.quantity || 0) : totals.totalPrice,
+  totalCount: totals.totalCount + toBoundedPositiveInteger(item?.quantity, { fallback: 1, max: 99 }),
+  totalPrice: item?.checked ? totals.totalPrice + toNonNegativeMoney(item?.price, 0) * toBoundedPositiveInteger(item?.quantity, { fallback: 1, max: 99 }) : totals.totalPrice,
 }), { totalCount: 0, totalPrice: 0 })

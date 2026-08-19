@@ -36,3 +36,12 @@ test('calculates checkout totals for a percentage discount coupon', () => {
   assert.equal(totals.discountAmount, 100)
   assert.equal(totals.payableAmount, 900)
 })
+
+test('uses safe zero amounts for malformed checkout values', () => {
+  assert.deepEqual(calculateCheckoutTotals([{ price: Infinity, quantity: 'bad' }]), {
+    goodsAmount: 0,
+    discountAmount: 0,
+    payableAmount: 0,
+    totalCount: 1,
+  })
+})

@@ -1,3 +1,5 @@
+import { toBoundedPositiveInteger, unwrapData } from './response.js'
+
 export const PAYMENT_METHODS = [
   { value: 1, label: '微信支付', description: '推荐使用微信扫码支付', shortName: '微信' },
   { value: 2, label: '支付宝', description: '使用支付宝安全付款', shortName: '支付宝' },
@@ -7,16 +9,14 @@ export const PAYMENT_METHODS = [
 const PAID_STATUSES = new Set([1, '1', 'PAID', 'SUCCESS', 'SUCCESSFUL', '已支付', '支付成功'])
 const FAILED_STATUSES = new Set([-1, 2, '-1', '2', 'FAIL', 'FAILED', 'CLOSED', 'CANCELLED', '支付失败', '已关闭'])
 
-const unwrap = (payload) => payload?.data ?? payload ?? {}
-
 export function extractPaymentNo(payload) {
-  const source = unwrap(payload)
+  const source = unwrapData(payload) ?? {}
   if (typeof source === 'string' || typeof source === 'number') return String(source)
   return String(source?.paymentNo || source?.payment?.paymentNo || source?.id || '')
 }
 
 export function normalizePaymentStatus(payload) {
-  const source = unwrap(payload)
+  const source = unwrapData(payload) ?? {}
   const payment = source?.payment || null
   const rawStatus = payment?.status ?? source?.status
   const statusName = payment?.statusName || source?.statusName || ''
@@ -26,7 +26,7 @@ export function normalizePaymentStatus(payload) {
     isPaid,
     canPay: !isPaid,
     paymentNo: extractPaymentNo(payment),
-    payType: payment?.payType == null ? null : Number(payment.payType),
+    payType: payment?.payType == null ? null : toBoundedPositiveInteger(payment.payType, { fallback: null, max: 99 }),
   }
 
   if (isPaid) {

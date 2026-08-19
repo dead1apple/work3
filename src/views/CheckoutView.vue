@@ -16,6 +16,7 @@ const loadError = ref(false)
 const loadErrorMessage = ref('')
 const submitting = ref(false)
 const cartUnavailable = ref(false)
+const protocolDataInvalid = ref(false)
 const addresses = ref([])
 const addressId = ref(null)
 const items = ref([])
@@ -29,7 +30,7 @@ const goodsAmount = computed(() => items.value.reduce((sum, item) => sum + Numbe
 const usableCoupons = computed(() => filterUsableCoupons(coupons.value, goodsAmount.value))
 const selectedCoupon = computed(() => usableCoupons.value.find((item) => item.id === couponId.value))
 const totals = computed(() => calculateCheckoutTotals(items.value, isBuyNow.value ? null : selectedCoupon.value))
-const canSubmit = computed(() => Boolean(addressId.value && items.value.length && !cartUnavailable.value && items.value.every((item) => Number(item.stock ?? 1) > 0)))
+const canSubmit = computed(() => Boolean(addressId.value && items.value.length && !cartUnavailable.value && !protocolDataInvalid.value && items.value.every((item) => Number(item.stock ?? 1) > 0)))
 
 const loadBuyNow = async () => {
   const selection = parseBuyNowQuery(route.query)
@@ -57,6 +58,7 @@ const loadCartCheckout = async () => {
   try {
     await cartStore.fetchCartList()
     items.value = cartStore.checkedList
+    protocolDataInvalid.value = items.value.some((item) => item.isValid === false)
   } catch {
     cartUnavailable.value = true
     items.value = []
@@ -68,6 +70,7 @@ const loadCheckout = async () => {
   loadError.value = false
   loadErrorMessage.value = ''
   cartUnavailable.value = false
+  protocolDataInvalid.value = false
   items.value = []
   coupons.value = []
   couponId.value = null
@@ -93,6 +96,10 @@ const submitOrder = async () => {
   }
   if (!items.value.length) {
     ElMessage.warning(isBuyNow.value ? '商品信息无效，请返回商品详情重新选择' : '请选择需要结算的商品')
+    return
+  }
+  if (protocolDataInvalid.value) {
+    ElMessage.warning('购物车数据异常，请刷新后重试')
     return
   }
   if (items.value.some((item) => Number(item.stock ?? 1) <= 0)) {
@@ -154,6 +161,7 @@ watch(() => route.fullPath, loadCheckout, { immediate: true })
 
       <template v-else>
         <el-alert v-if="cartUnavailable" class="cart-alert" title="购物车服务暂不可用，购物车结算入口已暂停；立即购买不受影响。" type="warning" :closable="false" show-icon />
+        <el-alert v-if="protocolDataInvalid" class="cart-alert" title="购物车数据异常，请刷新后重试。" type="error" :closable="false" show-icon />
 
         <section class="checkout-section address-section" aria-labelledby="address-title">
           <div class="section-head">

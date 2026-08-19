@@ -1,3 +1,5 @@
+import { readPayloadList, toBoundedPositiveInteger, toFiniteNumber, toNonNegativeMoney, unwrapData } from './response.js'
+
 const STATUS_META = {
   0: { text: '待付款', description: '订单已提交，请尽快完成支付', tone: 'warning', step: 1 },
   1: { text: '待发货', description: '付款成功，商家正在准备商品', tone: 'warning', step: 2 },
@@ -10,26 +12,13 @@ const STATUS_META = {
 const UNKNOWN_STATUS = { text: '订单处理中', description: '订单状态正在更新', tone: 'info', step: 0 }
 
 const firstDefined = (...values) => values.find((value) => value !== undefined && value !== null && value !== '')
-const toNumber = (value, fallback = 0) => {
-  const number = Number(value)
-  return Number.isFinite(number) ? number : fallback
-}
-
-const unwrap = (payload) => payload?.data ?? payload ?? {}
-
-const readList = (payload) => {
-  const source = unwrap(payload)
-  if (Array.isArray(source)) return source
-  return source.list || source.records || source.items || source.rows || []
-}
-
 export function getOrderStatusMeta(status) {
   return STATUS_META[Number(status)] || UNKNOWN_STATUS
 }
 
 export function normalizeOrderItem(item = {}) {
-  const price = toNumber(firstDefined(item.price, item.unitPrice, item.salePrice))
-  const quantity = Math.max(1, toNumber(firstDefined(item.quantity, item.count, item.num), 1))
+  const price = toNonNegativeMoney(firstDefined(item.price, item.unitPrice, item.salePrice), 0)
+  const quantity = toBoundedPositiveInteger(firstDefined(item.quantity, item.count, item.num), { fallback: 1, max: 99 })
   const id = firstDefined(item.orderItemId, item.id)
   return {
     id,
@@ -40,17 +29,17 @@ export function normalizeOrderItem(item = {}) {
     image: firstDefined(item.productImage, item.image, item.mainImage, item.product?.mainImage, ''),
     price,
     quantity,
-    subtotal: toNumber(firstDefined(item.subtotal, item.totalAmount, item.amount), price * quantity),
+    subtotal: toNonNegativeMoney(firstDefined(item.subtotal, item.totalAmount, item.amount), price * quantity),
   }
 }
 
 function normalizeOrder(source = {}, extra = {}) {
-  const status = toNumber(source.status, -1)
+  const status = toFiniteNumber(source.status, -1)
   const meta = getOrderStatusMeta(status)
   const rawItems = extra.items || source.items || source.orderItems || source.details || []
   const items = Array.isArray(rawItems) ? rawItems.map(normalizeOrderItem) : []
-  const goodsAmount = toNumber(firstDefined(source.goodsAmount, source.productAmount), items.reduce((sum, item) => sum + item.subtotal, 0))
-  const payAmount = toNumber(firstDefined(source.payAmount, source.totalAmount, source.actualAmount), goodsAmount)
+  const goodsAmount = toNonNegativeMoney(firstDefined(source.goodsAmount, source.productAmount), items.reduce((sum, item) => sum + item.subtotal, 0))
+  const payAmount = toNonNegativeMoney(firstDefined(source.payAmount, source.totalAmount, source.actualAmount), goodsAmount)
   return {
     ...source,
     orderNo: firstDefined(source.orderNo, source.orderNumber, source.id, ''),
@@ -59,24 +48,24 @@ function normalizeOrder(source = {}, extra = {}) {
     statusMeta: { ...meta, text: firstDefined(source.statusName, source.statusText, meta.text) },
     items,
     goodsAmount,
-    freightAmount: toNumber(firstDefined(source.freightAmount, source.shippingFee)),
-    discountAmount: toNumber(firstDefined(source.discountAmount, source.couponAmount)),
+    freightAmount: toNonNegativeMoney(firstDefined(source.freightAmount, source.shippingFee), 0),
+    discountAmount: toNonNegativeMoney(firstDefined(source.discountAmount, source.couponAmount), 0),
     payAmount,
     totalAmount: payAmount,
   }
 }
 
 export function normalizeOrderList(payload) {
-  const source = unwrap(payload)
-  const list = readList(source).map((item) => normalizeOrder(item))
+  const source = unwrapData(payload)
+  const list = readPayloadList(payload).map((item) => normalizeOrder(item))
   return {
     list,
-    total: toNumber(firstDefined(source.total, source.totalElements, source.count), list.length),
+    total: Math.max(0, toFiniteNumber(firstDefined(source.total, source.totalElements, source.count), list.length)),
   }
 }
 
 export function normalizeOrderDetail(payload) {
-  const source = unwrap(payload)
+  const source = unwrapData(payload) || {}
   const orderSource = source.order || source.orderInfo || source
   const rawItems = source.items || source.orderItems || source.details || orderSource.items || orderSource.orderItems || []
   const address = source.address || source.deliveryAddress || orderSource.address || orderSource.deliveryAddress || {}
