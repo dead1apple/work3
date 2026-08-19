@@ -42,8 +42,11 @@ async function loadFilters() {
 
 async function loadProducts() {
   const sequence = ++requestSequence
+  const routeSnapshot = route.fullPath
   loading.value = true
   loadError.value = ''
+  products.value = []
+  total.value = 0
   try {
     const result = normalizeProductList(await getProducts({
       keyword: query.keyword || undefined,
@@ -53,17 +56,17 @@ async function loadProducts() {
       page: query.page,
       size: query.size,
     }))
-    if (sequence !== requestSequence) return
+    if (sequence !== requestSequence || route.fullPath !== routeSnapshot) return
     products.value = result.list
     total.value = result.total
   } catch (error) {
-    if (sequence !== requestSequence) return
+    if (sequence !== requestSequence || route.fullPath !== routeSnapshot) return
     products.value = []
     total.value = 0
     loadError.value = error?.message || '商品加载失败，请稍后重试'
     ElMessage.error(loadError.value)
   } finally {
-    if (sequence === requestSequence) loading.value = false
+    if (sequence === requestSequence && route.fullPath === routeSnapshot) loading.value = false
   }
 }
 

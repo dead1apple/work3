@@ -57,3 +57,10 @@ export function extractOrderNo(payload) {
   if (typeof source === 'string' || typeof source === 'number') return String(source)
   return source?.orderNo || source?.order?.orderNo || source?.order?.id || ''
 }
+
+export function createCheckoutSubmissionOutcome(payload) {
+  return {
+    orderNo: extractOrderNo(payload),
+    terminal: true,
+  }
+}

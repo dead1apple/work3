@@ -3,11 +3,15 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { addAddress, deleteAddress, getAddressList, setDefaultAddress, updateAddress } from '../api/index.js'
 import { normalizeAddressList } from '../utils/commerce.js'
+import { buildAddressPayload } from '../utils/address.js'
 import { getCities, getDistricts, getProvinces } from '../utils/regions.js'
 
 const addressForm = ref()
 const loading = ref(true); const saving = ref(false); const dialogVisible = ref(false); const editingId = ref(null)
+const loadError = ref('')
+const writingKey = ref('')
 const addresses = ref([]); const provinces = getProvinces()
+let requestSequence = 0
 const emptyForm = () => ({ receiverName: '', receiverPhone: '', province: '', city: '', district: '', detailAddress: '', isDefault: 0 })
 const form = ref(emptyForm())
 const dialogTitle = computed(() => editingId.value ? '编辑收货地址' : '新增收货地址')
@@ -21,13 +25,59 @@ const rules = {
   district: [{ required: true, message: '请选择区或县', trigger: 'change' }],
   detailAddress: [{ required: true, message: '请填写街道、门牌号等详细地址', trigger: 'blur' }],
 }
-async function loadAddresses() { loading.value = true; try { addresses.value = normalizeAddressList(await getAddressList()) } catch (error) { ElMessage.error(error?.message || '收货地址加载失败，请稍后重试') } finally { loading.value = false } }
+async function loadAddresses() {
+  const sequence = ++requestSequence
+  loading.value = true
+  loadError.value = ''
+  addresses.value = []
+  try {
+    const nextAddresses = normalizeAddressList(await getAddressList())
+    if (sequence !== requestSequence) return
+    addresses.value = nextAddresses
+  } catch (error) {
+    if (sequence !== requestSequence) return
+    loadError.value = error?.message || '收货地址加载失败，请稍后重试'
+    ElMessage.error(loadError.value)
+  } finally {
+    if (sequence === requestSequence) loading.value = false
+  }
+}
 async function openDialog(item) { editingId.value = item?.id || null; form.value = item ? { ...emptyForm(), ...item, isDefault: item.isDefault ? 1 : 0 } : emptyForm(); dialogVisible.value = true; await nextTick(); addressForm.value?.clearValidate() }
 function onProvinceChange() { form.value.city = ''; form.value.district = ''; addressForm.value?.clearValidate(['city', 'district']) }
 function onCityChange() { form.value.district = ''; addressForm.value?.clearValidate('district') }
-async function saveAddress() { const valid = await addressForm.value?.validate().catch(() => false); if (!valid) return; saving.value = true; try { const payload = { ...form.value }; if (editingId.value) await updateAddress({ ...payload, id: editingId.value }); else await addAddress(payload); ElMessage.success(editingId.value ? '收货地址已更新' : '收货地址已添加'); dialogVisible.value = false; await loadAddresses() } catch (error) { ElMessage.error(error?.message || '保存失败，请稍后重试') } finally { saving.value = false } }
-async function makeDefault(item) { if (item.isDefault) return; try { await setDefaultAddress(item.id); ElMessage.success('已设为默认收货地址'); await loadAddresses() } catch (error) { ElMessage.error(error?.message || '设置默认地址失败') } }
-async function removeAddress(item) { try { await ElMessageBox.confirm(`确认删除「${item.receiverName}」的收货地址吗？`, '删除收货地址', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning', center: true }); await deleteAddress(item.id); ElMessage.success('收货地址已删除'); await loadAddresses() } catch (error) { if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.message || '删除失败，请稍后重试') } }
+async function saveAddress() {
+  if (saving.value) return
+  const valid = await addressForm.value?.validate().catch(() => false)
+  if (!valid) return
+  saving.value = true
+  try {
+    const payload = buildAddressPayload(form.value)
+    if (editingId.value) await updateAddress({ id: editingId.value, ...payload })
+    else await addAddress(payload)
+    ElMessage.success(editingId.value ? '收货地址已更新' : '收货地址已添加')
+    dialogVisible.value = false
+    await loadAddresses()
+  } catch (error) { ElMessage.error(error?.message || '保存失败，请稍后重试') } finally { saving.value = false }
+}
+async function makeDefault(item) {
+  if (item.isDefault || writingKey.value) return
+  writingKey.value = `default:${item.id}`
+  try { await setDefaultAddress(item.id); ElMessage.success('已设为默认收货地址'); await loadAddresses() }
+  catch (error) { ElMessage.error(error?.message || '设置默认地址失败') }
+  finally { writingKey.value = '' }
+}
+async function removeAddress(item) {
+  if (writingKey.value) return
+  writingKey.value = `delete:${item.id}`
+  try {
+    await ElMessageBox.confirm(`确认删除「${item.receiverName}」的收货地址吗？`, '删除收货地址', { confirmButtonText: '确认删除', cancelButtonText: '取消', type: 'warning', center: true })
+    await deleteAddress(item.id)
+    ElMessage.success('收货地址已删除')
+    await loadAddresses()
+  } catch (error) {
+    if (error !== 'cancel' && error !== 'close') ElMessage.error(error?.message || '删除失败，请稍后重试')
+  } finally { writingKey.value = '' }
+}
 onMounted(loadAddresses)
 </script>
 
@@ -35,9 +85,10 @@ onMounted(loadAddresses)
   <section class="address-page"><div class="address-shell">
     <header class="address-head"><div><h1>收货地址</h1><p>请准确填写收货信息，便于商品配送</p></div><el-button class="add-address" type="primary" @click="openDialog()">新增收货地址</el-button></header>
     <el-skeleton v-if="loading" :rows="7" animated class="address-skeleton" />
+    <el-result v-else-if="loadError" icon="error" title="地址加载失败" :sub-title="loadError"><template #extra><el-button type="primary" @click="loadAddresses">重新加载</el-button></template></el-result>
     <el-empty v-else-if="!addresses.length" description="暂未添加收货地址"><el-button type="primary" @click="openDialog()">添加收货地址</el-button></el-empty>
     <div v-else class="address-grid">
-      <article v-for="item in addresses" :key="item.id" class="address-item" :class="{ 'is-default': item.isDefault }"><div class="address-topline"><div class="recipient"><strong>{{ item.receiverName }}</strong><span>{{ item.receiverPhone }}</span></div><el-tag v-if="item.isDefault" class="default-tag" effect="dark">默认地址</el-tag></div><p class="address-region">{{ [item.province, item.city, item.district].filter(Boolean).join(' ') }}</p><p class="address-detail">{{ item.detailAddress }}</p><footer class="address-actions"><el-button link @click="openDialog(item)">编辑</el-button><el-button link :disabled="item.isDefault" @click="makeDefault(item)">设为默认</el-button><el-button link type="danger" @click="removeAddress(item)">删除</el-button></footer></article>
+      <article v-for="item in addresses" :key="item.id" class="address-item" :class="{ 'is-default': item.isDefault }"><div class="address-topline"><div class="recipient"><strong>{{ item.receiverName }}</strong><span>{{ item.receiverPhone }}</span></div><el-tag v-if="item.isDefault" class="default-tag" effect="dark">默认地址</el-tag></div><p class="address-region">{{ [item.province, item.city, item.district].filter(Boolean).join(' ') }}</p><p class="address-detail">{{ item.detailAddress }}</p><footer class="address-actions"><el-button link :disabled="Boolean(writingKey)" @click="openDialog(item)">编辑</el-button><el-button link :disabled="item.isDefault || Boolean(writingKey)" :loading="writingKey === `default:${item.id}`" @click="makeDefault(item)">设为默认</el-button><el-button link type="danger" :disabled="Boolean(writingKey)" :loading="writingKey === `delete:${item.id}`" @click="removeAddress(item)">删除</el-button></footer></article>
       <button class="address-item add-tile" type="button" @click="openDialog()"><b>＋</b><span>新增收货地址</span></button>
     </div>
     <el-dialog v-model="dialogVisible" :title="dialogTitle" width="min(920px, calc(100vw - 32px))" align-center append-to-body destroy-on-close class="jd-address-dialog" modal-class="address-dialog-overlay">
@@ -53,7 +104,7 @@ onMounted(loadAddresses)
         <el-form-item label="详细地址" prop="detailAddress"><el-input v-model.trim="form.detailAddress" type="textarea" :rows="3" maxlength="80" show-word-limit placeholder="请输入街道、门牌号、楼栋、单元等详细信息" /></el-form-item>
         <el-form-item label=""><el-checkbox v-model="form.isDefault" :true-value="1" :false-value="0">设为默认收货地址</el-checkbox></el-form-item>
       </el-form></div>
-      <template #footer><div class="dialog-actions"><el-button size="large" @click="dialogVisible = false">取消</el-button><el-button type="primary" size="large" :loading="saving" @click="saveAddress">保存地址</el-button></div></template>
+      <template #footer><div class="dialog-actions"><el-button size="large" :disabled="saving" @click="dialogVisible = false">取消</el-button><el-button type="primary" size="large" :loading="saving" @click="saveAddress">保存地址</el-button></div></template>
     </el-dialog>
   </div></section>
 </template>

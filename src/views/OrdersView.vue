@@ -71,6 +71,7 @@ const loadError = ref('')
 const operatingKey = ref('')
 const status = ref('')
 const page = ref(1)
+let requestSequence = 0
 const statusTabs = [
   { label: '全部订单', value: '' }, { label: '待付款', value: '0' }, { label: '待发货', value: '1' },
   { label: '待收货', value: '2' }, { label: '已完成', value: '3' }, { label: '已取消', value: '4' }, { label: '已退款', value: '5' },
@@ -92,19 +93,29 @@ function syncRoute() {
 }
 
 async function loadOrders() {
+  const sequence = ++requestSequence
+  const routeSnapshot = route.fullPath
+  const statusSnapshot = status.value
+  const pageSnapshot = page.value
   loading.value = true
   loadError.value = ''
+  orders.value = []
+  total.value = 0
   try {
-    const params = { page: page.value, size: pageSize }
-    if (status.value !== '') params.status = Number(status.value)
+    const params = { page: pageSnapshot, size: pageSize }
+    if (statusSnapshot !== '') params.status = Number(statusSnapshot)
     const result = normalizeOrderList(await getOrders(params))
+    if (sequence !== requestSequence || route.fullPath !== routeSnapshot || status.value !== statusSnapshot || page.value !== pageSnapshot) return
     orders.value = result.list
     total.value = result.total
   } catch (error) {
+    if (sequence !== requestSequence || route.fullPath !== routeSnapshot || status.value !== statusSnapshot || page.value !== pageSnapshot) return
     orders.value = []
     total.value = 0
     loadError.value = error?.message || '网络开小差了，请稍后重试'
-  } finally { loading.value = false }
+  } finally {
+    if (sequence === requestSequence && route.fullPath === routeSnapshot && status.value === statusSnapshot && page.value === pageSnapshot) loading.value = false
+  }
 }
 
 async function changeStatus(value) { status.value = value; page.value = 1; await syncRoute() }

@@ -85,7 +85,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowLeft, Lock, Picture } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -109,22 +109,35 @@ const requestedItemId = computed(() => route.query.orderItemId)
 const itemLocked = computed(() => requestedItemId.value != null && requestedItemId.value !== '')
 const selectedItem = computed(() => selectReviewItem(orderItems.value, selectedItemId.value))
 const reviewable = computed(() => order.value?.status === 3 && orderItems.value.length > 0)
+let requestSequence = 0
 
 async function loadOrder() {
+  const sequence = ++requestSequence
+  const orderNoSnapshot = orderNo.value
+  const itemIdSnapshot = requestedItemId.value
   loading.value = true
   loadError.value = ''
+  order.value = null
+  orderItems.value = []
+  selectedItemId.value = null
+  newImageUrl.value = ''
+  form.value = { rating: 5, content: '', images: [], isAnonymous: false }
   try {
-    const detail = normalizeOrderDetail(await getOrderDetail(orderNo.value))
+    const detail = normalizeOrderDetail(await getOrderDetail(orderNoSnapshot))
+    if (sequence !== requestSequence || orderNo.value !== orderNoSnapshot || requestedItemId.value !== itemIdSnapshot) return
     order.value = detail
     orderItems.value = detail.items.filter((item) => item.orderItemId)
-    const target = selectReviewItem(orderItems.value, requestedItemId.value)
+    const target = selectReviewItem(orderItems.value, itemIdSnapshot)
     if (itemLocked.value && !target) throw new Error('订单中没有找到要评价的商品，请从订单详情重新进入')
     selectedItemId.value = target?.orderItemId || null
   } catch (error) {
+    if (sequence !== requestSequence || orderNo.value !== orderNoSnapshot || requestedItemId.value !== itemIdSnapshot) return
     order.value = null
     orderItems.value = []
     loadError.value = error?.message || '暂时无法加载订单商品，请稍后重试'
-  } finally { loading.value = false }
+  } finally {
+    if (sequence === requestSequence && orderNo.value === orderNoSnapshot && requestedItemId.value === itemIdSnapshot) loading.value = false
+  }
 }
 
 function addImage() {
@@ -159,7 +172,7 @@ async function submitReview() {
   } finally { submitting.value = false }
 }
 
-onMounted(loadOrder)
+watch(() => [route.params.orderNo, route.query.orderItemId], loadOrder, { immediate: true })
 </script>
 
 <style scoped>

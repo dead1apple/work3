@@ -62,7 +62,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { ArrowLeft, Picture } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
@@ -76,15 +76,26 @@ const order = ref(null)
 const loading = ref(true)
 const loadError = ref('')
 const operating = ref('')
+let requestSequence = 0
 const actionLabel = { cancel: '取消订单', pay: '立即付款', receive: '确认收货', review: '评价订单', delete: '删除订单' }
 const detailActions = computed(() => order.value ? getOrderActions(order.value.status).filter((item) => item !== 'detail') : [])
 
 async function loadOrder() {
+  const sequence = ++requestSequence
+  const orderNoSnapshot = String(route.params.orderNo || '')
   loading.value = true
   loadError.value = ''
-  try { order.value = normalizeOrderDetail(await getOrderDetail(route.params.orderNo)) }
-  catch (error) { order.value = null; loadError.value = error?.message || '网络开小差了，请稍后重试' }
-  finally { loading.value = false }
+  order.value = null
+  try {
+    const detail = normalizeOrderDetail(await getOrderDetail(orderNoSnapshot))
+    if (sequence !== requestSequence || String(route.params.orderNo || '') !== orderNoSnapshot) return
+    order.value = detail
+  } catch (error) {
+    if (sequence !== requestSequence || String(route.params.orderNo || '') !== orderNoSnapshot) return
+    loadError.value = error?.message || '网络开小差了，请稍后重试'
+  } finally {
+    if (sequence === requestSequence && String(route.params.orderNo || '') === orderNoSnapshot) loading.value = false
+  }
 }
 
 function maskPhone(phone) {
@@ -126,7 +137,7 @@ async function handleAction(action) {
   }
 }
 
-onMounted(loadOrder)
+watch(() => route.params.orderNo, loadOrder, { immediate: true })
 </script>
 
 <style scoped>

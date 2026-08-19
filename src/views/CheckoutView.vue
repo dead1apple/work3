@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { buyNow, createOrder, getAddressList, getMyCoupons, getProductDetail } from '../api/index.js'
 import { useCartStore } from '../store/cart.js'
-import { buildBuyNowPayload, extractOrderNo, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
+import { buildBuyNowPayload, createCheckoutSubmissionOutcome, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
 import { calculateCheckoutTotals, formatMoney, normalizeAddressList } from '../utils/commerce.js'
 import { filterUsableCoupons, getCouponValueText, normalizeCouponList } from '../utils/coupon.js'
 
@@ -23,6 +23,9 @@ const items = ref([])
 const coupons = ref([])
 const couponId = ref(null)
 const remark = ref('')
+const orderSubmitted = ref(false)
+const committedLoadSequence = ref(0)
+let loadSequence = 0
 
 const isBuyNow = computed(() => route.params.mode === 'buy-now')
 const selectedAddress = computed(() => addresses.value.find((item) => item.id === addressId.value))
@@ -30,59 +33,112 @@ const goodsAmount = computed(() => items.value.reduce((sum, item) => sum + Numbe
 const usableCoupons = computed(() => filterUsableCoupons(coupons.value, goodsAmount.value))
 const selectedCoupon = computed(() => usableCoupons.value.find((item) => item.id === couponId.value))
 const totals = computed(() => calculateCheckoutTotals(items.value, isBuyNow.value ? null : selectedCoupon.value))
-const canSubmit = computed(() => Boolean(addressId.value && items.value.length && !cartUnavailable.value && !protocolDataInvalid.value && items.value.every((item) => Number(item.stock ?? 1) > 0)))
+const hasInvalidItem = computed(() => items.value.some((item) => item.isValid === false || Number(item.stock ?? 1) <= 0))
+const canSubmit = computed(() => Boolean(
+  !loading.value &&
+  !loadError.value &&
+  !submitting.value &&
+  !orderSubmitted.value &&
+  committedLoadSequence.value === loadSequence &&
+  addressId.value &&
+  items.value.length &&
+  !cartUnavailable.value &&
+  !protocolDataInvalid.value &&
+  !hasInvalidItem.value,
+))
 
-const loadBuyNow = async () => {
-  const selection = parseBuyNowQuery(route.query)
+const pickDefaultAddressId = (addressList) => addressList.find((item) => item.isDefault)?.id || addressList[0]?.id || null
+
+const loadBuyNow = async (snapshot) => {
+  const selection = parseBuyNowQuery(snapshot.query)
   const [addressResult, productResult] = await Promise.all([
     getAddressList(),
     getProductDetail(selection.productId),
   ])
-  addresses.value = normalizeAddressList(addressResult)
-  addressId.value = addresses.value.find((item) => item.isDefault)?.id || addresses.value[0]?.id || null
+  const nextAddresses = normalizeAddressList(addressResult)
   const item = normalizeBuyNowItem(productResult, selection)
-  items.value = [item]
-  if (item.quantity !== selection.quantity) ElMessage.warning(`购买数量已根据库存调整为 ${item.quantity} 件`)
+  return {
+    addresses: nextAddresses,
+    addressId: pickDefaultAddressId(nextAddresses),
+    items: [item],
+    coupons: [],
+    couponId: null,
+    cartUnavailable: false,
+    protocolDataInvalid: false,
+    warnings: item.quantity !== selection.quantity ? [`购买数量已根据库存调整为 ${item.quantity} 件`] : [],
+  }
 }
 
 const loadCartCheckout = async () => {
   const addressResult = await getAddressList()
-  addresses.value = normalizeAddressList(addressResult)
-  addressId.value = addresses.value.find((item) => item.isDefault)?.id || addresses.value[0]?.id || null
-  try {
-    coupons.value = normalizeCouponList(await getMyCoupons({ status: 0 }), 'mine').list
-  } catch {
-    coupons.value = []
-    ElMessage.warning('优惠券暂时无法加载，可稍后重试或不使用优惠券')
+  const nextAddresses = normalizeAddressList(addressResult)
+  const nextData = {
+    addresses: nextAddresses,
+    addressId: pickDefaultAddressId(nextAddresses),
+    items: [],
+    coupons: [],
+    couponId: null,
+    cartUnavailable: false,
+    protocolDataInvalid: false,
+    warnings: [],
   }
   try {
-    await cartStore.fetchCartList()
-    items.value = cartStore.checkedList
-    protocolDataInvalid.value = items.value.some((item) => item.isValid === false)
+    nextData.coupons = normalizeCouponList(await getMyCoupons({ status: 0 }), 'mine').list
   } catch {
-    cartUnavailable.value = true
-    items.value = []
+    nextData.warnings.push('优惠券暂时无法加载，可稍后重试或不使用优惠券')
   }
+  try {
+    const cartList = await cartStore.fetchCartList()
+    nextData.items = cartList.filter((item) => item.checked)
+    nextData.protocolDataInvalid = nextData.items.some((item) => item.isValid === false)
+  } catch {
+    nextData.cartUnavailable = true
+  }
+  return nextData
 }
 
 const loadCheckout = async () => {
+  const sequence = ++loadSequence
+  const snapshot = {
+    fullPath: route.fullPath,
+    mode: route.params.mode,
+    query: { ...route.query },
+  }
   loading.value = true
   loadError.value = false
   loadErrorMessage.value = ''
   cartUnavailable.value = false
   protocolDataInvalid.value = false
+  orderSubmitted.value = false
+  committedLoadSequence.value = 0
   items.value = []
+  addresses.value = []
+  addressId.value = null
   coupons.value = []
   couponId.value = null
   try {
-    if (isBuyNow.value) await loadBuyNow()
-    else if (route.params.mode === 'cart') await loadCartCheckout()
-    else throw new Error('不支持的结算方式')
+    const nextData = snapshot.mode === 'buy-now'
+      ? await loadBuyNow(snapshot)
+      : snapshot.mode === 'cart'
+        ? await loadCartCheckout()
+        : null
+    if (!nextData) throw new Error('不支持的结算方式')
+    if (sequence !== loadSequence || route.fullPath !== snapshot.fullPath) return
+    addresses.value = nextData.addresses
+    addressId.value = nextData.addressId
+    items.value = nextData.items
+    coupons.value = nextData.coupons
+    couponId.value = nextData.couponId
+    cartUnavailable.value = nextData.cartUnavailable
+    protocolDataInvalid.value = nextData.protocolDataInvalid
+    committedLoadSequence.value = sequence
+    nextData.warnings.forEach((message) => ElMessage.warning(message))
   } catch (error) {
+    if (sequence !== loadSequence || route.fullPath !== snapshot.fullPath) return
     loadError.value = true
     loadErrorMessage.value = error?.message || '结算信息加载失败，请稍后重试'
   } finally {
-    loading.value = false
+    if (sequence === loadSequence && route.fullPath === snapshot.fullPath) loading.value = false
   }
 }
 
@@ -102,7 +158,7 @@ const submitOrder = async () => {
     ElMessage.warning('购物车数据异常，请刷新后重试')
     return
   }
-  if (items.value.some((item) => Number(item.stock ?? 1) <= 0)) {
+  if (hasInvalidItem.value) {
     ElMessage.warning('商品库存不足，暂时无法提交订单')
     return
   }
@@ -112,8 +168,9 @@ const submitOrder = async () => {
   }
 
   submitting.value = true
+  let result
   try {
-    const result = isBuyNow.value
+    result = isBuyNow.value
       ? await buyNow(buildBuyNowPayload({ item: items.value[0], addressId: addressId.value, remark: remark.value }))
       : await createOrder({
           cartIds: items.value.map((item) => item.id),
@@ -121,12 +178,24 @@ const submitOrder = async () => {
           couponId: couponId.value || undefined,
           remark: remark.value.trim(),
         })
-    const orderNo = extractOrderNo(result)
-    if (!orderNo) throw new Error('订单已提交，但未返回订单号')
-    ElMessage.success('订单提交成功，即将前往收银台')
-    await router.replace({ path: `/payment/${orderNo}`, query: { amount: totals.value.payableAmount.toFixed(2) } })
   } catch (error) {
+    submitting.value = false
     ElMessage.error(error?.message || '订单提交失败，请稍后重试')
+    return
+  }
+
+  const outcome = createCheckoutSubmissionOutcome(result)
+  orderSubmitted.value = outcome.terminal
+  try {
+    if (!outcome.orderNo) {
+      ElMessage.warning('订单已创建，但未返回订单号，请在我的订单中查看')
+      await router.replace('/orders')
+      return
+    }
+    ElMessage.success('订单提交成功，即将前往收银台')
+    await router.replace({ path: `/payment/${outcome.orderNo}`, query: { amount: totals.value.payableAmount.toFixed(2) } })
+  } catch (error) {
+    ElMessage.warning('订单已创建，但页面跳转失败，请前往我的订单查看')
   } finally {
     submitting.value = false
   }

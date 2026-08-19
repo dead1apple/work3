@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildBuyNowPayload, extractOrderNo, normalizeBuyNowItem, parseBuyNowQuery } from '../src/utils/checkout.js'
+import { buildBuyNowPayload, createCheckoutSubmissionOutcome, extractOrderNo, normalizeBuyNowItem, parseBuyNowQuery } from '../src/utils/checkout.js'
 
 test('parses and constrains buy-now query parameters', () => {
   assert.deepEqual(parseBuyNowQuery({ productId: '8', skuId: '81', quantity: '120' }), {
@@ -53,4 +53,11 @@ test('extracts an order number from supported order responses', () => {
   assert.equal(extractOrderNo({ order: { orderNo: 'JD2026001' } }), 'JD2026001')
   assert.equal(extractOrderNo({ orderNo: 'JD2026002' }), 'JD2026002')
   assert.equal(extractOrderNo('JD2026003'), 'JD2026003')
+})
+
+test('successful checkout response is terminal even without an order number', () => {
+  assert.deepEqual(createCheckoutSubmissionOutcome({}), {
+    orderNo: '',
+    terminal: true,
+  })
 })

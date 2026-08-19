@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { claimCoupon, getAvailableCoupons, getMyCoupons } from '../api/index.js'
@@ -17,6 +17,7 @@ const availableError = ref(false)
 const mineError = ref(false)
 const claimingId = ref(null)
 const claimedIds = ref(new Set())
+let requestSequence = 0
 
 const statusOptions = [
   { label: '全部', value: '' },
@@ -39,39 +40,59 @@ const periodText = (coupon) => coupon.startTime || coupon.endTime
   ? `${coupon.startTime || '领取后'} 至 ${coupon.endTime || '长期有效'}`
   : '有效期以使用规则为准'
 
+const normalizeRouteState = () => ({
+  tab: route.query.tab === 'mine' ? 'mine' : 'available',
+  status: ['0', '1', '2'].includes(String(route.query.status)) ? String(route.query.status) : '',
+})
+
 const syncQuery = () => {
   const query = { ...route.query, tab: activeTab.value }
   if (activeTab.value === 'mine' && status.value !== '') query.status = status.value
   else delete query.status
-  router.replace({ query })
+  const current = Object.fromEntries(Object.entries(route.query).map(([key, value]) => [key, String(value)]))
+  const next = Object.fromEntries(Object.entries(query).map(([key, value]) => [key, String(value)]))
+  if (JSON.stringify(current) !== JSON.stringify(next)) router.replace({ query })
 }
 
 const loadAvailable = async () => {
+  const sequence = ++requestSequence
+  const routeSnapshot = route.fullPath
   availableLoading.value = true
   availableError.value = false
+  available.value = []
   try {
-    available.value = normalizeCouponList(await getAvailableCoupons(), 'available').list
+    const nextList = normalizeCouponList(await getAvailableCoupons(), 'available').list
+    if (sequence !== requestSequence || activeTab.value !== 'available' || route.fullPath !== routeSnapshot) return
+    available.value = nextList
   } catch (error) {
+    if (sequence !== requestSequence || activeTab.value !== 'available' || route.fullPath !== routeSnapshot) return
     available.value = []
     availableError.value = true
     ElMessage.error(error?.message || '可领取优惠券加载失败')
   } finally {
-    availableLoading.value = false
+    if (sequence === requestSequence && activeTab.value === 'available' && route.fullPath === routeSnapshot) availableLoading.value = false
   }
 }
 
 const loadMine = async ({ silent = false } = {}) => {
+  const sequence = ++requestSequence
+  const routeSnapshot = route.fullPath
+  const statusSnapshot = status.value
   mineLoading.value = !silent
   mineError.value = false
+  mine.value = []
   try {
-    const params = status.value === '' ? undefined : { status: Number(status.value) }
-    mine.value = normalizeCouponList(await getMyCoupons(params), 'mine').list
+    const params = statusSnapshot === '' ? undefined : { status: Number(statusSnapshot) }
+    const nextList = normalizeCouponList(await getMyCoupons(params), 'mine').list
+    if (sequence !== requestSequence || activeTab.value !== 'mine' || status.value !== statusSnapshot || route.fullPath !== routeSnapshot) return
+    mine.value = nextList
   } catch (error) {
+    if (sequence !== requestSequence || activeTab.value !== 'mine' || status.value !== statusSnapshot || route.fullPath !== routeSnapshot) return
     mine.value = []
     mineError.value = true
     if (!silent) ElMessage.error(error?.message || '我的优惠券加载失败')
   } finally {
-    mineLoading.value = false
+    if (sequence === requestSequence && activeTab.value === 'mine' && status.value === statusSnapshot && route.fullPath === routeSnapshot) mineLoading.value = false
   }
 }
 
@@ -83,7 +104,6 @@ const switchTab = (tab) => {
 const changeStatus = (value) => {
   status.value = value
   syncQuery()
-  loadMine()
 }
 
 const claim = async (coupon) => {
@@ -93,7 +113,6 @@ const claim = async (coupon) => {
     await claimCoupon(coupon.templateId)
     claimedIds.value = new Set([...claimedIds.value, coupon.templateId])
     ElMessage.success('优惠券领取成功，可在“我的优惠券”中查看')
-    await loadMine({ silent: true })
   } catch (error) {
     ElMessage.error(error?.message || '领取失败，请稍后重试')
   } finally {
@@ -103,7 +122,17 @@ const claim = async (coupon) => {
 
 const retryCurrent = () => activeTab.value === 'available' ? loadAvailable() : loadMine()
 
-onMounted(() => Promise.all([loadAvailable(), loadMine({ silent: activeTab.value !== 'mine' })]))
+watch(
+  () => [route.query.tab, route.query.status],
+  () => {
+    const next = normalizeRouteState()
+    activeTab.value = next.tab
+    status.value = next.status
+    if (activeTab.value === 'available') loadAvailable()
+    else loadMine()
+  },
+  { immediate: true },
+)
 </script>
 
 <template>

@@ -18,6 +18,8 @@ const products = ref([])
 const selectedCategoryId = ref(null)
 const loadingCategories = ref(true)
 const loadingProducts = ref(false)
+let categoryRequestSequence = 0
+let productRequestSequence = 0
 
 const categoryIcons = [Monitor, Goods, ShoppingBag, CollectionTag, Grid, MoreFilled]
 const navigationCategories = computed(() => flattenCategoryTree(categories.value))
@@ -29,10 +31,13 @@ const visibleCategories = computed(() => {
 const formatPrice = (value) => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const loadProducts = async (category) => {
+  const sequence = ++productRequestSequence
   loadingProducts.value = true
+  products.value = []
   try {
     const targets = getProductCategoryTargets(category)
     if (!targets.length) {
+      if (sequence !== productRequestSequence || selectedCategoryId.value !== category.id) return
       products.value = []
       return
     }
@@ -43,12 +48,14 @@ const loadProducts = async (category) => {
     successfulResults
       .flatMap((result) => normalizeCategoryProducts(result.value))
       .forEach((product) => uniqueProducts.set(product.id, product))
+    if (sequence !== productRequestSequence || selectedCategoryId.value !== category.id) return
     products.value = Array.from(uniqueProducts.values()).slice(0, 8)
   } catch (error) {
+    if (sequence !== productRequestSequence || selectedCategoryId.value !== category.id) return
     products.value = []
     ElMessage.error(error.message || '推荐商品加载失败，请稍后重试')
   } finally {
-    loadingProducts.value = false
+    if (sequence === productRequestSequence && selectedCategoryId.value === category.id) loadingProducts.value = false
   }
 }
 
@@ -60,19 +67,26 @@ const selectCategory = async (id) => {
 }
 
 const loadCategories = async () => {
+  const sequence = ++categoryRequestSequence
   loadingCategories.value = true
+  categories.value = []
+  products.value = []
+  selectedCategoryId.value = null
   try {
-    categories.value = normalizeCategoryTree(await getCategoryTree())
-    const firstCategory = categories.value[0]
+    const nextCategories = normalizeCategoryTree(await getCategoryTree())
+    if (sequence !== categoryRequestSequence) return
+    categories.value = nextCategories
+    const firstCategory = nextCategories[0]
     if (firstCategory) {
       selectedCategoryId.value = firstCategory.id
       await loadProducts(firstCategory)
     }
   } catch (error) {
+    if (sequence !== categoryRequestSequence) return
     categories.value = []
     ElMessage.error(error.message || '分类加载失败，请稍后重试')
   } finally {
-    loadingCategories.value = false
+    if (sequence === categoryRequestSequence) loadingCategories.value = false
   }
 }
 
