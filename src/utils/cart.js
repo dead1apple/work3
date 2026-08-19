@@ -1,5 +1,7 @@
 import { readPayloadList, toBoundedPositiveInteger, toNonNegativeMoney } from './response.js'
 
+const SERVER_CART_ITEM_REQUIRED = '购物车已更新，但服务端未返回可操作的购物车记录，请刷新后重试'
+
 const toSafePositiveInteger = (value) => {
   const number = Number(value)
   return Number.isSafeInteger(number) && number > 0 ? number : null
@@ -45,6 +47,102 @@ export const getCanonicalCartItem = (result, skuId) => {
     if (normalized.id != null && normalized.skuId === requestedSkuId) return normalized
   }
   return null
+}
+
+export const addToCanonicalCart = async ({
+  product,
+  cartList,
+  addCart,
+  fetchCartList,
+  updateQuantity,
+  selectCartItem,
+  commitCreatedCartItem,
+}) => {
+  const skuId = product?.skuId ?? product?.id
+  if (!skuId) throw new Error('缺少商品 SKU')
+  const quantity = Math.min(99, Math.max(1, Number(product.quantity || 1)))
+  const existing = cartList.find((item) => item.skuId === skuId)
+
+  if (existing) {
+    const nextQuantity = Math.min(99, existing.quantity + quantity)
+    const updated = await updateQuantity(existing.id, nextQuantity)
+    if (!existing.checked) {
+      await selectCartItem(existing.id)
+      existing.checked = true
+    }
+    return updated || existing
+  }
+
+  const result = await addCart({ skuId, quantity })
+  let created = getCanonicalCartItem(result, skuId)
+  let fetchedCanonicalCart = false
+  if (!created) {
+    const serverCartList = await fetchCartList()
+    created = serverCartList.find((item) => item.skuId === skuId) || null
+    fetchedCanonicalCart = true
+  }
+  if (!created) throw new Error(SERVER_CART_ITEM_REQUIRED)
+
+  created = normalizeCartList([{
+    ...created,
+    quantity: created.quantity || quantity,
+    selected: created.checked ? 1 : 0,
+    productName: created.name || product.name,
+    image: created.image || product.image,
+    price: created.price ?? product.price,
+    skuName: created.skuName || product.skuName,
+  }])[0]
+
+  if (!fetchedCanonicalCart) commitCreatedCartItem(created, skuId)
+  return created
+}
+
+export const createToggleItemHandler = ({ toggleCheck, onError }) => {
+  return async (item, checked) => {
+    try {
+      await toggleCheck(item.id, checked)
+    } catch (error) {
+      onError(error)
+    }
+  }
+}
+
+export const createQuantityChangeHandler = ({
+  isQuantityUpdating,
+  setQuantityUpdating,
+  updateQuantity,
+  refetchCart,
+  onSuccess,
+  onError,
+}) => {
+  return async (item, currentValue, previousValue) => {
+    if (isQuantityUpdating(item.id)) return
+    setQuantityUpdating(item.id, true)
+    try {
+      await updateQuantity(item.id, currentValue)
+      onSuccess()
+    } catch (error) {
+      item.quantity = previousValue
+      onError(error)
+      await refetchCart()
+    } finally {
+      setQuantityUpdating(item.id, false)
+    }
+  }
+}
+
+export const createCartLoadState = () => ({ initialLoading: false, loadError: '' })
+
+export const loadCartWithRetryState = async ({ state, fetchCartList }) => {
+  state.initialLoading = true
+  state.loadError = ''
+  try {
+    await fetchCartList()
+  } catch (error) {
+    state.loadError = error.message || '购物车加载失败，请检查网络后重试'
+  } finally {
+    state.initialLoading = false
+  }
 }
 
 export const mergeCartItem = (list, item) => {

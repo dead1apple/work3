@@ -1,8 +1,6 @@
 import { defineStore } from 'pinia'
 import { addCart, deleteCart, getCartList, selectAllCartItems, setCartItemSelected, updateCart } from '../api/index.js'
-import { calculateCartTotals, getCanonicalCartItem, normalizeCartList } from '../utils/cart.js'
-
-const SERVER_CART_ITEM_REQUIRED = '购物车已更新，但服务端未返回可操作的购物车记录，请刷新后重试'
+import { addToCanonicalCart, calculateCartTotals, normalizeCartList } from '../utils/cart.js'
 
 export const useCartStore = defineStore('cart', {
   state: () => ({ cartList: [] }),
@@ -23,41 +21,17 @@ export const useCartStore = defineStore('cart', {
       }
     },
     async addToCart(product) {
-      const skuId = product.skuId ?? product.id
-      if (!skuId) throw new Error('缺少商品 SKU')
-      const quantity = Math.min(99, Math.max(1, Number(product.quantity || 1)))
-      const existing = this.cartList.find((item) => item.skuId === skuId)
-      if (existing) {
-        const nextQuantity = Math.min(99, existing.quantity + quantity)
-        const updated = await this.updateQuantity(existing.id, nextQuantity)
-        if (!existing.checked) {
-          await setCartItemSelected(existing.id, 1)
-          existing.checked = true
-        }
-        return updated || existing
-      }
-      const result = await addCart({ skuId, quantity })
-      let created = getCanonicalCartItem(result, skuId)
-      let fetchedCanonicalCart = false
-      if (!created) {
-        const serverCartList = await this.fetchCartList()
-        created = serverCartList.find((item) => item.skuId === skuId) || null
-        fetchedCanonicalCart = true
-      }
-      if (!created) throw new Error(SERVER_CART_ITEM_REQUIRED)
-      created = normalizeCartList([{
-        ...created,
-        quantity: created.quantity || quantity,
-        selected: created.checked ? 1 : 0,
-        productName: created.name || product.name,
-        image: created.image || product.image,
-        price: created.price ?? product.price,
-        skuName: created.skuName || product.skuName,
-      }])[0]
-      if (!fetchedCanonicalCart) {
-        this.cartList = [...this.cartList.filter((item) => item.skuId !== skuId), created]
-      }
-      return created
+      return addToCanonicalCart({
+        product,
+        cartList: this.cartList,
+        addCart,
+        fetchCartList: this.fetchCartList.bind(this),
+        updateQuantity: this.updateQuantity.bind(this),
+        selectCartItem: (id) => setCartItemSelected(id, 1),
+        commitCreatedCartItem: (created, skuId) => {
+          this.cartList = [...this.cartList.filter((item) => item.skuId !== skuId), created]
+        },
+      })
     },
     async updateQuantity(id, quantity) {
       const nextQuantity = Math.min(99, Math.max(1, Number(quantity || 1)))

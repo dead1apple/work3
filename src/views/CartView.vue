@@ -1,15 +1,20 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart.js'
+import {
+  createCartLoadState,
+  createQuantityChangeHandler,
+  createToggleItemHandler,
+  loadCartWithRetryState,
+} from '../utils/cart.js'
 
 const cartStore = useCartStore()
 const router = useRouter()
 const allChecked = computed(() => cartStore.cartList.length > 0 && cartStore.cartList.every((item) => item.checked))
 const formatPrice = (value) => Number(value || 0).toFixed(2)
-const initialLoading = ref(false)
-const loadError = ref('')
+const cartLoadState = reactive(createCartLoadState())
 const quantityUpdatingIds = ref(new Set())
 
 const isQuantityUpdating = (id) => quantityUpdatingIds.value.has(id)
@@ -21,35 +26,24 @@ const setQuantityUpdating = (id, updating) => {
 }
 
 const loadCart = async () => {
-  initialLoading.value = true
-  loadError.value = ''
-  try {
-    await cartStore.fetchCartList()
-  } catch (error) {
-    loadError.value = error.message || '购物车加载失败，请检查网络后重试'
-  } finally {
-    initialLoading.value = false
-  }
+  await loadCartWithRetryState({
+    state: cartLoadState,
+    fetchCartList: cartStore.fetchCartList.bind(cartStore),
+  })
 }
 
 const retryLoadCart = () => {
   loadCart()
 }
 
-const changeQuantity = async (item, currentValue, previousValue) => {
-  if (isQuantityUpdating(item.id)) return
-  setQuantityUpdating(item.id, true)
-  try {
-    await cartStore.updateQuantity(item.id, currentValue)
-    ElMessage.success('数量已更新')
-  } catch (error) {
-    item.quantity = previousValue
-    ElMessage.error(error.message || '数量更新失败')
-    await loadCart()
-  } finally {
-    setQuantityUpdating(item.id, false)
-  }
-}
+const changeQuantity = createQuantityChangeHandler({
+  isQuantityUpdating,
+  setQuantityUpdating,
+  updateQuantity: cartStore.updateQuantity.bind(cartStore),
+  refetchCart: loadCart,
+  onSuccess: () => ElMessage.success('数量已更新'),
+  onError: (error) => ElMessage.error(error.message || '数量更新失败'),
+})
 
 const removeItem = async (item) => {
   try {
@@ -60,13 +54,10 @@ const removeItem = async (item) => {
   }
 }
 
-const toggleItem = async (item, checked) => {
-  try {
-    await cartStore.toggleCheck(item.id, checked)
-  } catch (error) {
-    ElMessage.error(error.message || '选中状态更新失败')
-  }
-}
+const toggleItem = createToggleItemHandler({
+  toggleCheck: cartStore.toggleCheck.bind(cartStore),
+  onError: (error) => ElMessage.error(error.message || '选中状态更新失败'),
+})
 
 const toggleAll = async (checked) => {
   try {
@@ -90,15 +81,15 @@ onMounted(loadCart)
 <template>
   <section class="cart-page">
     <div class="page-heading"><div><p class="eyebrow">MY BAG</p><h1>购物车</h1></div><span class="item-count">共 {{ cartStore.totalCount }} 件商品</span></div>
-    <el-skeleton v-if="initialLoading" :rows="5" animated />
+    <el-skeleton v-if="cartLoadState.initialLoading" :rows="5" animated />
     <el-result
-      v-else-if="loadError"
+      v-else-if="cartLoadState.loadError"
       icon="warning"
       title="购物车加载失败"
-      :sub-title="`${loadError}。请重试刷新当前账号的购物车。`"
+      :sub-title="`${cartLoadState.loadError}。请重试刷新当前账号的购物车。`"
     >
       <template #extra>
-        <el-button type="primary" :loading="initialLoading" @click="retryLoadCart">重试</el-button>
+        <el-button type="primary" :loading="cartLoadState.initialLoading" @click="retryLoadCart">重试</el-button>
       </template>
     </el-result>
     <el-empty v-else-if="!cartStore.cartList.length" description="购物车是空的，快去逛逛吧" />
