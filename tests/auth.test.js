@@ -2,9 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createPinia, setActivePinia } from 'pinia'
 import {
+  createRegistrationCodeSender,
   clearAuthStorage,
   getAuthToken,
   isCurrentRequestToken,
+  normalizeMainlandMobile,
   readAuthToken,
   resolveRedirect,
   writeAuthToken,
@@ -204,4 +206,81 @@ test('a new in-place session is invalidated after a prior 401 on the login page'
     if (previousWindow === undefined) delete globalThis.window
     else globalThis.window = previousWindow
   }
+})
+
+test('normalizes only trimmed mainland mobile numbers for registration codes', () => {
+  assert.equal(normalizeMainlandMobile(' 13800138000 '), '13800138000')
+  assert.throws(() => normalizeMainlandMobile('12800138000'), /有效的 11 位手机号/)
+  assert.throws(() => normalizeMainlandMobile('1380013800'), /有效的 11 位手机号/)
+})
+
+test('registration code sender is single-flight and starts countdown only after success', async () => {
+  let resolveSend
+  const calls = []
+  const states = []
+  const sender = createRegistrationCodeSender({
+    seconds: 3,
+    sendCode: (payload) => {
+      calls.push(payload)
+      return new Promise((resolve) => { resolveSend = resolve })
+    },
+    setInterval: () => 101,
+    clearInterval: () => {},
+    onStateChange: (state) => states.push(state),
+  })
+
+  const first = sender.send(' 13800138000 ')
+  const second = sender.send('13900139000')
+
+  assert.equal(second, false)
+  assert.deepEqual(calls, [{ phone: '13800138000' }])
+  assert.equal(sender.disabled, true)
+  assert.equal(sender.countdown, 0)
+
+  resolveSend()
+  assert.equal(await first, true)
+  assert.equal(sender.countdown, 3)
+  assert.equal(sender.sending, false)
+  assert.equal(sender.disabled, true)
+  assert.equal(sender.send('13900139000'), false)
+  assert.ok(states.some((state) => state.sending === true && state.countdown === 0 && state.disabled === true))
+  assert.ok(states.some((state) => state.sending === false && state.countdown === 3 && state.disabled === true))
+})
+
+test('registration code sender does not start countdown when sending fails', async () => {
+  const sender = createRegistrationCodeSender({
+    sendCode: () => Promise.reject(new Error('network down')),
+    setInterval: () => { throw new Error('countdown should not start') },
+    clearInterval: () => {},
+  })
+
+  await assert.rejects(sender.send('13800138000'), /network down/)
+  assert.equal(sender.countdown, 0)
+  assert.equal(sender.sending, false)
+  assert.equal(sender.disabled, false)
+})
+
+test('registration code sender ticks down and clears its interval on cleanup', async () => {
+  let tick
+  const cleared = []
+  const sender = createRegistrationCodeSender({
+    seconds: 2,
+    sendCode: () => Promise.resolve(),
+    setInterval: (callback) => {
+      tick = callback
+      return 202
+    },
+    clearInterval: (id) => cleared.push(id),
+  })
+
+  await sender.send('13800138000')
+  assert.equal(sender.countdown, 2)
+
+  tick()
+  assert.equal(sender.countdown, 1)
+
+  sender.cleanup()
+  assert.deepEqual(cleared, [202])
+  assert.equal(sender.countdown, 0)
+  assert.equal(sender.disabled, false)
 })

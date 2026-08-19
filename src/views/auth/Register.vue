@@ -1,25 +1,59 @@
 <script setup>
-import { reactive, ref } from 'vue'
+import { computed, onUnmounted, reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
-import { register } from '../../api/index.js'
+import { register, sendCode } from '../../api/index.js'
+import { createRegistrationCodeSender, normalizeMainlandMobile } from '../../utils/auth.js'
 
 const router = useRouter()
 const formRef = ref()
 const loading = ref(false)
+const codeSending = ref(false)
+const codeCountdown = ref(0)
 const form = reactive({ username: '', password: '', phone: '', code: '', nickname: '', email: '' })
+const validatePhone = (_rule, value, callback) => {
+  try {
+    normalizeMainlandMobile(value)
+    callback()
+  } catch (error) {
+    callback(new Error(error.message))
+  }
+}
 const rules = {
   username: [{ required: true, message: '请输入用户名', trigger: 'blur' }],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }, { min: 6, message: '密码不少于 6 位', trigger: 'blur' }],
-  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+  phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }, { validator: validatePhone, trigger: 'blur' }],
   code: [{ required: true, message: '请输入短信验证码', trigger: 'blur' }],
 }
+const codeButtonText = computed(() => (codeCountdown.value > 0 ? `${codeCountdown.value}s 后重试` : '获取验证码'))
+const codeButtonDisabled = computed(() => codeSending.value || codeCountdown.value > 0)
+const codeSender = createRegistrationCodeSender({
+  sendCode,
+  onStateChange: ({ sending, countdown }) => {
+    codeSending.value = sending
+    codeCountdown.value = countdown
+  },
+})
+
+const sendRegistrationCode = async () => {
+  if (codeButtonDisabled.value) return
+  try {
+    await codeSender.send(form.phone)
+    ElMessage.success('验证码已发送，请查收短信')
+  } catch (error) {
+    ElMessage.error(error.message || '验证码发送失败，请稍后重试')
+  }
+}
+
+onUnmounted(() => {
+  codeSender.cleanup()
+})
 
 const submit = async () => {
   if (!(await formRef.value?.validate().catch(() => false))) return
   loading.value = true
   try {
-    await register(form)
+    await register({ ...form, phone: form.phone.trim() })
     ElMessage.success('注册成功，请登录')
     router.replace({ path: '/login', query: { registered: '1' } })
   } catch (error) {
@@ -43,7 +77,12 @@ const submit = async () => {
         <el-form-item label="密码" prop="password"><el-input v-model="form.password" size="large" type="password" show-password placeholder="设置登录密码" autocomplete="new-password" /></el-form-item>
         <div class="form-grid">
           <el-form-item label="手机号" prop="phone"><el-input v-model="form.phone" size="large" placeholder="手机号" autocomplete="tel" /></el-form-item>
-          <el-form-item label="验证码" prop="code"><el-input v-model="form.code" size="large" placeholder="验证码" /></el-form-item>
+          <el-form-item label="验证码" prop="code">
+            <div class="code-field">
+              <el-input v-model="form.code" size="large" placeholder="验证码" />
+              <el-button type="danger" plain size="large" :loading="codeSending" :disabled="codeButtonDisabled" @click="sendRegistrationCode">{{ codeButtonText }}</el-button>
+            </div>
+          </el-form-item>
         </div>
         <div class="form-grid">
           <el-form-item label="昵称"><el-input v-model="form.nickname" size="large" placeholder="可选" /></el-form-item>
@@ -66,8 +105,10 @@ const submit = async () => {
 h1 { margin: 0; color: #17191d; font-size: 32px; letter-spacing: -.06em; }
 .subtitle { margin: 10px 0 28px; color: #89919c; font-size: 14px; line-height: 1.6; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.code-field { display: grid; grid-template-columns: minmax(0, 1fr) 112px; gap: 10px; width: 100%; }
+.code-field .el-button { padding: 0 12px; }
 .submit-button { width: 100%; margin-top: 8px; border-radius: 10px; }
 .switch-text { margin: 24px 0 0; color: #89919c; text-align: center; font-size: 14px; }
 .switch-text a { color: #e1251b; font-weight: 700; }
-@media (max-width: 560px) { .auth-card { padding: 28px 22px; border-radius: 18px; } .form-grid { grid-template-columns: 1fr; gap: 0; } }
+@media (max-width: 560px) { .auth-card { padding: 28px 22px; border-radius: 18px; } .form-grid { grid-template-columns: 1fr; gap: 0; } .code-field { grid-template-columns: minmax(0, 1fr) 108px; } }
 </style>

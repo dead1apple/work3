@@ -16,8 +16,8 @@ export function normalizeReviewImages(images = []) {
   if (normalized.length > 5) throw new Error('最多添加 5 张评价图片')
   normalized.forEach((value) => {
     let url
-    try { url = new URL(value) } catch { throw new Error('图片地址必须以 http:// 或 https:// 开头') }
-    if (!['http:', 'https:'].includes(url.protocol)) throw new Error('图片地址必须以 http:// 或 https:// 开头')
+    try { url = new URL(value) } catch { throw new Error('图片地址必须以 https:// 开头') }
+    if (url.protocol !== 'https:') throw new Error('图片地址必须以 https:// 开头')
   })
   return normalized
 }

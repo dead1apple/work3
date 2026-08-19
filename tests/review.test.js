@@ -17,12 +17,14 @@ test('normalizes, deduplicates and limits review image urls', () => {
   assert.deepEqual(normalizeReviewImages([
     ' https://img.example.com/1.jpg ',
     'https://img.example.com/1.jpg',
-    'http://img.example.com/2.png',
-  ]), ['https://img.example.com/1.jpg', 'http://img.example.com/2.png'])
+    'https://img.example.com/2.png',
+  ]), ['https://img.example.com/1.jpg', 'https://img.example.com/2.png'])
 })
 
 test('rejects invalid review image urls', () => {
-  assert.throws(() => normalizeReviewImages(['not-a-url']), /图片地址必须以 http/)
+  assert.throws(() => normalizeReviewImages(['not-a-url']), /https:\/\//)
+  assert.throws(() => normalizeReviewImages(['http://img.example.com/a.jpg']), /https:\/\//)
+  assert.deepEqual(normalizeReviewImages(['https://img.example.com/a.jpg']), ['https://img.example.com/a.jpg'])
   assert.throws(() => normalizeReviewImages(Array.from({ length: 6 }, (_, index) => `https://img.example.com/${index}.jpg`)), /最多添加 5 张/)
 })
 
