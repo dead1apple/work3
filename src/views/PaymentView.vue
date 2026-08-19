@@ -19,7 +19,7 @@
         <div class="result-icon">!</div>
         <h2>支付信息加载失败</h2>
         <p>{{ queryError }}</p>
-        <div class="result-actions"><el-button type="danger" @click="loadStatus">重新加载</el-button><el-button @click="router.push('/orders')">查看我的订单</el-button></div>
+        <div class="result-actions"><el-button type="danger" @click="reloadStatus">重新加载</el-button><el-button @click="router.push('/orders')">查看我的订单</el-button></div>
       </section>
 
       <section v-else-if="paymentStatus.state === 'paid'" class="result-card success-result" aria-live="polite">
@@ -35,7 +35,7 @@
         <h2>{{ paymentStatus.title }}</h2>
         <p>{{ paymentStatus.description }}</p>
         <span class="polling-note">正在自动查询支付结果{{ pollingDots }}</span>
-        <div class="result-actions"><el-button type="danger" plain :loading="refreshing" @click="refreshStatus">立即查询</el-button><el-button @click="router.push('/orders')">稍后查看订单</el-button></div>
+        <div class="result-actions"><el-button type="danger" plain :loading="refreshing" @click="refreshStatus(false)">立即查询</el-button><el-button @click="router.push('/orders')">稍后查看订单</el-button></div>
       </section>
 
       <template v-else>
@@ -59,7 +59,7 @@
           <footer class="pay-bar">
             <div><span>支付方式</span><strong>{{ selectedMethod.label }}</strong></div>
             <div v-if="payableAmount !== null" class="bar-amount"><span>应付金额</span><strong>¥{{ formatMoney(payableAmount) }}</strong></div>
-            <el-button class="pay-button" type="danger" size="large" :loading="paying" @click="submitPayment">{{ paying ? '正在提交' : '确认支付' }}</el-button>
+            <el-button class="pay-button" type="danger" size="large" :loading="paying" :disabled="!paymentStatus.canPay" @click="submitPayment">{{ paying ? '正在提交' : '确认支付' }}</el-button>
           </footer>
         </section>
 
@@ -70,21 +70,19 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { computed, onUnmounted, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { CircleCheckFilled, Loading, Lock } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
-import { confirmPayment, createPayment, getPaymentStatus } from '../api/index.js'
+import { confirmPayment, createPayment, getOrderDetail, getPaymentStatus } from '../api/index.js'
 import { formatMoney } from '../utils/commerce.js'
-import { extractPaymentNo, normalizePaymentStatus, PAYMENT_METHODS } from '../utils/payment.js'
+import { normalizeOrderDetail } from '../utils/order.js'
+import { extractPaymentNo, mergePaymentStatus, normalizePaymentStatus, PAYMENT_METHODS } from '../utils/payment.js'
 
 const route = useRoute()
 const router = useRouter()
 const orderNo = computed(() => String(route.params.orderNo || ''))
-const payableAmount = computed(() => {
-  const amount = Number(route.query.amount)
-  return Number.isFinite(amount) && amount >= 0 ? amount : null
-})
+const payableAmount = ref(null)
 const checking = ref(true)
 const refreshing = ref(false)
 const paying = ref(false)
@@ -92,88 +90,171 @@ const queryError = ref('')
 const payType = ref(1)
 const pollRound = ref(0)
 const paymentStatus = ref(normalizePaymentStatus(null))
+let routeGeneration = 0
+let statusSequence = 0
+let lastAppliedStatusSequence = 0
 let pollTimer = null
 
 const selectedMethod = computed(() => PAYMENT_METHODS.find((method) => method.value === payType.value) || PAYMENT_METHODS[0])
 const paidMethod = computed(() => PAYMENT_METHODS.find((method) => method.value === paymentStatus.value.payType))
 const pollingDots = computed(() => '.'.repeat((pollRound.value % 3) + 1))
 
+function isCurrentRoute(generation, order = orderNo.value) {
+  return generation === routeGeneration && order === orderNo.value
+}
+
+function resetOrderState() {
+  routeGeneration += 1
+  statusSequence = 0
+  lastAppliedStatusSequence = 0
+  stopPolling()
+  payableAmount.value = null
+  checking.value = true
+  refreshing.value = false
+  paying.value = false
+  queryError.value = ''
+  payType.value = 1
+  pollRound.value = 0
+  paymentStatus.value = normalizePaymentStatus(null)
+}
+
 function stopPolling() {
   if (pollTimer) window.clearInterval(pollTimer)
   pollTimer = null
 }
 
-function startPolling() {
+function startPolling(generation = routeGeneration, order = orderNo.value) {
   stopPolling()
   pollRound.value = 0
   pollTimer = window.setInterval(async () => {
+    if (!isCurrentRoute(generation, order)) {
+      stopPolling()
+      return
+    }
     pollRound.value += 1
-    await refreshStatus(true)
+    await refreshStatus(true, generation, order)
     if (pollRound.value >= 12 || paymentStatus.value.state !== 'processing') stopPolling()
   }, 2500)
 }
 
-async function fetchStatus() {
-  const result = normalizePaymentStatus(await getPaymentStatus(orderNo.value))
-  paymentStatus.value = result
+function commitStatus(result, sequence = null) {
+  if (sequence !== null) {
+    if (sequence <= lastAppliedStatusSequence) return paymentStatus.value
+    lastAppliedStatusSequence = sequence
+  }
+  paymentStatus.value = mergePaymentStatus(paymentStatus.value, result)
   if (result.payType && PAYMENT_METHODS.some((method) => method.value === result.payType)) payType.value = result.payType
-  if (result.state !== 'processing') stopPolling()
-  return result
+  if (paymentStatus.value.state !== 'processing') stopPolling()
+  return paymentStatus.value
 }
 
-async function loadStatus() {
+async function fetchStatus(generation = routeGeneration, order = orderNo.value) {
+  const sequence = ++statusSequence
+  const result = normalizePaymentStatus(await getPaymentStatus(order))
+  if (!isCurrentRoute(generation, order)) return null
+  return commitStatus(result, sequence)
+}
+
+async function fetchPayableAmount(generation = routeGeneration, order = orderNo.value) {
+  try {
+    const detail = normalizeOrderDetail(await getOrderDetail(order))
+    if (!isCurrentRoute(generation, order)) return
+    payableAmount.value = Number.isFinite(detail.payAmount) ? detail.payAmount : null
+  } catch {
+    if (isCurrentRoute(generation, order)) payableAmount.value = null
+  }
+}
+
+async function loadStatus(generation = routeGeneration, order = orderNo.value) {
   checking.value = true
   queryError.value = ''
+  fetchPayableAmount(generation, order)
   try {
-    const result = await fetchStatus()
-    if (result.state === 'processing') startPolling()
+    const result = await fetchStatus(generation, order)
+    if (!isCurrentRoute(generation, order) || !result) return
+    if (result.state === 'processing') startPolling(generation, order)
   } catch (error) {
-    queryError.value = error?.message || '暂时无法查询支付状态，请稍后重试'
-  } finally { checking.value = false }
+    if (isCurrentRoute(generation, order)) queryError.value = error?.message || '暂时无法查询支付状态，请稍后重试'
+  } finally {
+    if (isCurrentRoute(generation, order)) checking.value = false
+  }
 }
 
-async function refreshStatus(silent = false) {
+function reloadStatus() {
+  loadStatus(routeGeneration, orderNo.value)
+}
+
+async function refreshStatus(silent = false, generation = routeGeneration, order = orderNo.value) {
   if (refreshing.value) return
   refreshing.value = true
   try {
-    const result = await fetchStatus()
+    const result = await fetchStatus(generation, order)
+    if (!isCurrentRoute(generation, order) || !result) return
     if (!silent && result.state === 'processing') ElMessage.info('支付结果仍在确认中')
   } catch (error) {
-    if (!silent) ElMessage.error(error?.message || '支付状态查询失败，请稍后重试')
-  } finally { refreshing.value = false }
+    if (!silent && isCurrentRoute(generation, order)) ElMessage.error(error?.message || '支付状态查询失败，请稍后重试')
+  } finally {
+    if (isCurrentRoute(generation, order)) refreshing.value = false
+  }
 }
 
 async function submitPayment() {
-  if (paying.value) return
+  if (paying.value || !paymentStatus.value.canPay) return
+  const generation = routeGeneration
+  const order = orderNo.value
   paying.value = true
   queryError.value = ''
   let paymentNo = ''
+  let paymentMayExist = false
   try {
-    const created = await createPayment({ orderNo: orderNo.value, payType: Number(payType.value) })
+    const created = await createPayment({ orderNo: order, payType: Number(payType.value) })
+    if (!isCurrentRoute(generation, order)) return
     paymentNo = extractPaymentNo(created)
     if (!paymentNo) throw new Error('支付单创建成功，但未返回支付单号')
-    paymentStatus.value = normalizePaymentStatus({ payment: { paymentNo, payType: payType.value, status: 0 } })
+    paymentMayExist = true
+    commitStatus(normalizePaymentStatus({ payment: { paymentNo, payType: payType.value, status: 0 } }))
     await confirmPayment({ paymentNo })
+    if (!isCurrentRoute(generation, order)) return
     ElMessage.info('支付已提交，正在确认结果')
   } catch (error) {
-    paymentStatus.value = normalizePaymentStatus({ payment: { payType: payType.value, status: 2, statusName: '支付失败' } })
-    ElMessage.error(error?.message || '支付未完成，请稍后重试')
+    if (!isCurrentRoute(generation, order)) return
+    if (paymentMayExist || paymentNo) {
+      commitStatus(normalizePaymentStatus({ payment: { paymentNo, payType: payType.value, status: 0 } }))
+      startPolling(generation, order)
+      ElMessage.warning(error?.message || '支付请求已提交，结果暂时无法确认，页面将继续自动查询')
+    } else {
+      paymentStatus.value = normalizePaymentStatus({ payment: { payType: payType.value, status: 2, statusName: '支付失败' } })
+      ElMessage.error(error?.message || '支付未完成，请稍后重试')
+    }
     paying.value = false
     return
   }
 
   try {
-    const result = await fetchStatus()
+    const result = await fetchStatus(generation, order)
+    if (!isCurrentRoute(generation, order) || !result) return
     if (result.state === 'paid') ElMessage.success('支付成功')
-    else if (result.state === 'processing') startPolling()
+    else if (result.state === 'processing') startPolling(generation, order)
   } catch {
-    paymentStatus.value = normalizePaymentStatus({ payment: { paymentNo, payType: payType.value, status: 0 } })
-    startPolling()
-    ElMessage.warning('支付已提交，结果查询暂时失败，页面将继续自动查询')
-  } finally { paying.value = false }
+    if (isCurrentRoute(generation, order)) {
+      commitStatus(normalizePaymentStatus({ payment: { paymentNo, payType: payType.value, status: 0 } }))
+      startPolling(generation, order)
+      ElMessage.warning('支付已提交，结果查询暂时失败，页面将继续自动查询')
+    }
+  } finally {
+    if (isCurrentRoute(generation, order)) paying.value = false
+  }
 }
 
-onMounted(loadStatus)
+watch(orderNo, (nextOrderNo) => {
+  resetOrderState()
+  if (!nextOrderNo) {
+    checking.value = false
+    queryError.value = '缺少订单编号，请返回订单列表后重试'
+    return
+  }
+  loadStatus(routeGeneration, nextOrderNo)
+}, { immediate: true })
 onUnmounted(stopPolling)
 </script>
 

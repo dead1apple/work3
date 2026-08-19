@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   PAYMENT_METHODS,
   extractPaymentNo,
+  mergePaymentStatus,
   normalizePaymentStatus,
 } from '../src/utils/payment.js'
 
@@ -42,6 +43,17 @@ test('recognizes processing and failed payment records', () => {
   assert.equal(normalizePaymentStatus({ payment: { status: 0 } }).state, 'processing')
   assert.equal(normalizePaymentStatus({ payment: { status: 2, statusName: '支付失败' } }).state, 'failed')
   assert.equal(normalizePaymentStatus({ payment: { status: 'FAILED' } }).state, 'failed')
+})
+
+test('paid status cannot regress to processing', () => {
+  const paid = normalizePaymentStatus({ isPaid: true, payment: { status: 1 } })
+  const processing = normalizePaymentStatus({ payment: { status: 0 } })
+  assert.equal(mergePaymentStatus(paid, processing).state, 'paid')
+})
+
+test('a known payment number plus confirmation uncertainty remains processing', () => {
+  const status = normalizePaymentStatus({ payment: { paymentNo: 'P1', status: 0 } })
+  assert.equal(status.canPay, false)
 })
 
 test('extracts a payment number from supported create-payment responses', () => {

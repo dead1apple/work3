@@ -48,3 +48,10 @@ export function normalizePaymentStatus(payload) {
     payType: null,
   }
 }
+
+export function mergePaymentStatus(current, incoming) {
+  if (current?.state === 'paid') return current
+  if (incoming?.state === 'paid') return incoming
+  if (current?.state === 'processing' && current.paymentNo && incoming?.state === 'unpaid') return current
+  return incoming || current || normalizePaymentStatus(null)
+}
