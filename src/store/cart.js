@@ -1,6 +1,8 @@
 import { defineStore } from 'pinia'
 import { addCart, deleteCart, getCartList, selectAllCartItems, setCartItemSelected, updateCart } from '../api/index.js'
-import { calculateCartTotals, mergeCartItem, normalizeCartList } from '../utils/cart.js'
+import { calculateCartTotals, getCanonicalCartItem, normalizeCartList } from '../utils/cart.js'
+
+const SERVER_CART_ITEM_REQUIRED = '购物车已更新，但服务端未返回可操作的购物车记录，请刷新后重试'
 
 export const useCartStore = defineStore('cart', {
   state: () => ({ cartList: [] }),
@@ -11,9 +13,14 @@ export const useCartStore = defineStore('cart', {
   },
   actions: {
     async fetchCartList() {
-      const result = await getCartList()
-      this.cartList = normalizeCartList(result)
-      return this.cartList
+      try {
+        const result = await getCartList()
+        this.cartList = normalizeCartList(result)
+        return this.cartList
+      } catch (error) {
+        this.cartList = []
+        throw error
+      }
     },
     async addToCart(product) {
       const skuId = product.skuId ?? product.id
@@ -23,22 +30,33 @@ export const useCartStore = defineStore('cart', {
       if (existing) {
         const nextQuantity = Math.min(99, existing.quantity + quantity)
         const updated = await this.updateQuantity(existing.id, nextQuantity)
-        existing.checked = true
+        if (!existing.checked) {
+          await setCartItemSelected(existing.id, 1)
+          existing.checked = true
+        }
         return updated || existing
       }
       const result = await addCart({ skuId, quantity })
-      const created = normalizeCartList([{
-        ...(result?.cartItem || result || {}),
-        id: result?.id || result?.cartItemId || `${skuId}-${Date.now()}`,
-        skuId,
-        quantity,
-        selected: 1,
-        productName: product.name,
-        image: product.image,
-        price: product.price,
-        skuName: product.skuName,
+      let created = getCanonicalCartItem(result, skuId)
+      let fetchedCanonicalCart = false
+      if (!created) {
+        const serverCartList = await this.fetchCartList()
+        created = serverCartList.find((item) => item.skuId === skuId) || null
+        fetchedCanonicalCart = true
+      }
+      if (!created) throw new Error(SERVER_CART_ITEM_REQUIRED)
+      created = normalizeCartList([{
+        ...created,
+        quantity: created.quantity || quantity,
+        selected: created.checked ? 1 : 0,
+        productName: created.name || product.name,
+        image: created.image || product.image,
+        price: created.price ?? product.price,
+        skuName: created.skuName || product.skuName,
       }])[0]
-      this.cartList = mergeCartItem(this.cartList, created)
+      if (!fetchedCanonicalCart) {
+        this.cartList = [...this.cartList.filter((item) => item.skuId !== skuId), created]
+      }
       return created
     },
     async updateQuantity(id, quantity) {
@@ -52,10 +70,9 @@ export const useCartStore = defineStore('cart', {
       await deleteCart(id)
       this.cartList = this.cartList.filter((item) => item.id !== id)
     },
-    async toggleCheck(id) {
+    async toggleCheck(id, checked) {
       const item = this.cartList.find((entry) => entry.id === id)
       if (!item) return
-      const checked = !item.checked
       await setCartItemSelected(id, checked ? 1 : 0)
       item.checked = checked
     },
@@ -67,5 +84,4 @@ export const useCartStore = defineStore('cart', {
       this.cartList = []
     },
   },
-  persist: true,
 })

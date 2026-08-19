@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { calculateCartTotals, mergeCartItem, normalizeCartList } from '../src/utils/cart.js'
+import { calculateCartTotals, getCanonicalCartItem, mergeCartItem, normalizeCartList } from '../src/utils/cart.js'
 
 test('normalizes the backend cart response into display-ready items', () => {
   const items = normalizeCartList([{ id: 7, quantity: 2, selected: 1, sku: { id: 101, skuName: '黑色', price: 99, image: '/sku.png' }, product: { name: '耳机', mainImage: '/product.png' } }])
@@ -35,4 +35,9 @@ test('rejects cart records with IDs outside the safe integer range', () => {
   assert.equal(oversizedId.isValid, false)
   assert.equal(oversizedSkuId.skuId, null)
   assert.equal(oversizedSkuId.isValid, false)
+})
+
+test('canonical cart item helper never synthesizes an id from an empty create response', () => {
+  assert.equal(getCanonicalCartItem({}, 9), null)
+  assert.equal(getCanonicalCartItem({ cartItem: { id: 7, skuId: 9 } }, 9).id, 7)
 })

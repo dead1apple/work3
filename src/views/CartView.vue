@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '../store/cart.js'
@@ -8,22 +8,46 @@ const cartStore = useCartStore()
 const router = useRouter()
 const allChecked = computed(() => cartStore.cartList.length > 0 && cartStore.cartList.every((item) => item.checked))
 const formatPrice = (value) => Number(value || 0).toFixed(2)
+const initialLoading = ref(false)
+const loadError = ref('')
+const quantityUpdatingIds = ref(new Set())
+
+const isQuantityUpdating = (id) => quantityUpdatingIds.value.has(id)
+const setQuantityUpdating = (id, updating) => {
+  const next = new Set(quantityUpdatingIds.value)
+  if (updating) next.add(id)
+  else next.delete(id)
+  quantityUpdatingIds.value = next
+}
 
 const loadCart = async () => {
+  initialLoading.value = true
+  loadError.value = ''
   try {
     await cartStore.fetchCartList()
   } catch (error) {
-    ElMessage.error(error.message || '购物车加载失败，已保留本地数据')
+    loadError.value = error.message || '购物车加载失败，请检查网络后重试'
+  } finally {
+    initialLoading.value = false
   }
 }
 
-const changeQuantity = async (item) => {
+const retryLoadCart = () => {
+  loadCart()
+}
+
+const changeQuantity = async (item, currentValue, previousValue) => {
+  if (isQuantityUpdating(item.id)) return
+  setQuantityUpdating(item.id, true)
   try {
-    await cartStore.updateQuantity(item.id, item.quantity)
+    await cartStore.updateQuantity(item.id, currentValue)
     ElMessage.success('数量已更新')
   } catch (error) {
+    item.quantity = previousValue
     ElMessage.error(error.message || '数量更新失败')
     await loadCart()
+  } finally {
+    setQuantityUpdating(item.id, false)
   }
 }
 
@@ -36,9 +60,9 @@ const removeItem = async (item) => {
   }
 }
 
-const toggleItem = async (item) => {
+const toggleItem = async (item, checked) => {
   try {
-    await cartStore.toggleCheck(item.id)
+    await cartStore.toggleCheck(item.id, checked)
   } catch (error) {
     ElMessage.error(error.message || '选中状态更新失败')
   }
@@ -66,17 +90,28 @@ onMounted(loadCart)
 <template>
   <section class="cart-page">
     <div class="page-heading"><div><p class="eyebrow">MY BAG</p><h1>购物车</h1></div><span class="item-count">共 {{ cartStore.totalCount }} 件商品</span></div>
-    <el-empty v-if="!cartStore.cartList.length" description="购物车是空的，快去逛逛吧" />
+    <el-skeleton v-if="initialLoading" :rows="5" animated />
+    <el-result
+      v-else-if="loadError"
+      icon="warning"
+      title="购物车加载失败"
+      :sub-title="`${loadError}。请重试刷新当前账号的购物车。`"
+    >
+      <template #extra>
+        <el-button type="primary" :loading="initialLoading" @click="retryLoadCart">重试</el-button>
+      </template>
+    </el-result>
+    <el-empty v-else-if="!cartStore.cartList.length" description="购物车是空的，快去逛逛吧" />
     <template v-else>
       <el-table :data="cartStore.cartList" class="cart-table" row-key="id">
         <el-table-column label="商品" min-width="330">
           <template #default="{ row }"><div class="product-cell"><el-image class="product-image" :src="row.image" fit="cover" /><div><h2>{{ row.name }}</h2><p v-if="row.skuName">{{ row.skuName }}</p></div></div></template>
         </el-table-column>
         <el-table-column label="单价" width="130"><template #default="{ row }"><span class="unit-price">￥{{ formatPrice(row.price) }}</span></template></el-table-column>
-        <el-table-column label="数量" width="180"><template #default="{ row }"><el-input-number v-model="row.quantity" :min="1" :max="99" size="small" @change="changeQuantity(row)" /></template></el-table-column>
+        <el-table-column label="数量" width="180"><template #default="{ row }"><el-input-number v-model="row.quantity" :min="1" :max="99" size="small" :disabled="isQuantityUpdating(row.id)" @change="(currentValue, previousValue) => changeQuantity(row, currentValue, previousValue)" /></template></el-table-column>
         <el-table-column label="小计" width="140"><template #default="{ row }"><strong class="subtotal">￥{{ formatPrice(row.price * row.quantity) }}</strong></template></el-table-column>
         <el-table-column label="操作" width="100"><template #default="{ row }"><el-button link type="danger" size="small" @click="removeItem(row)">删除</el-button></template></el-table-column>
-        <el-table-column width="60" align="center"><template #header><el-checkbox :model-value="allChecked" @change="toggleAll" /></template><template #default="{ row }"><el-checkbox v-model="row.checked" @change="toggleItem(row)" /></template></el-table-column>
+        <el-table-column width="60" align="center"><template #header><el-checkbox :model-value="allChecked" @change="toggleAll" /></template><template #default="{ row }"><el-checkbox :model-value="row.checked" @change="(checked) => toggleItem(row, checked)" /></template></el-table-column>
       </el-table>
 
       <div class="cart-summary">

@@ -33,6 +33,20 @@ export const normalizeCartList = (payload) => {
   return readPayloadList(payload).map(normalizeCartItem)
 }
 
+export const getCanonicalCartItem = (result, skuId) => {
+  const requestedSkuId = toSafePositiveInteger(skuId)
+  if (requestedSkuId == null) return null
+
+  const source = result?.data ?? result ?? {}
+  const candidates = [source?.cartItem, source?.item, source]
+  for (const candidate of candidates) {
+    if (!candidate || Array.isArray(candidate) || typeof candidate !== 'object') continue
+    const normalized = normalizeCartItem(candidate)
+    if (normalized.id != null && normalized.skuId === requestedSkuId) return normalized
+  }
+  return null
+}
+
 export const mergeCartItem = (list, item) => {
   const next = list.map((entry) => ({ ...entry }))
   const index = next.findIndex((entry) => entry.skuId === item.skuId)

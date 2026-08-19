@@ -1,5 +1,5 @@
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
@@ -26,6 +26,11 @@ const handleSearch = () => {
   const value = keyword.value.trim()
   router.push({ path: '/products', query: value ? { keyword: value } : {} })
 }
+
+onMounted(() => {
+  if (!userStore.isLoggedIn) return
+  cartStore.fetchCartList().catch(() => {})
+})
 </script>
 
 <template>
