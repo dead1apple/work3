@@ -1,10 +1,5 @@
 import { expect } from '@playwright/test'
 
-const ignoredFailedRequest = (request) => {
-  const url = request.url()
-  return request.resourceType() === 'image' && /^https?:\/\//.test(url) && !url.includes('/api/')
-}
-
 export const installObservability = async (page) => {
   const errors = {
     console: [],
@@ -17,7 +12,7 @@ export const installObservability = async (page) => {
   })
   page.on('pageerror', (error) => errors.page.push(error.message))
   page.on('requestfailed', (request) => {
-    if (!ignoredFailedRequest(request)) errors.requests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`.trim())
+    errors.requests.push(`${request.method()} ${request.url()} ${request.failure()?.errorText || ''}`.trim())
   })
 
   return errors

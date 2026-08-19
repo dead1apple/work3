@@ -35,6 +35,20 @@ test('registration sends one code request and shows the retry countdown', async 
   expect(api.state.sendCodeCalls).toEqual([{ phone: '13800138000' }])
 })
 
+test('unknown guest api endpoints fail visibly with 501 instead of auth redirect', async ({ page, api }) => {
+  expect(api.state.loginCalls).toEqual([])
+  await page.goto('/home')
+  const response = await page.evaluate(async () => {
+    const result = await fetch('/api/user/info')
+    return { status: result.status, body: await result.json() }
+  })
+  api.observability.console = api.observability.console.filter((message) => !message.includes('status of 501'))
+  expect(response).toEqual({
+    status: 501,
+    body: { code: 501, msg: 'Unhandled mock endpoint: GET /api/user/info', data: null },
+  })
+})
+
 test('401 responses clear auth state and account cart data stays isolated', async ({ page, api }) => {
   await login(page, 'alice')
   await page.goto('/product/1001')

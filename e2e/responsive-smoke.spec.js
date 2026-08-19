@@ -9,15 +9,36 @@ const login = async (page) => {
   await expect(page).toHaveURL(/\/home$/)
 }
 
+const seedCart = async (page) => {
+  await page.goto('/product/1001')
+  await page.locator('.el-radio-button').filter({ hasText: '黑色' }).click()
+  await page.locator('.el-radio-button').filter({ hasText: '128G' }).click()
+  await page.getByRole('button', { name: '加入购物车' }).click()
+  await expect(page.getByText('已加入购物车')).toBeVisible()
+}
+
 test('responsive commerce pages render key actions without overflow and survive refresh/history', async ({ page, api }) => {
   expect(api.state.loginCalls).toEqual([])
   await login(page)
-  const paths = ['/home', '/products', '/product/1001', '/cart', '/checkout/cart', '/orders', '/payment/ORD-COMPLETE-1', '/orders/ORD-COMPLETE-1/review', '/address']
-  for (const path of paths) {
+  await seedCart(page)
+  const routes = [
+    { path: '/home', action: () => page.getByRole('button', { name: /查看详情/ }).first() },
+    { path: '/products', action: () => page.locator('.result-search').getByRole('button', { name: '搜索' }) },
+    { path: '/product/1001', action: () => page.getByRole('button', { name: '加入购物车' }) },
+    { path: '/cart', action: () => page.getByRole('button', { name: '去结算' }) },
+    { path: '/checkout/cart', action: () => page.getByRole('button', { name: '提交订单' }) },
+    { path: '/orders', action: () => page.getByRole('button', { name: '继续购物' }) },
+    { path: '/payment/ORD-PAY-1', action: () => page.getByRole('button', { name: '确认支付' }) },
+    { path: '/orders/ORD-COMPLETE-1/review', action: () => page.getByRole('button', { name: '发布评价' }) },
+    { path: '/address', action: () => page.getByRole('button', { name: '新增收货地址', exact: true }) },
+  ]
+  for (const { path, action } of routes) {
     await page.goto(path)
     await expectNoHorizontalOverflow(page)
+    await expect(action()).toBeVisible()
     await page.reload()
     await expectNoHorizontalOverflow(page)
+    await expect(action()).toBeVisible()
   }
 
   await page.goto('/home')

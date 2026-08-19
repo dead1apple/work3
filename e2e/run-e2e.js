@@ -6,20 +6,27 @@ const host = '127.0.0.1'
 const port = 4173
 const readyUrl = `http://${host}:${port}/home`
 
-const waitForServer = async () => {
+const checkServer = () => new Promise((resolve) => {
+  const request = http.get(readyUrl, (response) => {
+    response.resume()
+    resolve(response.statusCode && response.statusCode < 500)
+  })
+  request.on('error', () => resolve(false))
+  request.setTimeout(1000, () => {
+    request.destroy()
+    resolve(false)
+  })
+})
+
+const assertPortFree = async () => {
+  if (await checkServer()) throw new Error(`${readyUrl} is already responding before the owned Vite server started`)
+}
+
+const waitForServer = async (server) => {
   const deadline = Date.now() + 30_000
   while (Date.now() < deadline) {
-    const ready = await new Promise((resolve) => {
-      const request = http.get(readyUrl, (response) => {
-        response.resume()
-        resolve(response.statusCode && response.statusCode < 500)
-      })
-      request.on('error', () => resolve(false))
-      request.setTimeout(1000, () => {
-        request.destroy()
-        resolve(false)
-      })
-    })
+    if (server.exitCode != null) throw new Error(`Owned Vite server exited before readiness with code ${server.exitCode}`)
+    const ready = await checkServer()
     if (ready) return
     await delay(250)
   }
@@ -56,13 +63,15 @@ const stopServer = async (server) => {
   server.kill('SIGKILL')
 }
 
-const server = spawn(process.execPath, ['./node_modules/vite/bin/vite.js', '--host', host, '--port', String(port)], {
+await assertPortFree()
+
+const server = spawn(process.execPath, ['./node_modules/vite/bin/vite.js', '--host', host, '--port', String(port), '--strictPort'], {
   stdio: 'inherit',
   shell: false,
 })
 
 try {
-  await waitForServer()
+  await waitForServer(server)
   const result = await run('npx', ['playwright', 'test', ...process.argv.slice(2)], {
     env: { ...process.env, PW_SKIP_WEB_SERVER: '1' },
   })

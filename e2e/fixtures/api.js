@@ -8,10 +8,11 @@ const image = (label) => {
   return `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`
 }
 
+const wrapCategory = (id, name, children = []) => ({ category: { id, name }, children })
 const categories = [
-  { id: 10, name: '手机数码', children: [{ id: 11, name: '手机' }, { id: 12, name: '电脑' }] },
-  { id: 20, name: '家用电器', children: [{ id: 21, name: '冰箱' }, { id: 22, name: '洗衣机' }] },
-  { id: 30, name: '运动户外', children: [{ id: 31, name: '跑步装备' }] },
+  wrapCategory(10, '手机数码', [wrapCategory(11, '手机'), wrapCategory(12, '电脑')]),
+  wrapCategory(20, '家用电器', [wrapCategory(21, '冰箱'), wrapCategory(22, '洗衣机')]),
+  wrapCategory(30, '运动户外', [wrapCategory(31, '跑步装备')]),
 ]
 const brands = [{ id: 1, name: 'JD Select' }, { id: 2, name: 'Acme' }]
 const products = [
@@ -128,6 +129,9 @@ const createState = () => {
     addCartCalls: [],
     selectCalls: [],
     quantityCalls: [],
+    favoriteCalls: [],
+    deleteCartCalls: [],
+    addressCalls: [],
     orderCreateCalls: [],
     paymentCreateCalls: [],
     paymentConfirmCalls: [],
@@ -141,6 +145,7 @@ const createState = () => {
     ],
     orders: new Map(),
     paymentPollingRound: new Map(),
+    paymentCreatedOrderNos: new Set(),
   }
   const completedOrder = makeOrder({
     orderNo: 'ORD-COMPLETE-1',
@@ -172,8 +177,28 @@ const listProducts = (query) => {
   if (keyword) list = list.filter((product) => product.name.includes(keyword) || product.subtitle.includes(keyword))
   if (categoryId) list = list.filter((product) => product.categoryId === categoryId)
   if (brandId) list = list.filter((product) => product.brandId === brandId)
-  return { list: clone(list), total: list.length }
+  return { list: clone(list.map((product) => ({ product, minPrice: product.minPrice ?? product.price }))), total: list.length }
 }
+
+const knownProtectedRoute = (path, method) => (
+  (path.match(/^\/favorites\/check\/\d+$/) && method === 'GET') ||
+  (path.match(/^\/favorites\/\d+$/) && (method === 'POST' || method === 'DELETE')) ||
+  (path === '/cart' && (method === 'GET' || method === 'POST')) ||
+  (path.match(/^\/cart\/\d+\/selected$/) && method === 'PUT') ||
+  (path === '/cart/select-all' && method === 'PUT') ||
+  (path.match(/^\/cart\/\d+\/quantity$/) && method === 'PUT') ||
+  (path.match(/^\/cart\/\d+$/) && method === 'DELETE') ||
+  (path === '/address/list' && method === 'GET') ||
+  (path === '/address' && (method === 'POST' || method === 'PUT')) ||
+  (path === '/coupons/mine' && method === 'GET') ||
+  (path === '/coupons/available' && method === 'GET') ||
+  (path === '/orders' && (method === 'POST' || method === 'GET')) ||
+  (path.match(/^\/orders\/[^/]+$/) && method === 'GET') ||
+  (path === '/orders/review' && method === 'POST') ||
+  (path === '/pay/status' && method === 'GET') ||
+  (path === '/pay/create' && method === 'POST') ||
+  (path === '/pay/confirm' && method === 'POST')
+)
 
 const routeApi = async ({ method, path, query, request, state }) => {
   if (path === '/auth/send-code' && method === 'POST') {
@@ -196,12 +221,23 @@ const routeApi = async ({ method, path, query, request, state }) => {
   if (path.match(/^\/products\/\d+$/) && method === 'GET') return ok(clone(findProduct(path.split('/').pop())))
   if (path.match(/^\/products\/\d+\/reviews$/) && method === 'GET') return ok({ list: clone(productReviews), total: productReviews.length })
 
+  if (!knownProtectedRoute(path, method)) return null
   if (!requireAuth(state, request)) return fail(401, '未登录')
   const account = currentAccount(state, request)
 
   if (path.match(/^\/favorites\/check\/\d+$/) && method === 'GET') return ok(account.favoriteProductIds.has(Number(path.split('/').pop())))
-  if (path.match(/^\/favorites\/\d+$/) && method === 'POST') { account.favoriteProductIds.add(Number(path.split('/').pop())); return ok(true) }
-  if (path.match(/^\/favorites\/\d+$/) && method === 'DELETE') { account.favoriteProductIds.delete(Number(path.split('/').pop())); return ok(true) }
+  if (path.match(/^\/favorites\/\d+$/) && method === 'POST') {
+    const productId = Number(path.split('/').pop())
+    state.favoriteCalls.push({ method, productId })
+    account.favoriteProductIds.add(productId)
+    return ok(true)
+  }
+  if (path.match(/^\/favorites\/\d+$/) && method === 'DELETE') {
+    const productId = Number(path.split('/').pop())
+    state.favoriteCalls.push({ method, productId })
+    account.favoriteProductIds.delete(productId)
+    return ok(true)
+  }
   if (path === '/cart' && method === 'GET') {
     if (state.forceCart401) return fail(401, '登录已过期')
     return ok(clone(account.cart))
@@ -250,12 +286,14 @@ const routeApi = async ({ method, path, query, request, state }) => {
   }
   if (path.match(/^\/cart\/\d+$/) && method === 'DELETE') {
     const id = Number(path.split('/').pop())
+    state.deleteCartCalls.push({ id })
     account.cart = account.cart.filter((entry) => entry.id !== id)
     return ok(true)
   }
   if (path === '/address/list' && method === 'GET') return ok(clone(state.addresses))
   if (path === '/address' && method === 'POST') {
     const body = await parseBody(request)
+    state.addressCalls.push({ method, receiverName: body.receiverName, receiverPhone: body.receiverPhone, detailAddress: body.detailAddress, isDefault: body.isDefault })
     const address = createAddress({ ...body, id: state.nextAddressId++ })
     if (address.isDefault) state.addresses.forEach((item) => { item.isDefault = 0 })
     state.addresses.push(address)
@@ -263,6 +301,7 @@ const routeApi = async ({ method, path, query, request, state }) => {
   }
   if (path === '/address' && method === 'PUT') {
     const body = await parseBody(request)
+    state.addressCalls.push({ method, id: body.id, receiverName: body.receiverName })
     const index = state.addresses.findIndex((item) => item.id === Number(body.id))
     if (index !== -1) state.addresses[index] = { ...state.addresses[index], ...body }
     return ok(clone(state.addresses[index]))
@@ -303,12 +342,14 @@ const routeApi = async ({ method, path, query, request, state }) => {
     const round = (state.paymentPollingRound.get(orderNo) || 0) + 1
     state.paymentPollingRound.set(orderNo, round)
     const order = state.orders.get(orderNo)
-    if (round >= 2 && order) order.status = 1
-    return ok(round >= 2 ? { isPaid: true, payment: { paymentNo: `PAY-${orderNo}`, payType: 1, status: 1 } } : { payment: null, status: 0 })
+    const isPaid = state.paymentCreatedOrderNos.has(orderNo) && round >= 2
+    if (isPaid && order) order.status = 1
+    return ok(isPaid ? { isPaid: true, payment: { paymentNo: `PAY-${orderNo}`, payType: 1, status: 1 } } : { payment: null, status: 0 })
   }
   if (path === '/pay/create' && method === 'POST') {
     const dto = { orderNo: query.get('orderNo'), payType: Number(query.get('payType')) }
     state.paymentCreateCalls.push(dto)
+    state.paymentCreatedOrderNos.add(dto.orderNo)
     return ok({ paymentNo: `PAY-${dto.orderNo}` })
   }
   if (path === '/pay/confirm' && method === 'POST') {
