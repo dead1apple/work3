@@ -1,7 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { buildBuyNowPayload, createCheckoutSubmissionOutcome, extractOrderNo, normalizeBuyNowItem, parseBuyNowQuery } from '../src/utils/checkout.js'
+import {
+  buildBuyNowPayload,
+  completeCheckoutSuccess,
+  createCheckoutSubmissionOutcome,
+  extractOrderNo,
+  normalizeBuyNowItem,
+  parseBuyNowQuery,
+} from '../src/utils/checkout.js'
 
 test('parses and constrains buy-now query parameters', () => {
   assert.deepEqual(parseBuyNowQuery({ productId: '8', skuId: '81', quantity: '120' }), {
@@ -60,4 +67,27 @@ test('successful checkout response is terminal even without an order number', ()
     orderNo: '',
     terminal: true,
   })
+})
+
+test('checkout success remains terminal when payment navigation fails', async () => {
+  const events = []
+
+  const outcome = await completeCheckoutSuccess({
+    result: { orderNo: 'JD2026009' },
+    payableAmount: 109,
+    onTerminal: (terminalOutcome) => events.push(['terminal', terminalOutcome.terminal, terminalOutcome.orderNo]),
+    replace: async (target) => {
+      events.push(['navigate', target.path, target.query.amount])
+      throw new Error('navigation blocked')
+    },
+    notify: {
+      success: (message) => events.push(['success', message]),
+      warning: (message) => events.push(['warning', message]),
+    },
+  })
+
+  assert.equal(outcome.terminal, true)
+  assert.equal(outcome.navigationFailed, true)
+  assert.deepEqual(events[0], ['terminal', true, 'JD2026009'])
+  assert.deepEqual(events.at(-1), ['warning', '订单已创建，但页面跳转失败，请前往我的订单查看'])
 })

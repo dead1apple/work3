@@ -1,7 +1,17 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { filterCouponsByStatus, filterUsableCoupons, getCouponDiscountAmount, getCouponValueText, normalizeCouponList } from '../src/utils/coupon.js'
+import {
+  buildCouponRouteQuery,
+  filterCouponsByStatus,
+  filterUsableCoupons,
+  getCouponDiscountAmount,
+  getCouponValueText,
+  normalizeCouponList,
+  normalizeCouponRouteState,
+  runActiveCouponRouteLoad,
+  shouldReplaceCouponRoute,
+} from '../src/utils/coupon.js'
 
 test('normalizes available coupon templates for claiming', () => {
   const result = normalizeCouponList({
@@ -65,4 +75,29 @@ test('formats and calculates percentage discount coupons', () => {
 test('returns no discount for malformed percentage rates', () => {
   assert.equal(getCouponDiscountAmount({ type: 2, amount: -1 }, 100), 0)
   assert.equal(getCouponDiscountAmount({ type: 2, amount: Infinity }, 100), 0)
+})
+
+test('coupon route query sync avoids replace loops and strips inactive status', () => {
+  const current = { tab: 'mine', status: '0' }
+  assert.equal(shouldReplaceCouponRoute(current, buildCouponRouteQuery(current, 'mine', '0')), false)
+
+  const availableQuery = buildCouponRouteQuery({ tab: 'mine', status: '2', ref: 'account' }, 'available', '2')
+  assert.deepEqual(availableQuery, { tab: 'available', ref: 'account' })
+  assert.equal(shouldReplaceCouponRoute({ tab: 'mine', status: '2', ref: 'account' }, availableQuery), true)
+})
+
+test('coupon route loading calls only the active normalized tab', async () => {
+  const calls = []
+  await runActiveCouponRouteLoad({
+    routeState: normalizeCouponRouteState({ tab: 'available', status: '1' }),
+    loadAvailable: async () => calls.push(['available']),
+    loadMine: async () => calls.push(['mine']),
+  })
+  await runActiveCouponRouteLoad({
+    routeState: normalizeCouponRouteState({ tab: 'mine', status: '0' }),
+    loadAvailable: async () => calls.push(['available']),
+    loadMine: async (status) => calls.push(['mine', status]),
+  })
+
+  assert.deepEqual(calls, [['available'], ['mine', '0']])
 })

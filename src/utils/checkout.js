@@ -64,3 +64,27 @@ export function createCheckoutSubmissionOutcome(payload) {
     terminal: true,
   }
 }
+
+export async function completeCheckoutSuccess({
+  result,
+  payableAmount,
+  onTerminal,
+  replace,
+  notify,
+}) {
+  const outcome = createCheckoutSubmissionOutcome(result)
+  onTerminal?.(outcome)
+  try {
+    if (!outcome.orderNo) {
+      notify.warning('订单已创建，但未返回订单号，请在我的订单中查看')
+      await replace('/orders')
+      return { ...outcome, navigationFailed: false }
+    }
+    notify.success('订单提交成功，即将前往收银台')
+    await replace({ path: `/payment/${outcome.orderNo}`, query: { amount: Number(payableAmount || 0).toFixed(2) } })
+    return { ...outcome, navigationFailed: false }
+  } catch {
+    notify.warning('订单已创建，但页面跳转失败，请前往我的订单查看')
+    return { ...outcome, navigationFailed: true }
+  }
+}

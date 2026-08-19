@@ -4,9 +4,10 @@ import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { buyNow, createOrder, getAddressList, getMyCoupons, getProductDetail } from '../api/index.js'
 import { useCartStore } from '../store/cart.js'
-import { buildBuyNowPayload, createCheckoutSubmissionOutcome, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
+import { buildBuyNowPayload, completeCheckoutSuccess, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
 import { calculateCheckoutTotals, formatMoney, normalizeAddressList } from '../utils/commerce.js'
 import { filterUsableCoupons, getCouponValueText, normalizeCouponList } from '../utils/coupon.js'
+import { createLatestRequestGuard } from '../utils/requestState.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -25,7 +26,7 @@ const couponId = ref(null)
 const remark = ref('')
 const orderSubmitted = ref(false)
 const committedLoadSequence = ref(0)
-let loadSequence = 0
+const loadRequests = createLatestRequestGuard()
 
 const isBuyNow = computed(() => route.params.mode === 'buy-now')
 const selectedAddress = computed(() => addresses.value.find((item) => item.id === addressId.value))
@@ -39,7 +40,7 @@ const canSubmit = computed(() => Boolean(
   !loadError.value &&
   !submitting.value &&
   !orderSubmitted.value &&
-  committedLoadSequence.value === loadSequence &&
+  committedLoadSequence.value === loadRequests.current &&
   addressId.value &&
   items.value.length &&
   !cartUnavailable.value &&
@@ -98,12 +99,12 @@ const loadCartCheckout = async () => {
 }
 
 const loadCheckout = async () => {
-  const sequence = ++loadSequence
   const snapshot = {
     fullPath: route.fullPath,
     mode: route.params.mode,
     query: { ...route.query },
   }
+  const request = loadRequests.start(snapshot.fullPath)
   loading.value = true
   loadError.value = false
   loadErrorMessage.value = ''
@@ -123,22 +124,24 @@ const loadCheckout = async () => {
         ? await loadCartCheckout()
         : null
     if (!nextData) throw new Error('不支持的结算方式')
-    if (sequence !== loadSequence || route.fullPath !== snapshot.fullPath) return
-    addresses.value = nextData.addresses
-    addressId.value = nextData.addressId
-    items.value = nextData.items
-    coupons.value = nextData.coupons
-    couponId.value = nextData.couponId
-    cartUnavailable.value = nextData.cartUnavailable
-    protocolDataInvalid.value = nextData.protocolDataInvalid
-    committedLoadSequence.value = sequence
-    nextData.warnings.forEach((message) => ElMessage.warning(message))
+    request.commit(route.fullPath, () => {
+      addresses.value = nextData.addresses
+      addressId.value = nextData.addressId
+      items.value = nextData.items
+      coupons.value = nextData.coupons
+      couponId.value = nextData.couponId
+      cartUnavailable.value = nextData.cartUnavailable
+      protocolDataInvalid.value = nextData.protocolDataInvalid
+      committedLoadSequence.value = request.sequence
+      nextData.warnings.forEach((message) => ElMessage.warning(message))
+    })
   } catch (error) {
-    if (sequence !== loadSequence || route.fullPath !== snapshot.fullPath) return
-    loadError.value = true
-    loadErrorMessage.value = error?.message || '结算信息加载失败，请稍后重试'
+    request.commit(route.fullPath, () => {
+      loadError.value = true
+      loadErrorMessage.value = error?.message || '结算信息加载失败，请稍后重试'
+    })
   } finally {
-    if (sequence === loadSequence && route.fullPath === snapshot.fullPath) loading.value = false
+    request.finish(route.fullPath, () => { loading.value = false })
   }
 }
 
@@ -184,21 +187,14 @@ const submitOrder = async () => {
     return
   }
 
-  const outcome = createCheckoutSubmissionOutcome(result)
-  orderSubmitted.value = outcome.terminal
-  try {
-    if (!outcome.orderNo) {
-      ElMessage.warning('订单已创建，但未返回订单号，请在我的订单中查看')
-      await router.replace('/orders')
-      return
-    }
-    ElMessage.success('订单提交成功，即将前往收银台')
-    await router.replace({ path: `/payment/${outcome.orderNo}`, query: { amount: totals.value.payableAmount.toFixed(2) } })
-  } catch (error) {
-    ElMessage.warning('订单已创建，但页面跳转失败，请前往我的订单查看')
-  } finally {
-    submitting.value = false
-  }
+  await completeCheckoutSuccess({
+    result,
+    payableAmount: totals.value.payableAmount,
+    onTerminal: (outcome) => { orderSubmitted.value = outcome.terminal },
+    replace: router.replace.bind(router),
+    notify: ElMessage,
+  })
+  submitting.value = false
 }
 
 watch(() => route.fullPath, loadCheckout, { immediate: true })

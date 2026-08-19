@@ -3,7 +3,7 @@ import { computed, nextTick, onMounted, ref } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { addAddress, deleteAddress, getAddressList, setDefaultAddress, updateAddress } from '../api/index.js'
 import { normalizeAddressList } from '../utils/commerce.js'
-import { buildAddressPayload } from '../utils/address.js'
+import { runAddressSaveWorkflow } from '../utils/address.js'
 import { getCities, getDistricts, getProvinces } from '../utils/regions.js'
 
 const addressForm = ref()
@@ -46,18 +46,19 @@ async function openDialog(item) { editingId.value = item?.id || null; form.value
 function onProvinceChange() { form.value.city = ''; form.value.district = ''; addressForm.value?.clearValidate(['city', 'district']) }
 function onCityChange() { form.value.district = ''; addressForm.value?.clearValidate('district') }
 async function saveAddress() {
-  if (saving.value) return
-  const valid = await addressForm.value?.validate().catch(() => false)
-  if (!valid) return
-  saving.value = true
-  try {
-    const payload = buildAddressPayload(form.value)
-    if (editingId.value) await updateAddress({ id: editingId.value, ...payload })
-    else await addAddress(payload)
-    ElMessage.success(editingId.value ? '收货地址已更新' : '收货地址已添加')
-    dialogVisible.value = false
-    await loadAddresses()
-  } catch (error) { ElMessage.error(error?.message || '保存失败，请稍后重试') } finally { saving.value = false }
+  await runAddressSaveWorkflow({
+    isSaving: () => saving.value,
+    setSaving: (value) => { saving.value = value },
+    validate: () => addressForm.value?.validate(),
+    getForm: () => form.value,
+    getEditingId: () => editingId.value,
+    addAddress,
+    updateAddress,
+    onSuccess: (mode) => ElMessage.success(mode === 'update' ? '收货地址已更新' : '收货地址已添加'),
+    closeDialog: () => { dialogVisible.value = false },
+    reload: loadAddresses,
+    onError: (error) => ElMessage.error(error?.message || '保存失败，请稍后重试'),
+  })
 }
 async function makeDefault(item) {
   if (item.isDefault || writingKey.value) return

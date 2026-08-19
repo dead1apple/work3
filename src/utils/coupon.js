@@ -8,6 +8,32 @@ const STATUS_TEXT = {
   2: '已过期',
 }
 
+export function normalizeCouponRouteState(query = {}) {
+  return {
+    tab: query.tab === 'mine' ? 'mine' : 'available',
+    status: ['0', '1', '2'].includes(String(query.status)) ? String(query.status) : '',
+  }
+}
+
+export function buildCouponRouteQuery(routeQuery = {}, activeTab = 'available', status = '') {
+  const query = { ...routeQuery, tab: activeTab === 'mine' ? 'mine' : 'available' }
+  if (query.tab === 'mine' && status !== '') query.status = String(status)
+  else delete query.status
+  return query
+}
+
+const stringifyQuery = (query = {}) => JSON.stringify(
+  Object.fromEntries(Object.entries(query).sort(([left], [right]) => left.localeCompare(right)).map(([key, value]) => [key, String(value)])),
+)
+
+export function shouldReplaceCouponRoute(currentQuery, nextQuery) {
+  return stringifyQuery(currentQuery) !== stringifyQuery(nextQuery)
+}
+
+export function runActiveCouponRouteLoad({ routeState, loadAvailable, loadMine }) {
+  return routeState.tab === 'available' ? loadAvailable() : loadMine(routeState.status)
+}
+
 export function normalizeCouponList(payload, mode = 'available') {
   const source = unwrapData(payload)
   const list = readPayloadList(payload).map((item) => {
