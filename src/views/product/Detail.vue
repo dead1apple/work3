@@ -6,7 +6,7 @@ import { addFavorite, checkFavorite, getProductDetail, getProductReviews, remove
 import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
 import { normalizeFavoriteState } from '../../utils/favorite.js'
-import { findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail } from '../../utils/productDetail.js'
+import { createRequestGenerationGate, findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail } from '../../utils/productDetail.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -19,7 +19,7 @@ const quantity = ref(1)
 const activeTab = ref('detail')
 const isFavorite = ref(false)
 const favoriteLoading = ref(false)
-let loadSequence = 0
+const loadGate = createRequestGenerationGate()
 const selectedSku = computed(() => {
   if (!product.value?.skuList?.length) return null
   return findSkuBySelection(product.value.skuList, selectedOptions.value)
@@ -53,26 +53,26 @@ const resetProductState = () => {
 }
 
 const loadProduct = async (routeProductId) => {
-  const sequence = ++loadSequence
+  const generation = loadGate.next()
   resetProductState()
   loading.value = true
   try {
     const id = Number(routeProductId)
     if (!Number.isFinite(id)) throw new Error('invalid product id')
     const detailResult = await getProductDetail(id)
-    if (sequence !== loadSequence) return
+    if (!generation.isCurrent()) return
     const nextProduct = normalizeProductDetail(detailResult)
     if (!nextProduct.id) throw new Error('product not found')
-    product.value = nextProduct
-    selectedOptions.value = getInitialSkuSelection(nextProduct.skuList)
+    generation.commit(() => {
+      product.value = nextProduct
+      selectedOptions.value = getInitialSkuSelection(nextProduct.skuList)
+    })
     if (userStore.isLoggedIn) {
       try {
         const favoriteResult = await checkFavorite(id)
-        if (sequence !== loadSequence) return
-        isFavorite.value = normalizeFavoriteState(favoriteResult)
+        if (!generation.commit(() => { isFavorite.value = normalizeFavoriteState(favoriteResult) })) return
       } catch {
-        if (sequence !== loadSequence) return
-        isFavorite.value = false
+        if (!generation.commit(() => { isFavorite.value = false })) return
       }
     } else {
       isFavorite.value = false
@@ -80,20 +80,22 @@ const loadProduct = async (routeProductId) => {
 
     try {
       const reviewResult = await getProductReviews(id, { page: 1, size: 10 })
-      if (sequence !== loadSequence) return
+      if (!generation.isCurrent()) return
       const reviews = Array.isArray(reviewResult) ? reviewResult : reviewResult?.list || []
-      product.value.reviews = reviews.map(normalizeReview)
-      product.value.reviewCount = reviewResult?.total ?? product.value.reviews.length
+      generation.commit(() => {
+        product.value.reviews = reviews.map(normalizeReview)
+        product.value.reviewCount = reviewResult?.total ?? product.value.reviews.length
+      })
     } catch {
-      if (sequence !== loadSequence) return
+      if (!generation.isCurrent()) return
       // 评价接口失败不阻断商品详情展示。
     }
   } catch {
-    if (sequence !== loadSequence) return
+    if (!generation.isCurrent()) return
     ElMessage.error('商品不存在')
     router.replace('/home')
   } finally {
-    if (sequence === loadSequence) loading.value = false
+    generation.commit(() => { loading.value = false })
   }
 }
 

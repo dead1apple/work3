@@ -39,6 +39,16 @@ const hasExactSelection = (sku, selection = {}) => {
   )
 }
 
+const getSpecLabels = (skuList = []) => {
+  const labels = []
+  skuList.forEach((sku) => {
+    Object.keys(sku.specs || {}).forEach((label) => {
+      if (!labels.includes(label)) labels.push(label)
+    })
+  })
+  return labels
+}
+
 export function normalizeProductDetail(payload) {
   const source = unwrapData(payload) ?? {}
   const raw = source?.product || source
@@ -80,11 +90,38 @@ export function findSkuBySelection(skuList = [], selection = {}) {
 }
 
 export function isSkuOptionAvailable(skuList = [], selection = {}, label, value) {
-  return Boolean(findSkuBySelection(skuList, { ...selection, [label]: value }))
+  const labels = getSpecLabels(skuList)
+  const labelIndex = labels.indexOf(label)
+  if (labelIndex === -1) return false
+  const candidate = { ...selection, [label]: value }
+  const requiredLabels = labels.slice(0, labelIndex + 1)
+  return skuList.some((sku) => (
+    sku.available &&
+    requiredLabels.every((requiredLabel) => sku.specs?.[requiredLabel] === candidate[requiredLabel])
+  ))
 }
 
 export function getInitialSkuSelection(skuList = []) {
   const normalizedSkus = skuList.map((sku) => (sku?.specs ? sku : normalizeSku(sku)))
   const sku = normalizedSkus.find((item) => item.available && item.stock > 0)
   return sku ? { ...sku.specs } : {}
+}
+
+export function createRequestGenerationGate() {
+  let currentGeneration = 0
+  return {
+    next() {
+      currentGeneration += 1
+      const generation = currentGeneration
+      const isCurrent = () => generation === currentGeneration
+      return {
+        isCurrent,
+        commit(callback) {
+          if (!isCurrent()) return false
+          callback()
+          return true
+        },
+      }
+    },
+  }
 }
