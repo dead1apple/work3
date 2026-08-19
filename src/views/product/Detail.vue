@@ -1,11 +1,12 @@
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { addFavorite, checkFavorite, getProductDetail, getProductReviews, removeFavorite } from '../../api/index.js'
 import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
 import { normalizeFavoriteState } from '../../utils/favorite.js'
+import { findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail } from '../../utils/productDetail.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -18,51 +19,22 @@ const quantity = ref(1)
 const activeTab = ref('detail')
 const isFavorite = ref(false)
 const favoriteLoading = ref(false)
+let loadSequence = 0
 const selectedSku = computed(() => {
   if (!product.value?.skuList?.length) return null
-  return product.value.skuList.find((sku) => {
-    try {
-      const specs = JSON.parse(sku.specValues || '{}')
-      return Object.entries(specs).every(([label, value]) => selectedOptions.value[label] === value)
-    } catch {
-      return false
-    }
-  }) || product.value.skuList[0]
+  return findSkuBySelection(product.value.skuList, selectedOptions.value)
+})
+const maxQuantity = computed(() => Math.max(1, Math.min(99, selectedSku.value?.stock || 1)))
+const displayPrice = computed(() => selectedSku.value?.price ?? product.value?.price ?? 0)
+const displayOriginalPrice = computed(() => selectedSku.value?.marketPrice ?? product.value?.originalPrice ?? 0)
+const displayStock = computed(() => selectedSku.value ? selectedSku.value.stock : 0)
+const displayImages = computed(() => {
+  const images = product.value?.images || []
+  const skuImage = selectedSku.value?.image
+  return skuImage ? [skuImage, ...images.filter((image) => image !== skuImage)] : images
 })
 
 const formatPrice = (value) => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-const normalizeProduct = (payload) => {
-  const raw = payload?.product || {}
-  const skuList = payload?.skuList || []
-  const optionMap = new Map()
-  skuList.forEach((sku) => {
-    try {
-      Object.entries(JSON.parse(sku.specValues || '{}')).forEach(([label, value]) => {
-        if (!optionMap.has(label)) optionMap.set(label, [])
-        if (!optionMap.get(label).includes(value)) optionMap.get(label).push(value)
-      })
-    } catch {
-      // 忽略格式异常的 SKU 规格，其他商品信息仍可正常展示。
-    }
-  })
-  const prices = skuList.map((sku) => Number(sku.price)).filter(Number.isFinite)
-  const marketPrices = skuList.map((sku) => Number(sku.marketPrice)).filter(Number.isFinite)
-  return {
-    id: raw.id,
-    title: raw.name || '未命名商品',
-    subtitle: raw.subtitle || '',
-    price: prices.length ? Math.min(...prices) : 0,
-    originalPrice: marketPrices.length ? Math.max(...marketPrices) : 0,
-    sales: raw.salesCount || 0,
-    reviewCount: 0,
-    images: [raw.mainImage, ...(raw.images || [])].filter(Boolean),
-    detail: raw.detail || '暂无商品详情描述。',
-    options: Array.from(optionMap, ([label, values]) => ({ label, values })),
-    skuList,
-    reviews: [],
-  }
-}
 
 const normalizeReview = (item) => ({
   name: item.user?.nickname || item.user?.username || item.nickname || item.username || '匿名用户',
@@ -71,50 +43,73 @@ const normalizeReview = (item) => ({
   date: item.createTime || '',
 })
 
-const loadProduct = async () => {
+const resetProductState = () => {
+  product.value = null
+  selectedOptions.value = {}
+  quantity.value = 1
+  activeTab.value = 'detail'
+  isFavorite.value = false
+  favoriteLoading.value = false
+}
+
+const loadProduct = async (routeProductId) => {
+  const sequence = ++loadSequence
+  resetProductState()
   loading.value = true
   try {
-    const id = Number(route.params.id)
+    const id = Number(routeProductId)
     if (!Number.isFinite(id)) throw new Error('invalid product id')
     const detailResult = await getProductDetail(id)
-    product.value = normalizeProduct(detailResult)
-    if (!product.value.id) throw new Error('product not found')
-    product.value.options.forEach((option) => { selectedOptions.value[option.label] = option.values[0] })
+    if (sequence !== loadSequence) return
+    const nextProduct = normalizeProductDetail(detailResult)
+    if (!nextProduct.id) throw new Error('product not found')
+    product.value = nextProduct
+    selectedOptions.value = getInitialSkuSelection(nextProduct.skuList)
     if (userStore.isLoggedIn) {
       try {
-        isFavorite.value = normalizeFavoriteState(await checkFavorite(id))
-      } catch { isFavorite.value = false }
+        const favoriteResult = await checkFavorite(id)
+        if (sequence !== loadSequence) return
+        isFavorite.value = normalizeFavoriteState(favoriteResult)
+      } catch {
+        if (sequence !== loadSequence) return
+        isFavorite.value = false
+      }
     } else {
       isFavorite.value = false
     }
 
     try {
       const reviewResult = await getProductReviews(id, { page: 1, size: 10 })
+      if (sequence !== loadSequence) return
       const reviews = Array.isArray(reviewResult) ? reviewResult : reviewResult?.list || []
       product.value.reviews = reviews.map(normalizeReview)
       product.value.reviewCount = reviewResult?.total ?? product.value.reviews.length
     } catch {
+      if (sequence !== loadSequence) return
       // 评价接口失败不阻断商品详情展示。
     }
   } catch {
+    if (sequence !== loadSequence) return
     ElMessage.error('商品不存在')
     router.replace('/home')
   } finally {
-    loading.value = false
+    if (sequence === loadSequence) loading.value = false
   }
 }
 
 const handleAddToCart = async () => {
+  const sku = selectedSku.value
+  if (!sku) return ElMessage.warning('当前规格组合不可购买，请重新选择')
+  if (sku.stock <= 0) return ElMessage.warning('当前规格暂时无货')
   try {
-    const sku = selectedSku.value
     await cartStore.addToCart({
-      id: sku?.id || product.value?.id,
-      skuId: sku?.id || product.value?.id,
+      id: sku.id,
+      skuId: sku.id,
       quantity: quantity.value,
       name: product.value?.title,
-      image: sku?.image || product.value?.images?.[0],
-      price: sku?.price || product.value?.price,
-      skuName: sku?.skuName,
+      image: sku.image || product.value?.images?.[0],
+      price: sku.price,
+      skuName: sku.skuName,
     })
     ElMessage.success('已加入购物车')
   } catch (error) {
@@ -124,7 +119,9 @@ const handleAddToCart = async () => {
 
 const handleBuyNow = () => {
   const sku = selectedSku.value
-  router.push({ path: '/checkout/buy-now', query: { productId: product.value.id, skuId: sku?.id || product.value.id, quantity: quantity.value } })
+  if (!sku) return ElMessage.warning('当前规格组合不可购买，请重新选择')
+  if (sku.stock <= 0) return ElMessage.warning('当前规格暂时无货')
+  router.push({ path: '/checkout/buy-now', query: { productId: product.value.id, skuId: sku.id, quantity: quantity.value } })
 }
 
 const toggleFavorite = async () => {
@@ -147,7 +144,13 @@ const toggleFavorite = async () => {
   }
 }
 
-onMounted(loadProduct)
+const canBuySelectedSku = computed(() => Boolean(selectedSku.value && selectedSku.value.stock > 0))
+
+watch(selectedSku, () => {
+  quantity.value = Math.min(quantity.value, maxQuantity.value)
+})
+
+watch(() => route.params.id, loadProduct, { immediate: true })
 </script>
 
 <template>
@@ -157,7 +160,7 @@ onMounted(loadProduct)
       <section class="product-overview">
         <div class="gallery-panel">
           <el-carousel height="min(560px, 58vw)" indicator-position="outside" arrow="always">
-            <el-carousel-item v-for="(image, index) in product.images" :key="image">
+            <el-carousel-item v-for="(image, index) in displayImages" :key="image">
               <div class="gallery-image-wrap"><img class="gallery-image" :src="image" :alt="`${product.title} 图片 ${index + 1}`" /></div>
             </el-carousel-item>
           </el-carousel>
@@ -166,15 +169,15 @@ onMounted(loadProduct)
           <span class="self-operated">真实商品 · 在线库存</span>
           <h1>{{ product.title }}</h1>
           <p class="product-subtitle">{{ product.subtitle }}</p>
-          <div class="price-row"><span class="price-label">起售价</span><strong class="price"><small>￥</small>{{ formatPrice(product.price) }}</strong><del>￥{{ formatPrice(product.originalPrice) }}</del></div>
+          <div class="price-row"><span class="price-label">售价</span><strong class="price"><small>￥</small>{{ formatPrice(displayPrice) }}</strong><del v-if="displayOriginalPrice">￥{{ formatPrice(displayOriginalPrice) }}</del></div>
           <div class="sales-row">已售 {{ product.sales }} 件 <i></i> 评价 {{ product.reviewCount }}</div>
           <div class="divider"></div>
           <div v-for="option in product.options" :key="option.label" class="option-row">
             <span class="option-label">{{ option.label }}</span>
-            <el-radio-group v-model="selectedOptions[option.label]" size="large"><el-radio-button v-for="value in option.values" :key="value" :value="value">{{ value }}</el-radio-button></el-radio-group>
+            <el-radio-group v-model="selectedOptions[option.label]" size="large"><el-radio-button v-for="value in option.values" :key="value" :value="value" :disabled="!isSkuOptionAvailable(product.skuList, selectedOptions, option.label, value)">{{ value }}</el-radio-button></el-radio-group>
           </div>
-          <div class="option-row quantity-row"><span class="option-label">数量</span><el-input-number v-model="quantity" :min="1" :max="99" size="large" /><span class="stock-note">库存以接口返回为准</span></div>
-          <el-row :gutter="12" class="action-row"><el-col :span="8"><el-button class="cart-button" type="primary" size="large" @click="handleAddToCart">加入购物车</el-button></el-col><el-col :span="8"><el-button class="buy-button" type="danger" size="large" @click="handleBuyNow">立即购买</el-button></el-col><el-col :span="8"><el-button class="favorite-button" :class="{ active: isFavorite }" size="large" :loading="favoriteLoading" :aria-pressed="isFavorite" @click="toggleFavorite"><span v-if="!favoriteLoading" aria-hidden="true">{{ isFavorite ? '♥' : '♡' }}</span>{{ isFavorite ? '已收藏' : '收藏商品' }}</el-button></el-col></el-row>
+          <div class="option-row quantity-row"><span class="option-label">数量</span><el-input-number v-model="quantity" :min="1" :max="maxQuantity" size="large" /><span class="stock-note">库存 {{ displayStock }} 件</span></div>
+          <el-row :gutter="12" class="action-row"><el-col :span="8"><el-button class="cart-button" type="primary" size="large" :aria-disabled="!canBuySelectedSku" @click="handleAddToCart">加入购物车</el-button></el-col><el-col :span="8"><el-button class="buy-button" type="danger" size="large" :aria-disabled="!canBuySelectedSku" @click="handleBuyNow">立即购买</el-button></el-col><el-col :span="8"><el-button class="favorite-button" :class="{ active: isFavorite }" size="large" :loading="favoriteLoading" :aria-pressed="isFavorite" @click="toggleFavorite"><span v-if="!favoriteLoading" aria-hidden="true">{{ isFavorite ? '♥' : '♡' }}</span>{{ isFavorite ? '已收藏' : '收藏商品' }}</el-button></el-col></el-row>
           <p class="service-note">支持 7 天无理由退货 · 京东物流 · 正品保障</p>
         </div>
       </section>
