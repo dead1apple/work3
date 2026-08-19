@@ -1,9 +1,9 @@
 import { defineStore } from 'pinia'
-import { clearAuthStorage } from '../utils/auth.js'
+import { clearAuthStorage, readAuthToken, writeAuthToken } from '../utils/auth.js'
 
 export const useUserStore = defineStore('user', {
   state: () => ({
-    token: localStorage.getItem('token') || '',
+    token: readAuthToken(),
     userInfo: null,
   }),
   getters: {
@@ -12,8 +12,7 @@ export const useUserStore = defineStore('user', {
   actions: {
     setToken(token) {
       this.token = token || ''
-      if (this.token) localStorage.setItem('token', this.token)
-      else localStorage.removeItem('token')
+      writeAuthToken(this.token)
     },
     setUserInfo(userInfo) {
       this.userInfo = userInfo || null
@@ -25,7 +24,7 @@ export const useUserStore = defineStore('user', {
     clearSession() {
       this.token = ''
       this.userInfo = null
-      clearAuthStorage()
+      clearAuthStorage(undefined, { clearCart: true })
     },
   },
 })

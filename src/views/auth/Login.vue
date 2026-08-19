@@ -3,12 +3,14 @@ import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { login } from '../../api/index.js'
+import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
 import { getAuthToken, resolveRedirect } from '../../utils/auth.js'
 
 const router = useRouter()
 const route = useRoute()
 const userStore = useUserStore()
+const cartStore = useCartStore()
 const formRef = ref()
 const loading = ref(false)
 const form = reactive({ username: '', password: '' })
@@ -25,6 +27,7 @@ const submit = async () => {
     const token = getAuthToken(result)
     if (!token) throw new Error('登录响应中没有 Token')
     const data = result?.data || result
+    cartStore.clearCart()
     userStore.setSession(token, data?.user || data?.userInfo || null)
     ElMessage.success('登录成功')
     router.replace(resolveRedirect(route.query.redirect))
