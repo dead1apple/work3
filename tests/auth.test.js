@@ -284,3 +284,31 @@ test('registration code sender ticks down and clears its interval on cleanup', a
   assert.equal(sender.countdown, 0)
   assert.equal(sender.disabled, false)
 })
+
+test('registration code sender ignores pending send success after cleanup', async () => {
+  let resolveSend
+  let intervalStarts = 0
+  const states = []
+  const sender = createRegistrationCodeSender({
+    sendCode: () => new Promise((resolve) => { resolveSend = resolve }),
+    setInterval: () => {
+      intervalStarts += 1
+      return 303
+    },
+    clearInterval: () => {},
+    onStateChange: (state) => states.push(state),
+  })
+
+  const pending = sender.send('13800138000')
+  sender.cleanup()
+  const statesAfterCleanup = states.length
+
+  resolveSend()
+  await pending
+
+  assert.equal(intervalStarts, 0)
+  assert.equal(sender.countdown, 0)
+  assert.equal(sender.sending, false)
+  assert.equal(sender.disabled, false)
+  assert.deepEqual(states.slice(statesAfterCleanup), [])
+})

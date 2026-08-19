@@ -43,6 +43,7 @@ export const createRegistrationCodeSender = ({
   let sending = false
   let countdown = 0
   let timerId = null
+  let disposed = false
 
   const snapshot = () => ({
     sending,
@@ -76,16 +77,18 @@ export const createRegistrationCodeSender = ({
     get countdown() { return countdown },
     get disabled() { return sending || countdown > 0 },
     send(phone) {
-      if (sending || countdown > 0) return false
+      if (disposed || sending || countdown > 0) return false
       const normalizedPhone = normalizeMainlandMobile(phone)
       sending = true
       emit()
       return Promise.resolve(sendCode({ phone: normalizedPhone }))
         .then(() => {
+          if (disposed) return false
           startCountdown()
           return true
         })
         .finally(() => {
+          if (disposed) return
           sending = false
           emit()
         })
@@ -95,6 +98,7 @@ export const createRegistrationCodeSender = ({
       countdown = 0
       sending = false
       emit()
+      disposed = true
     },
   }
 }
