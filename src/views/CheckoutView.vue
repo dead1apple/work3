@@ -117,7 +117,7 @@ const submitOrder = async () => {
     const orderNo = extractOrderNo(result)
     if (!orderNo) throw new Error('订单已提交，但未返回订单号')
     ElMessage.success('订单提交成功，即将前往收银台')
-    await router.replace(`/payment/${orderNo}`)
+    await router.replace({ path: `/payment/${orderNo}`, query: { amount: totals.value.payableAmount.toFixed(2) } })
   } catch (error) {
     ElMessage.error(error?.message || '订单提交失败，请稍后重试')
   } finally {
