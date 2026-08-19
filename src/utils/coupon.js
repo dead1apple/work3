@@ -62,9 +62,12 @@ export function getCouponValueText(coupon) {
 export function getCouponDiscountAmount(coupon, goodsAmount) {
   const goods = toNonNegativeMoney(goodsAmount, 0)
   if (!coupon) return 0
-  const amount = toNonNegativeMoney(coupon.amount ?? coupon.discountAmount, 0)
+  const rawAmount = coupon.amount ?? coupon.discountAmount
+  const rawPercentageRate = Number(rawAmount)
+  if (Number(coupon.type) === 2 && (!Number.isFinite(rawPercentageRate) || rawPercentageRate < 0)) return 0
+  const amount = toNonNegativeMoney(rawAmount, 0)
   const discount = Number(coupon.type) === 2
-    ? goods * (1 - Math.min(100, Math.max(0, amount)) / 100)
+    ? goods * (1 - Math.min(100, rawPercentageRate) / 100)
     : amount
   return Math.round(Math.min(goods, Math.max(0, discount)) * 100) / 100
 }

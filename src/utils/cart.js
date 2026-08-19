@@ -1,5 +1,10 @@
 import { readPayloadList, toBoundedPositiveInteger, toNonNegativeMoney } from './response.js'
 
+const toSafePositiveInteger = (value) => {
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number > 0 ? number : null
+}
+
 export const normalizeCartItem = (item = {}) => {
   const sku = item.sku || item.productSku || item.skuInfo || {}
   const product = item.product || sku.product || {}
@@ -7,8 +12,8 @@ export const normalizeCartItem = (item = {}) => {
   const rawSkuId = item.skuId ?? sku.id ?? item.productId
   const rawPrice = item.price ?? item.skuPrice ?? sku.price
   const rawQuantity = item.quantity ?? item.buyQuantity
-  const id = toBoundedPositiveInteger(rawId, { fallback: null, max: Number.MAX_SAFE_INTEGER })
-  const skuId = toBoundedPositiveInteger(rawSkuId, { fallback: null, max: Number.MAX_SAFE_INTEGER })
+  const id = toSafePositiveInteger(rawId)
+  const skuId = toSafePositiveInteger(rawSkuId)
   const price = toNonNegativeMoney(rawPrice, 0)
   const quantity = toBoundedPositiveInteger(rawQuantity, { fallback: 1, max: 99 })
   return {

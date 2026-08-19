@@ -61,3 +61,8 @@ test('formats and calculates percentage discount coupons', () => {
   assert.equal(getCouponDiscountAmount(coupon, 1000), 100)
   assert.equal(getCouponValueText({ type: 1, amount: 50 }), '¥50')
 })
+
+test('returns no discount for malformed percentage rates', () => {
+  assert.equal(getCouponDiscountAmount({ type: 2, amount: -1 }, 100), 0)
+  assert.equal(getCouponDiscountAmount({ type: 2, amount: Infinity }, 100), 0)
+})

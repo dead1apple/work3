@@ -26,3 +26,13 @@ test('marks malformed cart records invalid without exposing NaN totals', () => {
   assert.equal(Number.isInteger(item.quantity), true)
   assert.deepEqual(calculateCartTotals([item]), { totalCount: 1, totalPrice: 0 })
 })
+
+test('rejects cart records with IDs outside the safe integer range', () => {
+  const [oversizedId] = normalizeCartList([{ id: 1e20, skuId: 2, price: 1, quantity: 1 }])
+  const [oversizedSkuId] = normalizeCartList([{ id: 1, skuId: 1e20, price: 1, quantity: 1 }])
+
+  assert.equal(oversizedId.id, null)
+  assert.equal(oversizedId.isValid, false)
+  assert.equal(oversizedSkuId.skuId, null)
+  assert.equal(oversizedSkuId.isValid, false)
+})
