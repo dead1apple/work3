@@ -2,9 +2,9 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { buyNow, createOrder, getAddressList, getMyCoupons, getProductDetail } from '../api/index.js'
+import { buyNow, createOrder, getAddressList, getAvailableCoupons, getMyCoupons, getProductDetail } from '../api/index.js'
 import { useCartStore } from '../store/cart.js'
-import { buildBuyNowPayload, completeCheckoutSuccess, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
+import { buildBuyNowPayload, buildCartOrderPayload, completeCheckoutSuccess, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
 import { calculateCheckoutTotals, formatMoney, normalizeAddressList } from '../utils/commerce.js'
 import { filterUsableCoupons, getCouponValueText, normalizeCouponList } from '../utils/coupon.js'
 import { createLatestRequestGuard } from '../utils/requestState.js'
@@ -84,7 +84,9 @@ const loadCartCheckout = async () => {
     warnings: [],
   }
   try {
-    nextData.coupons = normalizeCouponList(await getMyCoupons({ status: 0 }), 'mine').list
+    const [mineResult, templateResult] = await Promise.all([getMyCoupons({ status: 0 }), getAvailableCoupons()])
+    const templates = normalizeCouponList(templateResult, 'available').list
+    nextData.coupons = normalizeCouponList(mineResult, 'mine', templates).list
   } catch {
     nextData.warnings.push('优惠券暂时无法加载，可稍后重试或不使用优惠券')
   }
@@ -175,12 +177,12 @@ const submitOrder = async () => {
   try {
     result = isBuyNow.value
       ? await buyNow(buildBuyNowPayload({ item: items.value[0], addressId: addressId.value, remark: remark.value }))
-      : await createOrder({
-          cartIds: items.value.map((item) => item.id),
+      : await createOrder(buildCartOrderPayload({
+          items: items.value,
           addressId: addressId.value,
-          couponId: couponId.value || undefined,
-          remark: remark.value.trim(),
-        })
+          couponId: couponId.value,
+          remark: remark.value,
+        }))
   } catch (error) {
     submitting.value = false
     ElMessage.error(error?.message || '订单提交失败，请稍后重试')

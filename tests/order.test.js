@@ -54,6 +54,27 @@ test('normalizes a wrapped order detail and builds the full address', () => {
   assert.equal(detail.payAmount, 109)
 })
 
+test('normalizes order list items from per-order detail payloads', () => {
+  const payload = { list: [{ orderNo: 'JD20260002', status: 3, payAmount: 329 }], total: 1 }
+  const details = new Map([['JD20260002', {
+    order: { orderNo: 'JD20260002', status: 3 },
+    items: [{ id: 18, productId: 69, productName: '安踏 综训鞋 运动鞋', skuImage: '/anta.png', price: 329, quantity: 1 }],
+  }]])
+
+  const result = normalizeOrderList(payload, details)
+
+  assert.equal(result.list[0].items.length, 1)
+  assert.equal(result.list[0].items[0].name, '安踏 综训鞋 运动鞋')
+  assert.equal(result.list[0].items[0].image, '/anta.png')
+})
+
+test('keeps orders visible when one detail payload is unavailable', () => {
+  const result = normalizeOrderList({ list: [{ orderNo: 'JD20260003', status: 1 }], total: 1 }, new Map())
+
+  assert.equal(result.list.length, 1)
+  assert.deepEqual(result.list[0].items, [])
+})
+
 test('exposes only operations allowed by each order status', () => {
   assert.deepEqual(getOrderActions(0), ['detail', 'cancel', 'pay'])
   assert.deepEqual(getOrderActions(1), ['detail', 'cancel'])

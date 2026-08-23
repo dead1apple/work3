@@ -57,7 +57,7 @@ import { ref, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Picture } from '@element-plus/icons-vue'
 import { useRoute, useRouter } from 'vue-router'
-import { cancelOrder, deleteOrder, getOrders, receiveOrder } from '../api/index.js'
+  import { cancelOrder, deleteOrder, getOrderDetail, getOrders, receiveOrder } from '../api/index.js'
 import { formatMoney } from '../utils/commerce.js'
 import { getOrderActions, normalizeOrderList } from '../utils/order.js'
 
@@ -104,7 +104,16 @@ async function loadOrders() {
   try {
     const params = { page: pageSnapshot, size: pageSize }
     if (statusSnapshot !== '') params.status = Number(statusSnapshot)
-    const result = normalizeOrderList(await getOrders(params))
+    const payload = await getOrders(params)
+    const baseResult = normalizeOrderList(payload)
+    const detailEntries = await Promise.all(baseResult.list.map(async (order) => {
+      try {
+        return [order.orderNo, await getOrderDetail(order.orderNo)]
+      } catch {
+        return [order.orderNo, null]
+      }
+    }))
+    const result = normalizeOrderList(payload, new Map(detailEntries.filter(([, detail]) => detail)))
     if (sequence !== requestSequence || route.fullPath !== routeSnapshot || status.value !== statusSnapshot || page.value !== pageSnapshot) return
     orders.value = result.list
     total.value = result.total

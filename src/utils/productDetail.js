@@ -6,6 +6,15 @@ const parseSpecs = (specValues) => {
   return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {}
 }
 
+export function normalizeProductImages(...sources) {
+  const images = sources.flatMap((source) => {
+    if (Array.isArray(source)) return source
+    if (typeof source === 'string') return source.split(',')
+    return []
+  })
+  return [...new Set(images.map((image) => String(image || '').trim()).filter(Boolean))].slice(0, 8)
+}
+
 const normalizeSku = (sku) => {
   try {
     const specs = parseSpecs(sku?.specValues)
@@ -75,7 +84,7 @@ export function normalizeProductDetail(payload) {
     originalPrice: marketPrices.length ? Math.max(...marketPrices) : 0,
     sales: raw.salesCount || raw.sales || 0,
     reviewCount: 0,
-    images: [raw.mainImage, ...(raw.images || [])].filter(Boolean),
+    images: normalizeProductImages(raw.mainImage, raw.images),
     detail: raw.detail || '暂无商品详情描述。',
     options: Array.from(optionMap, ([label, values]) => ({ label, values })),
     skuList,

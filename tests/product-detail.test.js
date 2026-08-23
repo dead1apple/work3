@@ -8,6 +8,7 @@ import {
   isSkuOptionAvailable,
   normalizeProductDetail,
 } from '../src/utils/productDetail.js'
+import * as productDetailUtils from '../src/utils/productDetail.js'
 
 const skus = [
   { id: 11, specValues: '{"颜色":"黑","容量":"128G"}', stock: 3, price: 100 },
@@ -45,6 +46,20 @@ test('keeps malformed SKU data unavailable without hiding the product', () => {
   assert.deepEqual(product.options, [{ label: '颜色', values: ['银'] }])
   assert.equal(product.skuList[0].available, false)
   assert.equal(findSkuBySelection(product.skuList, { 颜色: '银' }).id, 22)
+})
+
+test('parses comma-separated product images, removes duplicates and limits the gallery to eight', () => {
+  assert.equal(typeof productDetailUtils.normalizeProductImages, 'function')
+  const images = productDetailUtils.normalizeProductImages(
+    '/main.png',
+    '/one.png,/two.png,/main.png,/three.png,/four.png,/five.png,/six.png,/seven.png,/eight.png,/nine.png',
+  )
+
+  assert.deepEqual(images, ['/main.png', '/one.png', '/two.png', '/three.png', '/four.png', '/five.png', '/six.png', '/seven.png'])
+  assert.equal(images.every((image) => image.length > 1), true)
+
+  const product = normalizeProductDetail({ product: { id: 69, name: '安踏 综训鞋 运动鞋', mainImage: '/main.png', images: '/one.png,/two.png' } })
+  assert.deepEqual(product.images, ['/main.png', '/one.png', '/two.png'])
 })
 
 test('request generation gate blocks stale commits while allowing the latest generation', () => {

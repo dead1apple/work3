@@ -63,3 +63,30 @@ test('normalizeFavoriteList also accepts direct product arrays', () => {
   assert.equal(result.list[0].sales, 88)
   assert.equal(result.total, 1)
 })
+
+test('normalizeFavoriteList enriches bare favorite records with product details', () => {
+  const productDetails = new Map([[69, {
+    product: { id: 69, name: '安踏 综训鞋 运动鞋', mainImage: '/anta.png', salesCount: 3 },
+    skuList: [{ id: 262, price: 329 }],
+  }]])
+
+  const result = normalizeFavoriteList([{ id: 88, productId: 69, createTime: '2026-08-23 10:00:00' }], productDetails)
+
+  assert.deepEqual(result.list[0], {
+    favoriteId: 88,
+    productId: 69,
+    title: '安踏 综训鞋 运动鞋',
+    image: '/anta.png',
+    price: 329,
+    sales: 3,
+    favoriteTime: '2026-08-23 10:00:00',
+  })
+})
+
+test('normalizeFavoriteList keeps a bare favorite when its product detail cannot be loaded', () => {
+  const result = normalizeFavoriteList([{ id: 89, productId: 70 }], new Map())
+
+  assert.equal(result.list.length, 1)
+  assert.equal(result.list[0].productId, 70)
+  assert.equal(result.list[0].title, '商品信息暂不可用')
+})

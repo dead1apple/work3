@@ -34,14 +34,23 @@ export function runActiveCouponRouteLoad({ routeState, loadAvailable, loadMine }
   return routeState.tab === 'available' ? loadAvailable() : loadMine(routeState.status)
 }
 
-export function normalizeCouponList(payload, mode = 'available') {
+export function normalizeCouponList(payload, mode = 'available', templates = []) {
   const source = unwrapData(payload)
+  const templateMap = new Map((templates || []).map((template) => [Number(template.templateId ?? template.id), template]))
   const list = readPayloadList(payload).map((item) => {
     const record = item?.userCoupon || item || {}
-    const template = item?.couponTemplate || item?.template || item?.coupon || record?.couponTemplate || record
+    const embeddedTemplate = item?.couponTemplate || item?.template || item?.coupon || record?.couponTemplate
     const statusValue = record?.status ?? item?.status
     const status = mode === 'mine' && statusValue !== '' && statusValue != null ? toFiniteNumber(statusValue, 0) : null
-    const templateId = record?.templateId ?? item?.templateId ?? template?.id ?? item?.id
+    const templateId = record?.couponTemplateId ?? record?.templateId ?? item?.couponTemplateId ?? item?.templateId ?? embeddedTemplate?.id ?? item?.id
+    const joinedTemplate = templateMap.get(Number(templateId))
+    const template = embeddedTemplate || joinedTemplate || record
+    const hasTemplateData = mode !== 'mine' || Boolean(
+      embeddedTemplate ||
+      joinedTemplate ||
+      record?.amount != null ||
+      record?.discountAmount != null,
+    )
     const id = mode === 'mine' ? (record?.id ?? item?.userCouponId ?? item?.id) : templateId
     const shopId = template?.shopId ?? item?.shopId
 
@@ -57,6 +66,7 @@ export function normalizeCouponList(payload, mode = 'available') {
       startTime: toDate(template?.startTime ?? record?.startTime ?? item?.startTime),
       endTime: toDate(template?.endTime ?? record?.endTime ?? item?.endTime),
       shopName: template?.shopName || item?.shopName || (shopId ? '店铺专享券' : '京东商城平台券'),
+      ...(mode === 'mine' ? { hasTemplateData } : {}),
     }
   }).filter((item) => item.id != null && item.templateId != null)
 
@@ -73,10 +83,11 @@ export function filterCouponsByStatus(coupons, status) {
 
 export function filterUsableCoupons(coupons, goodsAmount) {
   const amount = toNonNegativeMoney(goodsAmount, 0)
-  return (coupons || []).filter((item) => Number(item.status) === 0 && amount >= toNonNegativeMoney(item.minAmount, 0))
+  return (coupons || []).filter((item) => item.hasTemplateData !== false && Number(item.status) === 0 && amount >= toNonNegativeMoney(item.minAmount, 0))
 }
 
 export function getCouponValueText(coupon) {
+  if (coupon?.hasTemplateData === false) return '优惠信息待同步'
   const amount = toNonNegativeMoney(coupon?.amount, 0)
   if (Number(coupon?.type) === 2) {
     const discount = amount / 10
@@ -87,7 +98,7 @@ export function getCouponValueText(coupon) {
 
 export function getCouponDiscountAmount(coupon, goodsAmount) {
   const goods = toNonNegativeMoney(goodsAmount, 0)
-  if (!coupon) return 0
+  if (!coupon || coupon.hasTemplateData === false) return 0
   const rawAmount = coupon.amount ?? coupon.discountAmount
   const rawPercentageRate = Number(rawAmount)
   if (Number(coupon.type) === 2 && (!Number.isFinite(rawPercentageRate) || rawPercentageRate < 0)) return 0

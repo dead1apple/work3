@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getFavorites, removeFavorite } from '../api/index.js'
+import { getFavorites, getProductDetail, removeFavorite } from '../api/index.js'
 import { normalizeFavoriteList } from '../utils/favorite.js'
 
 const router = useRouter()
@@ -19,7 +19,16 @@ const loadFavorites = async () => {
   loading.value = true
   loadError.value = false
   try {
-    const result = normalizeFavoriteList(await getFavorites())
+    const payload = await getFavorites()
+    const baseResult = normalizeFavoriteList(payload)
+    const detailEntries = await Promise.all(baseResult.list.map(async (item) => {
+      try {
+        return [Number(item.productId), await getProductDetail(item.productId)]
+      } catch {
+        return [Number(item.productId), null]
+      }
+    }))
+    const result = normalizeFavoriteList(payload, new Map(detailEntries.filter(([, detail]) => detail)))
     favorites.value = result.list
     total.value = result.total
   } catch (error) {

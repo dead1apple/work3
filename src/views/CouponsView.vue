@@ -85,7 +85,9 @@ const loadMine = async ({ silent = false } = {}) => {
   mine.value = []
   try {
     const params = statusSnapshot === '' ? undefined : { status: Number(statusSnapshot) }
-    const nextList = normalizeCouponList(await getMyCoupons(params), 'mine').list
+    const [mineResult, templateResult] = await Promise.all([getMyCoupons(params), getAvailableCoupons()])
+    const templates = normalizeCouponList(templateResult, 'available').list
+    const nextList = normalizeCouponList(mineResult, 'mine', templates).list
     request.commit(route.fullPath, () => {
       if (activeTab.value === 'mine' && status.value === statusSnapshot) mine.value = nextList
     })

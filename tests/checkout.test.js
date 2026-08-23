@@ -9,6 +9,7 @@ import {
   normalizeBuyNowItem,
   parseBuyNowQuery,
 } from '../src/utils/checkout.js'
+import * as checkoutUtils from '../src/utils/checkout.js'
 
 test('parses and constrains buy-now query parameters', () => {
   assert.deepEqual(parseBuyNowQuery({ productId: '8', skuId: '81', quantity: '120' }), {
@@ -54,6 +55,22 @@ test('builds only fields supported by the buy-now endpoint', () => {
     addressId: 9,
     remark: '周末送达',
   })
+})
+
+test('builds a cart order payload from canonical server cart ids', () => {
+  assert.equal(typeof checkoutUtils.buildCartOrderPayload, 'function')
+  assert.deepEqual(checkoutUtils.buildCartOrderPayload({
+    items: [{ id: 44 }, { id: 51 }],
+    addressId: '9',
+    couponId: '7',
+    remark: '  工作日送达  ',
+  }), {
+    cartIds: [44, 51],
+    addressId: 9,
+    couponId: 7,
+    remark: '工作日送达',
+  })
+  assert.throws(() => checkoutUtils.buildCartOrderPayload({ items: [{ id: null }], addressId: 9 }), /购物车数据异常/)
 })
 
 test('extracts an order number from supported order responses', () => {

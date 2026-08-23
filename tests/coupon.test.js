@@ -50,6 +50,27 @@ test('keeps the user coupon id while reading nested template details', () => {
   assert.equal(result.list[0].statusText, '未使用')
 })
 
+test('joins bare user coupons with public template values instead of displaying zero', () => {
+  const minePayload = [{ id: 91, couponTemplateId: 7, status: 0 }]
+  const templates = normalizeCouponList([{ id: 7, name: '平台满 200 减 30 券', amount: 30, minAmount: 200, type: 1 }], 'available').list
+  const result = normalizeCouponList(minePayload, 'mine', templates)
+
+  assert.equal(result.list[0].id, 91)
+  assert.equal(result.list[0].templateId, 7)
+  assert.equal(result.list[0].name, '平台满 200 减 30 券')
+  assert.equal(result.list[0].amount, 30)
+  assert.equal(result.list[0].minAmount, 200)
+  assert.equal(result.list[0].hasTemplateData, true)
+})
+
+test('does not present a user coupon with missing template data as a usable zero-value coupon', () => {
+  const [coupon] = normalizeCouponList([{ id: 91, couponTemplateId: 999, status: 0 }], 'mine').list
+
+  assert.equal(coupon.hasTemplateData, false)
+  assert.equal(getCouponValueText(coupon), '优惠信息待同步')
+  assert.deepEqual(filterUsableCoupons([coupon], 1000), [])
+})
+
 test('filters my coupons with numeric status including zero', () => {
   const coupons = [{ id: 1, status: 0 }, { id: 2, status: 1 }, { id: 3, status: 2 }]
   assert.deepEqual(filterCouponsByStatus(coupons, 0).map((item) => item.id), [1])

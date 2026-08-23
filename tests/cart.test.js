@@ -17,6 +17,26 @@ test('normalizes the backend cart response into display-ready items', () => {
   assert.deepEqual(items[0], { id: 7, skuId: 101, name: '耳机', skuName: '黑色', image: '/sku.png', price: 99, quantity: 2, checked: true, isValid: true })
 })
 
+test('normalizes the deployed nested cart record used by single selection and checkout', () => {
+  const [item] = normalizeCartList([{
+    cart: { id: 27, skuId: 262, productId: 69, quantity: 3, selected: 1 },
+    sku: { id: 262, skuName: '标准版-1', price: 329, image: '/sku.png' },
+    product: { id: 69, name: '安踏 综训鞋 运动鞋', mainImage: '/product.png' },
+  }])
+
+  assert.deepEqual(item, {
+    id: 27,
+    skuId: 262,
+    name: '安踏 综训鞋 运动鞋',
+    skuName: '标准版-1',
+    image: '/sku.png',
+    price: 329,
+    quantity: 3,
+    checked: true,
+    isValid: true,
+  })
+})
+
 test('merges an existing SKU by increasing quantity', () => {
   const merged = mergeCartItem([{ id: 7, skuId: 101, quantity: 2 }], { id: 8, skuId: 101, quantity: 1 })
   assert.equal(merged[0].quantity, 3)

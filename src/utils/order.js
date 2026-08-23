@@ -26,7 +26,7 @@ export function normalizeOrderItem(item = {}) {
     productId: firstDefined(item.productId, item.spuId, item.product?.id),
     name: firstDefined(item.productName, item.name, item.skuName, item.product?.name, '商品'),
     spec: firstDefined(item.specName, item.skuName, item.spec, item.sku?.name, ''),
-    image: firstDefined(item.productImage, item.image, item.mainImage, item.product?.mainImage, ''),
+    image: firstDefined(item.productImage, item.skuImage, item.image, item.mainImage, item.product?.mainImage, ''),
     price,
     quantity,
     subtotal: toNonNegativeMoney(firstDefined(item.subtotal, item.totalAmount, item.amount), price * quantity),
@@ -55,9 +55,20 @@ function normalizeOrder(source = {}, extra = {}) {
   }
 }
 
-export function normalizeOrderList(payload) {
+const getOrderDetailPayload = (details, orderNo) => {
+  if (details instanceof Map) return details.get(orderNo)
+  return details?.[orderNo]
+}
+
+export function normalizeOrderList(payload, details = new Map()) {
   const source = unwrapData(payload)
-  const list = readPayloadList(payload).map((item) => normalizeOrder(item))
+  const list = readPayloadList(payload).map((item) => {
+    const orderNo = firstDefined(item?.orderNo, item?.orderNumber, item?.id, '')
+    const detailSource = unwrapData(getOrderDetailPayload(details, orderNo)) || {}
+    const detailOrder = detailSource.order || detailSource.orderInfo || detailSource
+    const detailItems = detailSource.items || detailSource.orderItems || detailSource.details || detailOrder.items || detailOrder.orderItems
+    return normalizeOrder(item, { items: Array.isArray(detailItems) ? detailItems : undefined })
+  })
   return {
     list,
     total: Math.max(0, toFiniteNumber(firstDefined(source.total, source.totalElements, source.count), list.length)),

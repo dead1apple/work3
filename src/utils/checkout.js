@@ -52,6 +52,20 @@ export function buildBuyNowPayload({ item, addressId, remark }) {
   }
 }
 
+export function buildCartOrderPayload({ items = [], addressId, couponId, remark }) {
+  const normalizedAddressId = toPositiveInteger(addressId)
+  if (!normalizedAddressId) throw new Error('请选择收货地址')
+  const cartIds = items.map((item) => toPositiveInteger(item?.id))
+  if (!cartIds.length || cartIds.some((id) => !id)) throw new Error('购物车数据异常，请刷新后重试')
+  const normalizedCouponId = toPositiveInteger(couponId)
+  return {
+    cartIds,
+    addressId: normalizedAddressId,
+    ...(normalizedCouponId ? { couponId: normalizedCouponId } : {}),
+    remark: String(remark || '').trim(),
+  }
+}
+
 export function extractOrderNo(payload) {
   const source = unwrapData(payload)
   if (typeof source === 'string' || typeof source === 'number') return String(source)

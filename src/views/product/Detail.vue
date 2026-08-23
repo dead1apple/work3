@@ -6,7 +6,7 @@ import { addFavorite, checkFavorite, getProductDetail, getProductReviews, remove
 import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
 import { normalizeFavoriteState } from '../../utils/favorite.js'
-import { createRequestGenerationGate, findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail } from '../../utils/productDetail.js'
+import { createRequestGenerationGate, findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail, normalizeProductImages } from '../../utils/productDetail.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -31,7 +31,7 @@ const displayStock = computed(() => selectedSku.value ? selectedSku.value.stock 
 const displayImages = computed(() => {
   const images = product.value?.images || []
   const skuImage = selectedSku.value?.image
-  return skuImage ? [skuImage, ...images.filter((image) => image !== skuImage)] : images
+  return normalizeProductImages(skuImage, images)
 })
 
 const formatPrice = (value) => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
