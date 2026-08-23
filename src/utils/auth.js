@@ -14,6 +14,9 @@ export const resolveRedirect = (redirect) => {
 export const readAuthToken = (storage = localStorage) =>
   AUTH_TOKEN_KEYS.map((key) => storage.getItem(key)).find(Boolean) || ''
 
+export const toAuthorizationValue = (token) =>
+  String(token ?? '').trim().replace(/^Bearer\s+/i, '').trim()
+
 export const clearAuthStorage = (storage = localStorage, { clearCart = false } = {}) => {
   AUTH_TOKEN_KEYS.forEach((key) => storage.removeItem(key))
   if (clearCart) storage.removeItem(CART_STORAGE_KEY)

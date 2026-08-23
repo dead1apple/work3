@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { clearAuthStorage, isCurrentRequestToken, readAuthToken } from './auth.js'
+import { clearAuthStorage, isCurrentRequestToken, readAuthToken, toAuthorizationValue } from './auth.js'
 
 const request = axios.create({
   baseURL: '/api',
@@ -27,7 +27,8 @@ request.interceptors.request.use((config) => {
   if (token && token !== lastAuthenticatedToken) hasRedirectedToLogin = false
   lastAuthenticatedToken = token
   config.__authToken = token
-  if (token) config.headers.Authorization = token.startsWith('Bearer ') ? token : `Bearer ${token}`
+  const authorization = toAuthorizationValue(token)
+  if (authorization) config.headers.Authorization = authorization
   return config
 })
 
