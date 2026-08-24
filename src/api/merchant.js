@@ -1,4 +1,4 @@
-import request from '../utils/request'
+import request from '../utils/request.js'
 
 export const getMyShop = () => request.get('/merchant/shop')
 export const updateMyShop = (data) => request.put('/merchant/shop', data)
