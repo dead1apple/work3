@@ -2,10 +2,9 @@
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { login } from '../../api/index.js'
 import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
-import { getAuthToken, resolveRedirect } from '../../utils/auth.js'
+import { resolvePostLoginDestination } from '../../router/access.js'
 
 const router = useRouter()
 const route = useRoute()
@@ -23,14 +22,10 @@ const submit = async () => {
   if (!(await formRef.value?.validate().catch(() => false))) return
   loading.value = true
   try {
-    const result = await login(form)
-    const token = getAuthToken(result)
-    if (!token) throw new Error('登录响应中没有 Token')
-    const data = result?.data || result
+    await userStore.login(form)
     cartStore.clearCart()
-    userStore.setSession(token, data?.user || data?.userInfo || null)
     ElMessage.success('登录成功')
-    router.replace(resolveRedirect(route.query.redirect))
+    router.replace(resolvePostLoginDestination(route.query.redirect, userStore.role))
   } catch (error) {
     ElMessage.error(error.message || '登录失败，请稍后重试')
   } finally {

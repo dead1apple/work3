@@ -20,6 +20,8 @@ export function normalizeUserProfile(payload) {
     avatar: source.avatar || source.avatarUrl || '',
     gender: normalizeGender(source.gender),
     birthday: normalizeDate(source.birthday),
+    status: source.status ?? null,
+    role: source.role ?? null,
   }
 }
 

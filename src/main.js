@@ -37,12 +37,16 @@ import 'element-plus/es/components/tabs/style/css'
 import 'element-plus/es/components/tab-pane/style/css'
 import App from './App.vue'
 import router from './router'
+import { useUserStore } from './store/user.js'
 import './style.css'
 
 const app = createApp(App)
 const pinia = createPinia()
 pinia.use(piniaPluginPersistedstate)
 app.use(pinia).use(router)
+const userStore = useUserStore(pinia)
+userStore.connectSessionInvalidation()
+void userStore.restoreSession().catch(() => {})
 app.use(ElementPlus, {
   locale: zhCn,
   zIndex: 3000,

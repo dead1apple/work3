@@ -25,6 +25,34 @@ test('normalizes user profile response aliases and backend gender values', () =>
       avatar: '/avatar.png',
       gender: 2,
       birthday: '2000-01-02',
+      status: null,
+      role: null,
+    },
+  )
+})
+
+test('profile normalization preserves account identity and role fields', () => {
+  assert.deepEqual(
+    normalizeUserProfile({
+      id: 1,
+      username: 'test',
+      nickname: 'old',
+      phone: '13800138000',
+      role: 1,
+      status: 1,
+      password: null,
+    }),
+    {
+      id: 1,
+      username: 'test',
+      nickname: 'old',
+      phone: '13800138000',
+      email: '',
+      avatar: '',
+      gender: 0,
+      birthday: '',
+      status: 1,
+      role: 1,
     },
   )
 })

@@ -1,4 +1,4 @@
-import request from '../utils/request'
+import request from '../utils/request.js'
 
 export const sendCode = (data) => request.post('/auth/send-code', data)
 export const register = (data) => request.post('/auth/register', data)

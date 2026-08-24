@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { clearAuthStorage, isCurrentRequestToken, readAuthToken, toAuthorizationValue } from './auth.js'
+import { notifySessionInvalidated } from './sessionInvalidation.js'
 
 const request = axios.create({
   baseURL: '/api',
@@ -14,6 +15,7 @@ const redirectToLogin = (requestToken) => {
   if (!isCurrentRequestToken(requestToken)) return
 
   clearAuthStorage(undefined, { clearCart: true })
+  notifySessionInvalidated()
   lastAuthenticatedToken = ''
   if (!hasRedirectedToLogin && typeof window !== 'undefined' && window.location.pathname !== '/login') {
     hasRedirectedToLogin = true

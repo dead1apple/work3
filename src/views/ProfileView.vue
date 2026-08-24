@@ -68,6 +68,7 @@ import {
   Clock,
   Location,
   Setting,
+  Shop,
   ShoppingBag,
   Star,
   Ticket,
@@ -76,6 +77,7 @@ import {
 import { getUserInfo, logout } from '../api/index.js'
 import { useCartStore } from '../store/cart.js'
 import { useUserStore } from '../store/user.js'
+import { getMerchantProfileEntry } from '../utils/merchantShop.js'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -99,13 +101,18 @@ const orderItems = [
   { label: '待评价', count: 0, icon: ChatDotRound, status: '3' },
 ]
 
-const menuItems = [
+const baseMenuItems = [
   { label: '我的订单', path: '/orders', icon: ShoppingBag },
   { label: '我的收藏', path: '/favorites', icon: Star },
   { label: '收货地址', path: '/address', icon: Location },
   { label: '优惠券', path: '/coupons', icon: Ticket },
   { label: '编辑资料', path: '/profile/edit', icon: Setting },
 ]
+
+const menuItems = computed(() => {
+  const entry = getMerchantProfileEntry(userStore.role)
+  return entry ? [...baseMenuItems, { ...entry, icon: Shop }] : baseMenuItems
+})
 
 const avatarText = computed(() => (user.value.nickname || '用户').trim().slice(0, 1).toUpperCase())
 
