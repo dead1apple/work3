@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
 import { buyNow, createOrder, getAddressList, getAvailableCoupons, getMyCoupons, getProductDetail } from '../api/index.js'
 import { useCartStore } from '../store/cart.js'
-import { buildBuyNowPayload, buildCartOrderPayload, completeCheckoutSuccess, normalizeBuyNowItem, parseBuyNowQuery } from '../utils/checkout.js'
+import { buildBuyNowPayload, buildCartOrderPayload, completeCheckoutSuccess, normalizeBuyNowItem, parseBuyNowQuery, refreshCartAfterCheckout } from '../utils/checkout.js'
 import { calculateCheckoutTotals, formatMoney, normalizeAddressList } from '../utils/commerce.js'
 import { filterUsableCoupons, getCouponValueText, normalizeCouponList } from '../utils/coupon.js'
 import { createLatestRequestGuard } from '../utils/requestState.js'
@@ -168,7 +168,7 @@ const submitOrder = async () => {
     return
   }
   if (cartUnavailable.value) {
-    ElMessage.warning('购物车服务暂未恢复，当前无法提交购物车订单')
+    ElMessage.warning('购物车信息加载失败，请重新加载后再提交订单')
     return
   }
 
@@ -189,6 +189,10 @@ const submitOrder = async () => {
     return
   }
 
+  await refreshCartAfterCheckout({
+    isBuyNow: isBuyNow.value,
+    refreshCart: cartStore.fetchCartList.bind(cartStore),
+  })
   await completeCheckoutSuccess({
     result,
     payableAmount: totals.value.payableAmount,
@@ -227,7 +231,7 @@ watch(() => route.fullPath, loadCheckout, { immediate: true })
       </div>
 
       <template v-else>
-        <el-alert v-if="cartUnavailable" class="cart-alert" title="购物车服务暂不可用，购物车结算入口已暂停；立即购买不受影响。" type="warning" :closable="false" show-icon />
+        <el-alert v-if="cartUnavailable" class="cart-alert" title="购物车信息加载失败，请检查网络后重新加载。" type="warning" :closable="false" show-icon />
         <el-alert v-if="protocolDataInvalid" class="cart-alert" title="购物车数据异常，请刷新后重试。" type="error" :closable="false" show-icon />
 
         <section class="checkout-section address-section" aria-labelledby="address-title">

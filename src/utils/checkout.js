@@ -79,6 +79,16 @@ export function createCheckoutSubmissionOutcome(payload) {
   }
 }
 
+export async function refreshCartAfterCheckout({ isBuyNow, refreshCart }) {
+  if (isBuyNow || typeof refreshCart !== 'function') return false
+  try {
+    await refreshCart()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export async function completeCheckoutSuccess({
   result,
   payableAmount,

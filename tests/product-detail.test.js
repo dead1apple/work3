@@ -62,6 +62,12 @@ test('parses comma-separated product images, removes duplicates and limits the g
   assert.deepEqual(product.images, ['/main.png', '/one.png', '/two.png'])
 })
 
+test('keeps data image urls intact instead of splitting their required comma', () => {
+  const dataImage = 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3C%2Fsvg%3E'
+
+  assert.deepEqual(productDetailUtils.normalizeProductImages(dataImage), [dataImage])
+})
+
 test('request generation gate blocks stale commits while allowing the latest generation', () => {
   const gate = createRequestGenerationGate()
   const committed = []

@@ -9,7 +9,7 @@ const parseSpecs = (specValues) => {
 export function normalizeProductImages(...sources) {
   const images = sources.flatMap((source) => {
     if (Array.isArray(source)) return source
-    if (typeof source === 'string') return source.split(',')
+    if (typeof source === 'string') return source.trim().startsWith('data:') ? [source] : source.split(',')
     return []
   })
   return [...new Set(images.map((image) => String(image || '').trim()).filter(Boolean))].slice(0, 8)

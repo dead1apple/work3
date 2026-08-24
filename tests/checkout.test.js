@@ -8,6 +8,7 @@ import {
   extractOrderNo,
   normalizeBuyNowItem,
   parseBuyNowQuery,
+  refreshCartAfterCheckout,
 } from '../src/utils/checkout.js'
 import * as checkoutUtils from '../src/utils/checkout.js'
 
@@ -107,4 +108,22 @@ test('checkout success remains terminal when payment navigation fails', async ()
   assert.equal(outcome.navigationFailed, true)
   assert.deepEqual(events[0], ['terminal', true, 'JD2026009'])
   assert.deepEqual(events.at(-1), ['warning', '订单已创建，但页面跳转失败，请前往我的订单查看'])
+})
+
+test('refreshes canonical cart state only after a cart checkout', async () => {
+  const calls = []
+  const refreshCart = async () => calls.push('refresh')
+
+  assert.equal(await refreshCartAfterCheckout({ isBuyNow: true, refreshCart }), false)
+  assert.equal(await refreshCartAfterCheckout({ isBuyNow: false, refreshCart }), true)
+  assert.deepEqual(calls, ['refresh'])
+})
+
+test('cart refresh failure does not turn a created order into a submission failure', async () => {
+  const result = await refreshCartAfterCheckout({
+    isBuyNow: false,
+    refreshCart: async () => { throw new Error('cart unavailable') },
+  })
+
+  assert.equal(result, false)
 })
