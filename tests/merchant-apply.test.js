@@ -232,11 +232,16 @@ test('post-submit refresh invalidates an older initial GET result', async () => 
   assert.equal(flow.submittedUnconfirmed, false)
 })
 
-test('profile merchant entry is role-specific and hidden from administrators', () => {
+test('profile role entry routes each trusted role to its matching destination', () => {
   assert.deepEqual(merchantShop.getMerchantProfileEntry(0), { label: '商家入驻', path: '/merchant/apply' })
   assert.deepEqual(merchantShop.getMerchantProfileEntry(1), { label: '商家中心', path: '/merchant' })
-  assert.equal(merchantShop.getMerchantProfileEntry(2), null)
-  assert.equal(merchantShop.getMerchantProfileEntry(null), null)
+  assert.deepEqual(merchantShop.getMerchantProfileEntry(2), { label: '管理后台', path: '/admin' })
+})
+
+test('profile role entry is hidden for missing, string and unsupported roles', () => {
+  for (const role of [null, undefined, '2', 99]) {
+    assert.equal(merchantShop.getMerchantProfileEntry(role), null)
+  }
 })
 
 test('refreshUserInfo bypasses initialized-session reuse and stores the fresh role', async () => {

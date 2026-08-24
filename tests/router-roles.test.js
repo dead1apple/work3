@@ -71,6 +71,20 @@ test('an administrator can enter admin console but not merchant console', async 
   assert.deepEqual(await guard(protectedRoute('/merchant', [1])), { name: 'forbidden' })
 })
 
+test('an administrator can browse storefront public and authenticated routes', async () => {
+  const guard = createGuard(makeStore({ token: 'admin-token', role: 2 }))
+
+  assert.equal(await guard(makeRoute({ path: '/home', records: [{ public: true }] })), true)
+  assert.equal(await guard(protectedRoute('/profile')), true)
+})
+
+test('returning from admin console to storefront is not redirected back to admin', async () => {
+  const guard = createGuard(makeStore({ token: 'admin-token', role: 2 }))
+
+  assert.equal(await guard(protectedRoute('/admin', [2])), true)
+  assert.equal(await guard(makeRoute({ path: '/home', records: [{ public: true }] })), true)
+})
+
 test('invalid numeric and string roles cannot enter admin console', async () => {
   for (const role of [99, '2']) {
     const result = await createGuard(makeStore({ token: 'token', role }))(protectedRoute('/admin', [2]))
