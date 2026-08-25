@@ -1,7 +1,7 @@
 <script setup>
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElButton, ElDrawer, ElIcon, ElMessage } from 'element-plus'
 import { Fold, HomeFilled, SwitchButton } from '@element-plus/icons-vue'
 import { useSessionStore } from '../store/session'
 
@@ -373,4 +373,3 @@ async function signOut() {
   }
 }
 </style>
-

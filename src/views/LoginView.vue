@@ -2,6 +2,7 @@
 import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { Lock, User } from '@element-plus/icons-vue'
+import { ElButton, ElForm, ElFormItem, ElInput } from 'element-plus'
 import { MerchantAccessError, useSessionStore } from '../store/session'
 
 const route = useRoute()
@@ -323,4 +324,3 @@ async function submit() {
   }
 }
 </style>
-

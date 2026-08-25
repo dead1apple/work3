@@ -1,0 +1,17 @@
+# 示例假设 dist 内容部署到 /usr/share/nginx/html/merchant/
+# 请在实际 server 块中按服务器目录和既有 /、/admin/ 配置合并。
+
+location ^~ /merchant/ {
+    root /usr/share/nginx/html;
+    try_files $uri $uri/ /merchant/index.html;
+}
+
+# Axios 使用同源 /api；不带尾斜杠的 proxy_pass 会保留完整请求 URI。
+location /api/ {
+    proxy_pass http://49.235.130.42:8080;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}

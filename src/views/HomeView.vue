@@ -1,5 +1,6 @@
 <script setup>
 import { CircleCheckFilled } from '@element-plus/icons-vue'
+import { ElIcon } from 'element-plus'
 </script>
 
 <template>
@@ -133,4 +134,3 @@ import { CircleCheckFilled } from '@element-plus/icons-vue'
   }
 }
 </style>
-
