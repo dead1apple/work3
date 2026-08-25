@@ -11,7 +11,12 @@ import java.util.List;
 
 @Service
 public class ShopServiceImpl implements ShopService {
-    @Autowired private ShopMapper shopMapper;
+    private final ShopMapper shopMapper;
+
+    @Autowired
+    public ShopServiceImpl(ShopMapper shopMapper) {
+        this.shopMapper = shopMapper;
+    }
 
     @Override public Shop getById(Long id) { return shopMapper.findById(id); }
     @Override public Shop getByUserId(Long userId) { return shopMapper.findByUserId(userId); }
@@ -23,7 +28,22 @@ public class ShopServiceImpl implements ShopService {
         shopMapper.insert(shop);
     }
 
-    @Override public void updateShop(Shop shop) { shopMapper.update(shop); }
+    @Override
+    public void updateShop(Long userId, Shop shop) {
+        Shop existing = shopMapper.findByUserId(userId);
+        if (existing == null) throw new BusinessException("您还没有店铺");
+        if (shop == null || shop.getId() == null || !existing.getId().equals(shop.getId())) {
+            throw new BusinessException("无权修改该店铺");
+        }
+        shop.setUserId(userId);
+        shop.setRating(null);
+        if (existing.getStatus() != null && existing.getStatus() == 3) {
+            shop.setStatus(0);
+        } else {
+            shop.setStatus(null);
+        }
+        shopMapper.update(shop);
+    }
 
     @Override
     public PageResult<Shop> listShops(String keyword, Integer status, Integer page, Integer size) {

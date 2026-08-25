@@ -16,5 +16,5 @@ public interface OrderService {
     void confirmReceive(Long userId, String orderNo);
     void deleteOrder(Long userId, String orderNo);
     PageResult<Order> listOrders(String keyword, Integer status, Long shopId, Integer page, Integer size);
-    void deliver(DeliverDTO dto);
+    void deliver(Long shopId, DeliverDTO dto);
 }

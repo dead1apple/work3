@@ -7,7 +7,12 @@ import java.util.List;
 import java.util.Map;
 
 public interface ProductService {
-    PageResult<Map<String, Object>> listProducts(Long categoryId, Long brandId, String keyword, String sortBy, Integer status, Integer page, Integer size);
+    default PageResult<Map<String, Object>> listProducts(Long categoryId, Long brandId, String keyword,
+            String sortBy, Integer status, Integer page, Integer size) {
+        return listProducts(categoryId, brandId, keyword, sortBy, status, page, size, null);
+    }
+    PageResult<Map<String, Object>> listProducts(Long categoryId, Long brandId, String keyword,
+            String sortBy, Integer status, Integer page, Integer size, Long shopId);
     Map<String, Object> getProductDetail(Long productId);
     void addProduct(Long shopId, ProductDTO dto);
     void updateProduct(Long shopId, ProductDTO dto);

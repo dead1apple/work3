@@ -6,7 +6,7 @@ public interface ShopService {
     Shop getById(Long id);
     Shop getByUserId(Long userId);
     void applyShop(Long userId, Shop shop);
-    void updateShop(Shop shop);
+    void updateShop(Long userId, Shop shop);
     PageResult<Shop> listShops(String keyword, Integer status, Integer page, Integer size);
     void auditShop(Long shopId, Integer status);
 }

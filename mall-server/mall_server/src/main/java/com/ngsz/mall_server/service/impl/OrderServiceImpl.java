@@ -227,9 +227,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override @Transactional
-    public void deliver(DeliverDTO dto) {
+    public void deliver(Long shopId, DeliverDTO dto) {
         Order order = orderMapper.findByOrderNo(dto.getOrderNo());
         if (order == null) throw new BusinessException("订单不存在");
+        if (shopId == null || !shopId.equals(order.getShopId())) throw new BusinessException("无权操作该订单");
         if (order.getStatus() != 1) throw new BusinessException("只有待发货的订单才能发货");
         order.setStatus(2); order.setDeliveryTime(LocalDateTime.now());
         order.setLogisticsNo(dto.getLogisticsNo()); order.setLogisticsCompany(dto.getLogisticsCompany());

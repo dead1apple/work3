@@ -32,7 +32,7 @@ public class MerchantShopController {
     @Operation(summary = "修改店铺信息", description = "只能修改当前用户作为店主的店铺")
     @PutMapping
     public Result<?> update(@RequestBody Shop shop) {
-        shopService.updateShop(shop);
+        shopService.updateShop(StpUtil.getLoginIdAsLong(), shop);
         return Result.success("修改成功");
     }
 }

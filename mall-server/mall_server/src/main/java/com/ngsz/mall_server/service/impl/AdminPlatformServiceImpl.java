@@ -296,7 +296,7 @@ public class AdminPlatformServiceImpl implements AdminPlatformService {
         int afterStatus = "approve".equals(action) ? 1 : (product ? 0 : 3);
         String targetSql = product
                 ? "SELECT id, name, status FROM product WHERE deleted = 0 AND id IN (" + placeholders + ")"
-                : "SELECT id, shop_name AS name, status FROM shop WHERE id IN (" + placeholders + ")";
+                : "SELECT id, user_id AS userId, shop_name AS name, status FROM shop WHERE id IN (" + placeholders + ")";
         List<Map<String, Object>> targets = jdbcTemplate.queryForList(targetSql, ids.toArray());
         Set<Long> returnedIds = new LinkedHashSet<>();
         boolean allPending = targets.size() == ids.size();
@@ -319,6 +319,10 @@ public class AdminPlatformServiceImpl implements AdminPlatformService {
             throw new BusinessException("审核目标状态已变化，请刷新后重试");
         }
         for (Map<String, Object> target : targets) {
+            if (!product && afterStatus == 1 && value(target, "userId") != null) {
+                jdbcTemplate.update("UPDATE user SET role = 1, update_time = CURRENT_TIMESTAMP "
+                        + "WHERE id = ? AND deleted = 0", value(target, "userId"));
+            }
             insertAuditRecord(type, longValue(value(target, "id")), value(target, "name"),
                     action, pendingStatus, afterStatus, reason, operatorId, operatorName);
         }
@@ -381,7 +385,7 @@ public class AdminPlatformServiceImpl implements AdminPlatformService {
             throw new BusinessException("店铺状态只能是 1、2 或 3");
         }
         List<Map<String, Object>> shops = jdbcTemplate.queryForList("""
-                SELECT id, shop_name AS name, status
+                SELECT id, user_id AS userId, shop_name AS name, status
                 FROM shop
                 WHERE id = ?
                 FOR UPDATE
@@ -407,6 +411,10 @@ public class AdminPlatformServiceImpl implements AdminPlatformService {
                 """, new Object[]{status, id, currentStatus});
         if (updated != 1) {
             throw new BusinessException("店铺状态已变化，请刷新后重试");
+        }
+        if (status == 1 && currentStatus == 0 && value(shop, "userId") != null) {
+            jdbcTemplate.update("UPDATE user SET role = 1, update_time = CURRENT_TIMESTAMP "
+                    + "WHERE id = ? AND deleted = 0", value(shop, "userId"));
         }
         String action = auditTransition
                 ? (status == 1 ? "approve" : "reject")

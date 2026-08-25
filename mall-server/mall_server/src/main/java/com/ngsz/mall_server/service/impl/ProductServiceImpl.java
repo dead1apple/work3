@@ -18,14 +18,21 @@ import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
-    @Autowired private ProductMapper productMapper;
-    @Autowired private SkuMapper skuMapper;
+    private final ProductMapper productMapper;
+    private final SkuMapper skuMapper;
+
+    @Autowired
+    public ProductServiceImpl(ProductMapper productMapper, SkuMapper skuMapper) {
+        this.productMapper = productMapper;
+        this.skuMapper = skuMapper;
+    }
 
     @Override
-    public PageResult<Map<String, Object>> listProducts(Long categoryId, Long brandId, String keyword, String sortBy, Integer status, Integer page, Integer size) {
+    public PageResult<Map<String, Object>> listProducts(Long categoryId, Long brandId, String keyword,
+            String sortBy, Integer status, Integer page, Integer size, Long shopId) {
         int offset = (page - 1) * size;
-        List<Product> products = productMapper.findByCondition(categoryId, brandId, keyword, status, null, offset, size, sortBy);
-        int total = productMapper.countByCondition(categoryId, brandId, keyword, status, null);
+        List<Product> products = productMapper.findByCondition(categoryId, brandId, keyword, status, shopId, offset, size, sortBy);
+        int total = productMapper.countByCondition(categoryId, brandId, keyword, status, shopId);
         List<Map<String, Object>> list = products.stream().map(p -> {
             Map<String, Object> map = new HashMap<>();
             map.put("product", p);
@@ -43,7 +50,10 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Map<String, Object> getProductDetail(Long productId) {
         Product product = productMapper.findById(productId);
-        if (product == null || product.getDeleted() == 1) throw new BusinessException("商品不存在");
+        if (product == null || product.getDeleted() == 1
+                || product.getStatus() == null || product.getStatus() != 1) {
+            throw new BusinessException("商品不存在或已下架");
+        }
         List<Sku> skus = skuMapper.findByProductId(productId);
         Map<String, Object> result = new HashMap<>();
         result.put("product", product);

@@ -2,6 +2,7 @@ package com.ngsz.mall_server.common.exception;
 
 import com.ngsz.mall_server.common.result.Result;
 import com.ngsz.mall_server.common.security.AdminSecurityInterceptor;
+import cn.dev33.satoken.exception.NotLoginException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -17,6 +18,12 @@ public class GlobalExceptionHandler {
         AdminSecurityInterceptor.markRequestFailed(request);
         log.error("业务异常: {}", e.getMessage());
         return Result.error(e.getMessage());
+    }
+
+    @ExceptionHandler(NotLoginException.class)
+    public Result<?> handleNotLoginException(NotLoginException e, HttpServletRequest request) {
+        AdminSecurityInterceptor.markRequestFailed(request);
+        return Result.error("请先登录");
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

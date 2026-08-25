@@ -292,6 +292,20 @@ class AdminPlatformServiceImplTest {
     }
 
     @Test
+    void approvingPendingShopPromotesOwnerToMerchantRole() {
+        when(jdbcTemplate.queryForList(anyString(), eq(21L)))
+                .thenReturn(List.of(row("id", 21L, "userId", 88L, "name", "待审店铺", "status", 0)));
+        when(jdbcTemplate.queryForObject(anyString(), eq(String.class), eq(7L))).thenReturn("admin");
+        when(jdbcTemplate.update(anyString(), any(Object[].class))).thenReturn(1);
+
+        service.updateShopStatus(7L, 21L, 1);
+
+        ArgumentCaptor<String> sql = ArgumentCaptor.forClass(String.class);
+        verify(jdbcTemplate, org.mockito.Mockito.atLeastOnce()).update(sql.capture(), any(Object[].class));
+        assertThat(sql.getAllValues()).anyMatch(value -> value.contains("UPDATE user") && value.contains("role = 1"));
+    }
+
+    @Test
     void shopStatusRejectsMissingAndIllegalTransitions() {
         when(jdbcTemplate.queryForList(anyString(), eq(404L))).thenReturn(List.of());
         assertThatThrownBy(() -> service.updateShopStatus(7L, 404L, 1))

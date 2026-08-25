@@ -1,12 +1,10 @@
 package com.ngsz.mall_server.controller.merchant;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.ngsz.mall_server.common.exception.BusinessException;
 import com.ngsz.mall_server.common.result.Result;
-import com.ngsz.mall_server.pojo.Shop;
 import com.ngsz.mall_server.pojo.dto.DeliverDTO;
 import com.ngsz.mall_server.service.OrderService;
-import com.ngsz.mall_server.service.ShopService;
+import com.ngsz.mall_server.service.impl.MerchantAccessService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -20,12 +18,10 @@ import org.springframework.web.bind.annotation.*;
 public class MerchantOrderController {
 
     @Autowired private OrderService orderService;
-    @Autowired private ShopService shopService;
+    @Autowired private MerchantAccessService merchantAccessService;
 
     private Long getShopId() {
-        Shop shop = shopService.getByUserId(StpUtil.getLoginIdAsLong());
-        if (shop == null) throw new BusinessException("您还没有店铺");
-        return shop.getId();
+        return merchantAccessService.requireActiveShop(StpUtil.getLoginIdAsLong());
     }
 
     @Operation(summary = "查询本店订单", description = "分页查询当前商家名下店铺的订单，可按状态过滤")
@@ -40,7 +36,7 @@ public class MerchantOrderController {
     @Operation(summary = "订单发货", description = "为待发货订单填写物流单号和物流公司完成发货")
     @PostMapping("/deliver")
     public Result<?> deliver(@Valid @RequestBody DeliverDTO dto) {
-        orderService.deliver(dto);
+        orderService.deliver(getShopId(), dto);
         return Result.success("发货成功");
     }
 }
