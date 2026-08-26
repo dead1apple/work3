@@ -1,6 +1,18 @@
 <script setup>
 import { onMounted } from 'vue'
-import { ElButton, ElEmpty, ElImage, ElPagination, ElSkeleton, ElTable, ElTableColumn, ElTag } from 'element-plus'
+import {
+  ElButton,
+  ElEmpty,
+  ElImage,
+  ElInput,
+  ElOption,
+  ElPagination,
+  ElSelect,
+  ElSkeleton,
+  ElTable,
+  ElTableColumn,
+  ElTag,
+} from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
 import { useShopStore } from '../../store/shop'
 import {

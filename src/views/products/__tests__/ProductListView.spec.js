@@ -1,6 +1,5 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
-import ElementPlus from 'element-plus'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as productApi from '../../../api/product'
 import { useShopStore } from '../../../store/shop'
@@ -93,7 +92,7 @@ function mountProductList() {
 
   return mount(ProductListView, {
     attachTo: document.body,
-    global: { plugins: [pinia, ElementPlus] },
+    global: { plugins: [pinia] },
   })
 }
 
@@ -111,6 +110,19 @@ describe('ProductListView', () => {
 
     expect(wrapper.get('[data-testid="product-loading"]').text()).toContain('正在加载商品')
     expect(wrapper.text()).not.toContain('当前店铺暂无商品')
+  })
+
+  it('resolves every Element Plus control with the production registration pattern', async () => {
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue(realProductPage)
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    mountProductList()
+    await flushPromises()
+
+    const unresolvedWarnings = warning.mock.calls
+      .flat()
+      .filter((message) => String(message).includes('Failed to resolve component'))
+    expect(unresolvedWarnings).toEqual([])
   })
 
   it('renders the real read-only merchant product fields', async () => {
