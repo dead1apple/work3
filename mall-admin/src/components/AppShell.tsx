@@ -59,7 +59,7 @@ export function AppShell() {
           </nav>
 
           <div className="sidebar-footer">
-            <a className="nav-item" href="http://49.235.130.42:8080/doc.html" target="_blank" rel="noreferrer"><CircleHelp /><span>接口文档</span></a>
+            <a className="nav-item" href="/doc.html" target="_blank" rel="noreferrer"><CircleHelp /><span>接口文档</span></a>
             <button className="nav-item logout-button" type="button" onClick={logout}><LogOut /><span>退出登录</span></button>
           </div>
         </aside>
