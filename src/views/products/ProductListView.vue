@@ -5,6 +5,8 @@ import {
   ElEmpty,
   ElImage,
   ElInput,
+  ElMessage,
+  ElMessageBox,
   ElOption,
   ElPagination,
   ElSelect,
@@ -44,6 +46,47 @@ function changePage(nextPage) {
 
 function changeSize(nextSize) {
   run(() => productList.changeSize(nextSize))
+}
+
+function getStatusAction(product) {
+  if (product.status === 1) {
+    return { label: '下架', nextStatus: 0 }
+  }
+
+  if (product.status === 0) {
+    return { label: '上架', nextStatus: 1 }
+  }
+
+  return null
+}
+
+function isProductStatusUpdating(productId) {
+  return productList.updatingProductIds.value.has(productId)
+}
+
+async function changeStatus(row) {
+  const action = getStatusAction(row.product)
+
+  if (!action || isProductStatusUpdating(row.product.id)) {
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认${action.label}“${row.product.name}”吗？`,
+      `${action.label}商品`,
+      { type: 'warning', confirmButtonText: '确认', cancelButtonText: '取消' },
+    )
+  } catch {
+    return
+  }
+
+  try {
+    await productList.updateStatus(row.product.id, action.nextStatus)
+    ElMessage.success(`${action.label}成功`)
+  } catch (error) {
+    ElMessage.error(error.message || `${action.label}失败，请稍后重试`)
+  }
 }
 
 onMounted(reloadProducts)
@@ -172,6 +215,22 @@ onMounted(reloadProducts)
               <el-tag :type="getProductStatus(row.product.status).type" effect="light">
                 {{ getProductStatus(row.product.status).label }}
               </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="104" fixed="right">
+            <template #default="{ row }">
+              <el-button
+                v-if="getStatusAction(row.product)"
+                :data-testid="`product-status-action-${row.product.id}`"
+                link
+                :loading="isProductStatusUpdating(row.product.id)"
+                :disabled="isProductStatusUpdating(row.product.id)"
+                :type="row.product.status === 1 ? 'danger' : 'primary'"
+                @click="changeStatus(row)"
+              >
+                {{ getStatusAction(row.product).label }}
+              </el-button>
+              <span v-else class="status-action-unavailable">—</span>
             </template>
           </el-table-column>
           <el-table-column label="销售价" min-width="190">
@@ -405,6 +464,10 @@ onMounted(reloadProducts)
   gap: var(--space-1);
   color: var(--color-muted);
   font-size: 12px;
+}
+
+.status-action-unavailable {
+  color: var(--color-muted);
 }
 
 .product-pagination {

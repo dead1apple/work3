@@ -4,6 +4,7 @@ import { useProductList } from '../useProductList'
 
 vi.mock('../../../api/product', () => ({
   getMerchantProducts: vi.fn(),
+  updateMerchantProductStatus: vi.fn(),
 }))
 
 const productItem = {
@@ -39,6 +40,7 @@ const firstPage = {
 describe('useProductList', () => {
   beforeEach(() => {
     vi.mocked(productApi.getMerchantProducts).mockReset()
+    vi.mocked(productApi.updateMerchantProductStatus).mockReset()
   })
 
   it('loads the first server page into local page state', async () => {
@@ -124,5 +126,59 @@ describe('useProductList', () => {
 
     expect(second.items.value).toEqual([])
     expect(second.total.value).toBe(0)
+  })
+
+  it('refreshes from the server after changing one product status', async () => {
+    const refreshedPage = {
+      ...firstPage,
+      list: [{
+        ...productItem,
+        product: { ...productItem.product, status: 0 },
+      }],
+    }
+    vi.mocked(productApi.getMerchantProducts)
+      .mockResolvedValueOnce(firstPage)
+      .mockResolvedValueOnce(refreshedPage)
+    vi.mocked(productApi.updateMerchantProductStatus).mockResolvedValue({})
+    const state = useProductList()
+    await state.load()
+
+    await state.updateStatus(7, 0)
+
+    expect(productApi.updateMerchantProductStatus).toHaveBeenCalledWith(7, 0)
+    expect(productApi.getMerchantProducts).toHaveBeenCalledTimes(2)
+    expect(state.items.value[0].product.status).toBe(0)
+  })
+
+  it('keeps the loaded status when the server rejects a change', async () => {
+    const failure = new Error('商品不能上架')
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue(firstPage)
+    vi.mocked(productApi.updateMerchantProductStatus).mockRejectedValue(failure)
+    const state = useProductList()
+    await state.load()
+
+    await expect(state.updateStatus(7, 0)).rejects.toBe(failure)
+
+    expect(productApi.getMerchantProducts).toHaveBeenCalledTimes(1)
+    expect(state.items.value[0].product.status).toBe(1)
+    expect(state.updatingProductIds.value.has(7)).toBe(false)
+  })
+
+  it('ignores a second status request for the same product while the first is pending', async () => {
+    let resolveUpdate
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue(firstPage)
+    vi.mocked(productApi.updateMerchantProductStatus).mockReturnValue(new Promise((resolve) => {
+      resolveUpdate = resolve
+    }))
+    const state = useProductList()
+    await state.load()
+
+    const firstUpdate = state.updateStatus(7, 0)
+    const secondUpdate = state.updateStatus(7, 0)
+
+    expect(state.updatingProductIds.value.has(7)).toBe(true)
+    expect(productApi.updateMerchantProductStatus).toHaveBeenCalledTimes(1)
+    resolveUpdate({})
+    await Promise.all([firstUpdate, secondUpdate])
   })
 })

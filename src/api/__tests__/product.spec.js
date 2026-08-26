@@ -1,7 +1,11 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setToken } from '../../utils/token'
 import request from '../../utils/request'
-import { createMerchantProduct, getMerchantProducts } from '../product'
+import {
+  createMerchantProduct,
+  getMerchantProducts,
+  updateMerchantProductStatus,
+} from '../product'
 
 const originalAdapter = request.defaults.adapter
 
@@ -112,5 +116,22 @@ describe('merchant product API', () => {
     expect(observedConfig.data).not.toContain('status')
     expect(observedConfig.data).not.toContain('"id"')
     expect(result).toBe(108)
+  })
+
+  it('puts only the documented target status for the token-scoped product', async () => {
+    setToken('merchant-token')
+    let observedConfig
+    request.defaults.adapter = async (config) => {
+      observedConfig = config
+      return response(config, { code: 1, msg: 'success', data: {} })
+    }
+
+    await updateMerchantProductStatus(7, 0)
+
+    expect(observedConfig.method).toBe('put')
+    expect(observedConfig.url).toBe('/merchant/products/7/status')
+    expect(observedConfig.params).toEqual({ status: 0 })
+    expect(observedConfig.params).not.toHaveProperty('shopId')
+    expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
   })
 })

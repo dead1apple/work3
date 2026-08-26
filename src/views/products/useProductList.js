@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getMerchantProducts } from '../../api/product'
+import { getMerchantProducts, updateMerchantProductStatus } from '../../api/product'
 
 const DOCUMENTED_STATUSES = new Set([0, 1, 2])
 
@@ -12,6 +12,7 @@ export function useProductList() {
   const total = ref(0)
   const loading = ref(false)
   const error = ref(null)
+  const updatingProductIds = ref(new Set())
 
   function buildParams() {
     const params = {
@@ -68,6 +69,23 @@ export function useProductList() {
     return load()
   }
 
+  async function updateStatus(productId, nextStatus) {
+    if (updatingProductIds.value.has(productId)) {
+      return
+    }
+
+    updatingProductIds.value = new Set(updatingProductIds.value).add(productId)
+
+    try {
+      await updateMerchantProductStatus(productId, nextStatus)
+      await load()
+    } finally {
+      const remainingProductIds = new Set(updatingProductIds.value)
+      remainingProductIds.delete(productId)
+      updatingProductIds.value = remainingProductIds
+    }
+  }
+
   return {
     keyword,
     status,
@@ -77,9 +95,11 @@ export function useProductList() {
     total,
     loading,
     error,
+    updatingProductIds,
     load,
     search,
     changePage,
     changeSize,
+    updateStatus,
   }
 }

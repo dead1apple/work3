@@ -2,12 +2,14 @@ import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import * as productApi from '../../../api/product'
 import { useShopStore } from '../../../store/shop'
 import ProductListView from '../ProductListView.vue'
 
 vi.mock('../../../api/product', () => ({
   getMerchantProducts: vi.fn(),
+  updateMerchantProductStatus: vi.fn(),
 }))
 
 const realProductPage = {
@@ -109,6 +111,7 @@ describe('ProductListView', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
     vi.mocked(productApi.getMerchantProducts).mockReset()
+    vi.mocked(productApi.updateMerchantProductStatus).mockReset()
   })
 
   it('shows loading without flashing the empty state', async () => {
@@ -189,5 +192,58 @@ describe('ProductListView', () => {
 
     expect(wrapper.text()).toContain('HUAWEI MateBook X Pro')
     expect(productApi.getMerchantProducts).toHaveBeenCalledTimes(3)
+  })
+
+  it('offers the documented opposite status action but none for pending review', async () => {
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue({
+      ...realProductPage,
+      list: [
+        realProductPage.list[0],
+        { ...realProductPage.list[1], product: { ...realProductPage.list[1].product, status: 0 } },
+        { ...realProductPage.list[2], product: { ...realProductPage.list[2].product, status: 2 } },
+      ],
+    })
+
+    const wrapper = mountProductList()
+    await flushPromises()
+
+    expect(wrapper.get('[data-testid="product-status-action-7"]').text()).toBe('下架')
+    expect(wrapper.get('[data-testid="product-status-action-4"]').text()).toBe('上架')
+    expect(wrapper.find('[data-testid="product-status-action-1"]').exists()).toBe(false)
+  })
+
+  it('confirms a status change and refreshes the list on success', async () => {
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue(realProductPage)
+    vi.mocked(productApi.updateMerchantProductStatus).mockResolvedValue({})
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm')
+
+    const wrapper = mountProductList()
+    await flushPromises()
+    await wrapper.get('[data-testid="product-status-action-7"]').trigger('click')
+    await flushPromises()
+
+    expect(ElMessageBox.confirm).toHaveBeenCalledWith(
+      '确认下架“HUAWEI MateBook X Pro”吗？',
+      '下架商品',
+      expect.objectContaining({ type: 'warning' }),
+    )
+    expect(productApi.updateMerchantProductStatus).toHaveBeenCalledWith(7, 0)
+    expect(productApi.getMerchantProducts).toHaveBeenCalledTimes(2)
+  })
+
+  it('shows the backend message and keeps the rendered status when a change fails', async () => {
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue(realProductPage)
+    vi.mocked(productApi.updateMerchantProductStatus).mockRejectedValue(new Error('商品当前不能下架'))
+    vi.spyOn(ElMessageBox, 'confirm').mockResolvedValue('confirm')
+    const error = vi.spyOn(ElMessage, 'error').mockImplementation(() => {})
+
+    const wrapper = mountProductList()
+    await flushPromises()
+    await wrapper.get('[data-testid="product-status-action-7"]').trigger('click')
+    await flushPromises()
+
+    expect(error).toHaveBeenCalledWith('商品当前不能下架')
+    expect(wrapper.text()).toContain('已上架')
+    expect(productApi.getMerchantProducts).toHaveBeenCalledTimes(1)
   })
 })
