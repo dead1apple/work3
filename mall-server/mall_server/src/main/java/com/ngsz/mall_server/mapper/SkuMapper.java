@@ -11,6 +11,7 @@ public interface SkuMapper {
     List<Sku> findByProductId(@Param("productId") Long productId);
     void insert(Sku sku);
     void update(Sku sku);
+    void softDeleteByIds(@Param("productId") Long productId, @Param("ids") List<Long> ids);
     void updateStock(@Param("id") Long id, @Param("quantity") Integer quantity);
     int lockStock(@Param("id") Long id, @Param("quantity") Integer quantity);
     int unlockStock(@Param("id") Long id, @Param("quantity") Integer quantity);

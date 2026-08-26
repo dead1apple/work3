@@ -6,6 +6,7 @@ import com.ngsz.mall_server.common.result.PageResult;
 import com.ngsz.mall_server.mapper.*;
 import com.ngsz.mall_server.pojo.*;
 import com.ngsz.mall_server.pojo.dto.*;
+import com.ngsz.mall_server.pojo.vo.OrderDetailVO;
 import com.ngsz.mall_server.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -115,13 +116,19 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public Map<String, Object> getOrderDetail(Long userId, String orderNo) {
+    public OrderDetailVO getOrderDetail(Long userId, String orderNo) {
         Order order = orderMapper.findByOrderNo(orderNo);
         if (order == null || !order.getUserId().equals(userId)) throw new BusinessException("订单不存在");
-        Map<String, Object> result = new HashMap<>();
-        result.put("order", order); result.put("items", orderItemMapper.findByOrderNo(orderNo));
-        result.put("payment", paymentMapper.findByOrderNo(orderNo));
-        return result;
+        return buildOrderDetail(order);
+    }
+
+    @Override
+    public OrderDetailVO getMerchantOrderDetail(Long shopId, String orderNo) {
+        Order order = orderMapper.findByOrderNo(orderNo);
+        if (order == null || !Objects.equals(order.getShopId(), shopId)) {
+            throw new BusinessException("订单不存在");
+        }
+        return buildOrderDetail(order);
     }
 
     @Override
@@ -235,5 +242,12 @@ public class OrderServiceImpl implements OrderService {
         order.setStatus(2); order.setDeliveryTime(LocalDateTime.now());
         order.setLogisticsNo(dto.getLogisticsNo()); order.setLogisticsCompany(dto.getLogisticsCompany());
         orderMapper.update(order);
+    }
+
+    private OrderDetailVO buildOrderDetail(Order order) {
+        return new OrderDetailVO(
+                order,
+                orderItemMapper.findByOrderNo(order.getOrderNo()),
+                paymentMapper.findByOrderNo(order.getOrderNo()));
     }
 }

@@ -57,3 +57,5 @@ mall:
     mock: ${MALL_SMS_MOCK:true}
   pay:
     mock: ${MALL_PAY_MOCK:true}
+  upload:
+    directory: ${MALL_UPLOAD_DIR:uploads}

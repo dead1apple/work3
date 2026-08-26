@@ -5,6 +5,7 @@ import com.ngsz.mall_server.common.result.Result;
 import com.ngsz.mall_server.pojo.dto.BuyNowDTO;
 import com.ngsz.mall_server.pojo.dto.CreateOrderDTO;
 import com.ngsz.mall_server.pojo.dto.ReviewDTO;
+import com.ngsz.mall_server.pojo.vo.OrderDetailVO;
 import com.ngsz.mall_server.service.OrderService;
 import com.ngsz.mall_server.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -48,7 +49,7 @@ public class OrderController {
 
     @Operation(summary = "订单详情", description = "根据订单号查询订单详细信息以及明细")
     @GetMapping("/{orderNo}")
-    public Result<?> detail(@Parameter(description = "订单号", example = "202606300001") @PathVariable String orderNo) {
+    public Result<OrderDetailVO> detail(@Parameter(description = "订单号", example = "202606300001") @PathVariable String orderNo) {
         return Result.success(orderService.getOrderDetail(StpUtil.getLoginIdAsLong(), orderNo));
     }
 

@@ -8,6 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 
 @Slf4j
 @RestControllerAdvice
@@ -21,9 +23,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NotLoginException.class)
-    public Result<?> handleNotLoginException(NotLoginException e, HttpServletRequest request) {
+    public ResponseEntity<Result<?>> handleNotLoginException(NotLoginException e, HttpServletRequest request) {
         AdminSecurityInterceptor.markRequestFailed(request);
-        return Result.error("请先登录");
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(Result.error("请先登录"));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)

@@ -1,6 +1,9 @@
 package com.ngsz.mall_server.controller;
 
 import com.ngsz.mall_server.common.result.Result;
+import com.ngsz.mall_server.common.result.PageResult;
+import com.ngsz.mall_server.pojo.vo.ProductDetailVO;
+import com.ngsz.mall_server.pojo.vo.ProductListItemVO;
 import com.ngsz.mall_server.service.ProductService;
 import com.ngsz.mall_server.service.ReviewService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,7 +22,7 @@ public class ProductController {
 
     @Operation(summary = "分页查询商品列表", description = "支持按分类、品牌、关键字过滤，支持按销量/价格等排序")
     @GetMapping
-    public Result<?> list(
+    public Result<PageResult<ProductListItemVO>> list(
             @Parameter(description = "分类 ID", example = "10") @RequestParam(required = false) Long categoryId,
             @Parameter(description = "品牌 ID", example = "5") @RequestParam(required = false) Long brandId,
             @Parameter(description = "搜索关键字", example = "华为") @RequestParam(required = false) String keyword,
@@ -33,7 +36,7 @@ public class ProductController {
 
     @Operation(summary = "商品详情", description = "返回商品基础信息、Sku 列表、店铺信息等")
     @GetMapping("/{id}")
-    public Result<?> detail(@Parameter(description = "商品 ID", example = "1") @PathVariable Long id) {
+    public Result<ProductDetailVO> detail(@Parameter(description = "商品 ID", example = "1") @PathVariable Long id) {
         return Result.success(productService.getProductDetail(id));
     }
 

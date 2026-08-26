@@ -4,7 +4,8 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO sku (product_id, sku_name, spec_values, price, market_price, cost_price, stock, image, sku_code, weight, status)
-        VALUES (#{productId}, #{skuName}, #{specValues}, #{price}, #{marketPrice}, #{costPrice}, #{stock}, #{image}, #{skuCode}, #{weight}, #{status})
+        VALUES (#{productId}, #{skuName}, #{specValues}, #{price}, #{marketPrice}, #{costPrice}, #{stock}, #{image}, #{skuCode}, #{weight},
+                COALESCE(#{status}, 1))
     </insert>
 
     <update id="update">
@@ -17,9 +18,19 @@
             <if test="costPrice != null">cost_price = #{costPrice},</if>
             <if test="stock != null">stock = #{stock},</if>
             <if test="image != null">image = #{image},</if>
+            <if test="skuCode != null">sku_code = #{skuCode},</if>
+            <if test="weight != null">weight = #{weight},</if>
             <if test="status != null">status = #{status},</if>
         </set>
         WHERE id = #{id} AND deleted = 0
+    </update>
+
+    <update id="softDeleteByIds">
+        UPDATE sku SET deleted = 1
+        WHERE product_id = #{productId} AND deleted = 0 AND id IN
+        <foreach collection="ids" item="id" open="(" separator="," close=")">
+            #{id}
+        </foreach>
     </update>
 
     <update id="updateStock">

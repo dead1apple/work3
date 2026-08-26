@@ -4,7 +4,8 @@
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO product (category_id, brand_id, shop_id, name, subtitle, main_image, images, detail, status, sort_order)
-        VALUES (#{categoryId}, #{brandId}, #{shopId}, #{name}, #{subtitle}, #{mainImage}, #{images}, #{detail}, #{status}, #{sortOrder})
+        VALUES (#{categoryId}, #{brandId}, #{shopId}, #{name}, #{subtitle}, #{mainImage}, #{images}, #{detail},
+                COALESCE(#{status}, 2), COALESCE(#{sortOrder}, 0))
     </insert>
 
     <update id="update">
