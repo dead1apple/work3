@@ -28,6 +28,12 @@ export const routes = [
         meta: { title: '新增商品' },
       },
       {
+        path: 'products/:id/edit',
+        name: 'merchant-product-edit',
+        component: () => import('../views/products/ProductCreateView.vue'),
+        meta: { title: '编辑商品' },
+      },
+      {
         path: 'orders',
         name: 'merchant-orders',
         component: () => import('../views/orders/OrderListView.vue'),

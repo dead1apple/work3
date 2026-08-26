@@ -98,6 +98,7 @@ function mountProductList() {
     routes: [
       { path: '/products', name: 'merchant-products', component: { template: '<div />' } },
       { path: '/products/create', name: 'merchant-product-create', component: { template: '<div />' } },
+      { path: '/products/:id/edit', name: 'merchant-product-edit', component: { template: '<div />' } },
     ],
   })
 
@@ -152,7 +153,8 @@ describe('ProductListView', () => {
     expect(wrapper.text()).toContain('776')
     expect(wrapper.text()).toContain('分类 21')
     expect(wrapper.text()).toContain('品牌 1')
-    expect(wrapper.text()).not.toMatch(/编辑|删除|上架操作|下架操作|商品详情|修改库存/)
+    expect(wrapper.text()).toContain('编辑')
+    expect(wrapper.get('[data-testid="product-edit-7"]').attributes('href')).toBe('/merchant/products/7/edit')
   })
 
   it('renders a legitimate empty page with the real create entry', async () => {

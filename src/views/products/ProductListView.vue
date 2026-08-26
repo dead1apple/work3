@@ -217,8 +217,15 @@ onMounted(reloadProducts)
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="104" fixed="right">
+          <el-table-column label="操作" width="148" fixed="right">
             <template #default="{ row }">
+              <router-link
+                class="product-edit-link"
+                :data-testid="`product-edit-${row.product.id}`"
+                :to="{ name: 'merchant-product-edit', params: { id: row.product.id } }"
+              >
+                编辑
+              </router-link>
               <el-button
                 v-if="getStatusAction(row.product)"
                 :data-testid="`product-status-action-${row.product.id}`"
@@ -469,6 +476,8 @@ onMounted(reloadProducts)
 .status-action-unavailable {
   color: var(--color-muted);
 }
+
+.product-edit-link { margin-right: var(--space-3); color: var(--color-accent-strong); font-size: 14px; text-decoration: none; }
 
 .product-pagination {
   display: flex;

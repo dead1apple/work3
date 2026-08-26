@@ -1,12 +1,13 @@
 <script setup>
-import { onMounted } from 'vue'
-import { RouterLink, useRouter } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   ElAlert,
   ElButton,
   ElCascader,
   ElInput,
   ElInputNumber,
+  ElImage,
   ElMessage,
   ElOption,
   ElSelect,
@@ -15,10 +16,15 @@ import {
 import { Delete, Plus, Refresh } from '@element-plus/icons-vue'
 import { useShopStore } from '../../store/shop'
 import { ProductFormValidationError, useProductCreate } from './useProductCreate'
+import { useProductEdit } from './useProductEdit'
+import { parseImageUrls } from './product-create'
+import ProductImageUpload from './ProductImageUpload.vue'
 
 const router = useRouter()
+const route = useRoute()
 const shop = useShopStore()
-const productCreate = useProductCreate()
+const isEditing = computed(() => Boolean(route.params.id))
+const productCreate = isEditing.value ? useProductEdit(route.params.id) : useProductCreate()
 
 defineExpose({ productCreate })
 
@@ -27,13 +33,28 @@ function fieldError(path) {
 }
 
 function runCatalogLoad() {
-  void productCreate.loadCatalogs().catch(() => {})
+  void (async () => {
+    await productCreate.loadCatalogs()
+    if (isEditing.value) await productCreate.loadProduct()
+  })().catch(() => {})
+}
+
+function productImages() {
+  return parseImageUrls(productCreate.form.imageUrls)
+}
+
+function addProductImage(url) {
+  productCreate.form.imageUrls = [...productImages(), url].join('\n')
+}
+
+function removeProductImage(url) {
+  productCreate.form.imageUrls = productImages().filter((item) => item !== url).join('\n')
 }
 
 async function submitProduct() {
   try {
     await productCreate.submit()
-    ElMessage.success('商品已提交审核')
+    ElMessage.success(isEditing.value ? '商品已更新并提交审核' : '商品已提交审核')
     await router.push({ name: 'merchant-products' })
   } catch (error) {
     if (error instanceof ProductFormValidationError) {
@@ -52,10 +73,10 @@ onMounted(() => {
     <header class="create-heading">
       <div>
         <p class="create-kicker">NEW PRODUCT</p>
-        <h1 id="product-create-title">新增商品</h1>
+        <h1 id="product-create-title">{{ isEditing ? '编辑商品' : '新增商品' }}</h1>
         <p>
           <strong>{{ shop.shop?.shopName || '当前店铺' }}</strong>
-          · 提交后由平台审核，店铺归属由服务端身份确定
+          · {{ isEditing ? '保存后以服务端返回结果为准' : '提交后由平台审核' }}，店铺归属由服务端身份确定
         </p>
       </div>
       <router-link class="back-link" :to="{ name: 'merchant-products' }">返回商品列表</router-link>
@@ -78,6 +99,16 @@ onMounted(() => {
     </div>
 
     <div
+      v-else-if="isEditing && productCreate.detailLoading.value"
+      class="create-state"
+      data-testid="product-detail-loading"
+      aria-live="polite"
+    >
+      <p>正在加载商品详情</p>
+      <el-skeleton :rows="6" animated />
+    </div>
+
+    <div
       v-else-if="productCreate.catalogError.value"
       class="create-state create-state--error"
       data-testid="catalog-error"
@@ -94,6 +125,18 @@ onMounted(() => {
       >
         重新加载
       </el-button>
+    </div>
+
+    <div
+      v-else-if="isEditing && productCreate.detailError.value"
+      class="create-state create-state--error"
+      data-testid="product-detail-error"
+      role="alert"
+    >
+      <span class="state-eyebrow">PRODUCT UNAVAILABLE</span>
+      <h2>商品详情加载失败</h2>
+      <p>{{ productCreate.detailError.value.message }}</p>
+      <el-button type="primary" :icon="Refresh" @click="runCatalogLoad">重新加载</el-button>
     </div>
 
     <form v-else class="product-form" aria-label="新增商品表单" @submit.prevent="submitProduct">
@@ -178,28 +221,24 @@ onMounted(() => {
           <span>02</span>
           <div>
             <h2 id="media-info-title">图片与详情</h2>
-            <p>后端暂无上传接口，请填写可公开访问的完整 URL。</p>
+            <p>支持 JPEG、PNG、GIF、WebP，单个文件最大 10 MB；上传后使用服务端返回 URL。</p>
           </div>
         </div>
 
         <div class="field-grid">
           <label class="form-field field-span-2">
-            <span>主图 URL</span>
-            <el-input
-              v-model="productCreate.form.mainImage"
-              aria-label="主图 URL"
-              placeholder="https://example.com/product.jpg"
-            />
+            <span>主图</span>
+            <ProductImageUpload v-model="productCreate.form.mainImage" label="上传主图" />
           </label>
           <label class="form-field field-span-2">
-            <span>其他图片 URL</span>
-            <el-input
-              v-model="productCreate.form.imageUrls"
-              aria-label="其他图片 URL"
-              type="textarea"
-              :rows="3"
-              placeholder="每行一个完整 URL"
-            />
+            <span>商品图片</span>
+            <ProductImageUpload label="添加商品图片" @uploaded="addProductImage" />
+            <div v-if="productImages().length" class="uploaded-images" aria-label="已上传商品图片">
+              <div v-for="url in productImages()" :key="url" class="uploaded-image">
+                <el-image :src="url" fit="cover" />
+                <el-button text type="danger" :aria-label="`移除商品图片`" @click="removeProductImage(url)">移除</el-button>
+              </div>
+            </div>
           </label>
           <label class="form-field field-span-2">
             <span>商品详情</span>
@@ -294,8 +333,8 @@ onMounted(() => {
               </label>
 
               <label class="form-field sku-image-field">
-                <span>SKU 图片 URL</span>
-                <el-input v-model="sku.image" :aria-label="`SKU ${index + 1} 图片 URL`" placeholder="https://example.com/sku.jpg" />
+                <span>SKU 图片</span>
+                <ProductImageUpload v-model="sku.image" :label="`上传 SKU ${index + 1} 图片`" />
               </label>
             </div>
           </article>
@@ -303,7 +342,7 @@ onMounted(() => {
       </section>
 
       <footer class="form-actions">
-        <p>提交即进入平台审核流程，本页不会自行设置商品状态。</p>
+        <p>{{ isEditing ? '保存后以服务端的审核与状态规则为准。' : '提交即进入平台审核流程，本页不会自行设置商品状态。' }}</p>
         <div>
           <router-link class="cancel-link" :to="{ name: 'merchant-products' }">取消</router-link>
           <el-button
@@ -315,7 +354,7 @@ onMounted(() => {
             :disabled="productCreate.submitting.value"
             @click="submitProduct"
           >
-            提交审核
+            {{ isEditing ? '保存商品' : '提交审核' }}
           </el-button>
         </div>
       </footer>
@@ -499,6 +538,10 @@ onMounted(() => {
   color: var(--el-color-danger);
   font-size: 12px;
 }
+
+.uploaded-images { display: flex; flex-wrap: wrap; gap: var(--space-3); }
+.uploaded-image { display: grid; gap: var(--space-1); width: 92px; }
+.uploaded-image :deep(.el-image) { width: 92px; height: 92px; border-radius: var(--radius-small); background: var(--color-canvas); }
 
 .section-error {
   margin: 0 0 var(--space-4) 54px;

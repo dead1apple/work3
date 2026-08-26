@@ -3,8 +3,11 @@ import { setToken } from '../../utils/token'
 import request from '../../utils/request'
 import {
   createMerchantProduct,
+  getMerchantProduct,
   getMerchantProducts,
+  updateMerchantProduct,
   updateMerchantProductStatus,
+  uploadMerchantImage,
 } from '../product'
 
 const originalAdapter = request.defaults.adapter
@@ -133,5 +136,42 @@ describe('merchant product API', () => {
     expect(observedConfig.params).toEqual({ status: 0 })
     expect(observedConfig.params).not.toHaveProperty('shopId')
     expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
+  })
+
+  it('gets and updates a complete token-scoped ProductDTO without shopId', async () => {
+    setToken('merchant-token')
+    const configs = []
+    request.defaults.adapter = async (config) => {
+      configs.push(config)
+      return response(config, { code: 1, msg: 'success', data: { product: { id: 73 }, skuList: [] } })
+    }
+    const payload = { id: 73, categoryId: 11, brandId: 1, name: '测试商品', skuList: [{ id: 271, skuName: '默认款', price: 99, stock: 1 }] }
+
+    await getMerchantProduct(73)
+    await updateMerchantProduct(payload)
+
+    expect(configs[0].url).toBe('/merchant/products/73')
+    expect(configs[0].method).toBe('get')
+    expect(configs[1].url).toBe('/merchant/products')
+    expect(configs[1].method).toBe('put')
+    expect(JSON.parse(configs[1].data)).toEqual(payload)
+    expect(configs[1].data).not.toContain('shopId')
+    expect(configs[1].headers.get('Authorization')).toBe('merchant-token')
+  })
+
+  it('uploads a file as multipart form data using the documented file field', async () => {
+    let observedConfig
+    request.defaults.adapter = async (config) => {
+      observedConfig = config
+      return response(config, { code: 1, msg: '上传成功', data: { url: 'https://cdn.test/image.png' } })
+    }
+    const file = new File(['image'], 'image.png', { type: 'image/png' })
+
+    await expect(uploadMerchantImage(file)).resolves.toEqual({ url: 'https://cdn.test/image.png' })
+
+    expect(observedConfig.method).toBe('post')
+    expect(observedConfig.url).toBe('/merchant/uploads/images')
+    expect(observedConfig.data).toBeInstanceOf(FormData)
+    expect(observedConfig.data.get('file')).toBe(file)
   })
 })

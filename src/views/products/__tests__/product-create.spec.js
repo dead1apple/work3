@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildProductPayload,
+  buildProductUpdatePayload,
   createProductForm,
   createSkuRow,
   parseImageUrls,
+  hydrateProductForm,
   toCategoryOptions,
   validateProductForm,
 } from '../product-create'
@@ -119,6 +121,23 @@ describe('product create domain', () => {
       detail: null,
       skuList: [{ marketPrice: null, image: null }],
     })
+  })
+
+  it('hydrates an existing product and emits its IDs only for the update DTO', () => {
+    const form = createProductForm()
+    hydrateProductForm(form, {
+      product: { id: 73, categoryId: 11, brandId: 1, name: '待审核商品', subtitle: null, mainImage: 'https://cdn.test/main.png', images: ['https://cdn.test/a.png'], detail: '详情' },
+      skuList: [{ id: 271, skuName: '默认款', specValues: '{"颜色":"测试"}', price: 99, marketPrice: null, stock: 1, image: 'https://cdn.test/sku.png', status: 1 }],
+    }, [{ value: 1, children: [{ value: 11 }] }])
+
+    expect(form.categoryPath).toEqual([1, 11])
+    expect(form.skuList[0].id).toBe(271)
+    expect(buildProductUpdatePayload(form)).toEqual(expect.objectContaining({
+      id: 73,
+      categoryId: 11,
+      skuList: [expect.objectContaining({ id: 271, status: 1, image: 'https://cdn.test/sku.png' })],
+    }))
+    expect(buildProductUpdatePayload(form)).not.toHaveProperty('shopId')
   })
 
   it('rejects missing product identity fields and an empty SKU list', () => {

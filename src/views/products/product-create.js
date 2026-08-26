@@ -30,6 +30,7 @@ function parseSpecObject(value) {
 export function createSkuRow() {
   return {
     key: nextSkuKey++,
+    id: null,
     skuName: '',
     specValues: '{}',
     price: null,
@@ -41,6 +42,7 @@ export function createSkuRow() {
 
 export function createProductForm() {
   return {
+    id: null,
     name: '',
     subtitle: '',
     categoryPath: [],
@@ -50,6 +52,46 @@ export function createProductForm() {
     detail: '',
     skuList: [createSkuRow()],
   }
+}
+
+function findCategoryPath(options, categoryId, ancestors = []) {
+  for (const option of options) {
+    const path = [...ancestors, option.value]
+    if (option.value === categoryId) return path
+    if (option.children) {
+      const match = findCategoryPath(option.children, categoryId, path)
+      if (match) return match
+    }
+  }
+  return null
+}
+
+export function hydrateProductForm(form, detail, categoryOptions) {
+  const product = detail?.product || {}
+  form.id = product.id ?? null
+  form.name = product.name || ''
+  form.subtitle = product.subtitle || ''
+  form.categoryPath = findCategoryPath(categoryOptions, product.categoryId) || [product.categoryId].filter(Boolean)
+  form.brandId = product.brandId ?? null
+  form.mainImage = product.mainImage || ''
+  form.imageUrls = Array.isArray(product.images) ? product.images.join('\n') : ''
+  form.detail = product.detail || ''
+  form.skuList = (detail?.skuList || []).map((sku) => ({
+    key: nextSkuKey++,
+    id: sku.id ?? null,
+    skuName: sku.skuName || '',
+    specValues: sku.specValues || '{}',
+    price: sku.price ?? null,
+    marketPrice: sku.marketPrice ?? null,
+    stock: sku.stock ?? 0,
+    image: sku.image || '',
+    costPrice: sku.costPrice ?? null,
+    skuCode: sku.skuCode || '',
+    weight: sku.weight ?? null,
+    status: sku.status ?? null,
+  }))
+
+  if (form.skuList.length === 0) form.skuList = [createSkuRow()]
 }
 
 export function toCategoryOptions(nodes) {
@@ -112,8 +154,8 @@ export function validateProductForm(form) {
   return errors
 }
 
-export function buildProductPayload(form) {
-  return {
+export function buildProductPayload(form, { includeIds = false } = {}) {
+  const payload = {
     categoryId: Number(form.categoryPath.at(-1)),
     brandId: Number(form.brandId),
     name: form.name.trim(),
@@ -121,13 +163,29 @@ export function buildProductPayload(form) {
     mainImage: optionalText(form.mainImage),
     images: parseImageUrls(form.imageUrls),
     detail: optionalText(form.detail),
-    skuList: form.skuList.map((sku) => ({
-      skuName: sku.skuName.trim(),
-      specValues: JSON.stringify(parseSpecObject(sku.specValues).value),
-      price: Number(sku.price),
-      marketPrice: hasNumber(sku.marketPrice) ? Number(sku.marketPrice) : null,
-      stock: Number(sku.stock),
-      image: optionalText(sku.image),
-    })),
+    skuList: form.skuList.map((sku) => {
+      const skuPayload = {
+        skuName: sku.skuName.trim(),
+        specValues: JSON.stringify(parseSpecObject(sku.specValues).value),
+        price: Number(sku.price),
+        marketPrice: hasNumber(sku.marketPrice) ? Number(sku.marketPrice) : null,
+        stock: Number(sku.stock),
+        image: optionalText(sku.image),
+      }
+
+      if (includeIds && hasNumber(sku.id)) skuPayload.id = Number(sku.id)
+      if (includeIds && hasNumber(sku.costPrice)) skuPayload.costPrice = Number(sku.costPrice)
+      if (includeIds && optionalText(sku.skuCode)) skuPayload.skuCode = optionalText(sku.skuCode)
+      if (includeIds && hasNumber(sku.weight)) skuPayload.weight = Number(sku.weight)
+      if (includeIds && hasNumber(sku.status)) skuPayload.status = Number(sku.status)
+      return skuPayload
+    }),
   }
+
+  if (includeIds) payload.id = Number(form.id)
+  return payload
+}
+
+export function buildProductUpdatePayload(form) {
+  return buildProductPayload(form, { includeIds: true })
 }
