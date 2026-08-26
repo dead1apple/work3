@@ -7,7 +7,7 @@ import { useSessionStore } from '../../store/session'
 import { useShopStore } from '../../store/shop'
 import MerchantLayout from '../MerchantLayout.vue'
 
-const EmptyView = { template: '<div class="route-content">首页内容</div>' }
+const EmptyView = { template: '<div class="route-content">页面内容</div>' }
 
 async function mountLayout() {
   const pinia = createPinia()
@@ -25,7 +25,10 @@ async function mountLayout() {
       {
         path: '/',
         component: MerchantLayout,
-        children: [{ path: '', name: 'merchant-home', component: EmptyView }],
+        children: [
+          { path: '', name: 'merchant-home', component: EmptyView },
+          { path: 'products', name: 'merchant-products', component: EmptyView },
+        ],
       },
       { path: '/login', name: 'login', component: EmptyView },
     ],
@@ -43,12 +46,14 @@ async function mountLayout() {
 }
 
 describe('MerchantLayout', () => {
-  it('shows only the first-phase home navigation and current merchant', async () => {
+  it('shows only implemented navigation and separates merchant from shop', async () => {
     const { wrapper } = await mountLayout()
     const navigation = wrapper.get('nav[aria-label="商家后台导航"]')
 
-    expect(navigation.text()).toContain('首页')
-    expect(navigation.text()).not.toContain('商品管理')
+    expect(navigation.findAll('a').map((link) => link.text())).toEqual(['首页', '商品列表'])
+    expect(navigation.get('a[href="/merchant/products"]').exists()).toBe(true)
+    expect(navigation.text()).not.toContain('新增商品')
+    expect(navigation.text()).not.toContain('库存管理')
     expect(navigation.text()).not.toContain('订单管理')
     expect(navigation.text()).not.toContain('优惠券')
     expect(wrapper.get('[data-testid="merchant-identity"]').text()).toContain('经营者小李')

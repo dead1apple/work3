@@ -1,12 +1,13 @@
 <script setup>
 import { computed, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { ElButton, ElDrawer, ElIcon, ElMessage } from 'element-plus'
-import { Fold, HomeFilled, SwitchButton } from '@element-plus/icons-vue'
+import { Fold, Goods, HomeFilled, SwitchButton } from '@element-plus/icons-vue'
 import { useSessionStore } from '../store/session'
 import { useShopStore } from '../store/shop'
 
 const router = useRouter()
+const route = useRoute()
 const session = useSessionStore()
 const shop = useShopStore()
 const mobileNavigationOpen = ref(false)
@@ -17,6 +18,7 @@ const shopLabel = computed(() => {
   if (shop.status === 'error') return '店铺信息加载失败'
   return '店铺信息加载中'
 })
+const pageTitle = computed(() => route.meta.title || '商家中心')
 
 async function signOut() {
   if (signingOut.value) return
@@ -50,6 +52,10 @@ async function signOut() {
           <el-icon aria-hidden="true"><HomeFilled /></el-icon>
           <span>首页</span>
         </RouterLink>
+        <RouterLink class="navigation-item" :to="{ name: 'merchant-products' }">
+          <el-icon aria-hidden="true"><Goods /></el-icon>
+          <span>商品列表</span>
+        </RouterLink>
       </nav>
 
       <div class="sidebar-footer">
@@ -73,7 +79,7 @@ async function signOut() {
 
         <div class="topbar-context">
           <span>商家中心</span>
-          <strong>首页</strong>
+          <strong>{{ pageTitle }}</strong>
         </div>
 
         <div class="topbar-actions">
@@ -120,6 +126,14 @@ async function signOut() {
         >
           <el-icon aria-hidden="true"><HomeFilled /></el-icon>
           <span>首页</span>
+        </RouterLink>
+        <RouterLink
+          class="navigation-item navigation-item--mobile"
+          :to="{ name: 'merchant-products' }"
+          @click="mobileNavigationOpen = false"
+        >
+          <el-icon aria-hidden="true"><Goods /></el-icon>
+          <span>商品列表</span>
         </RouterLink>
       </nav>
     </el-drawer>
