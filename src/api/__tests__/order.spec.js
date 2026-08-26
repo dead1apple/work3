@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setToken } from '../../utils/token'
 import request from '../../utils/request'
-import { deliverMerchantOrder, getMerchantOrders } from '../order'
+import { deliverMerchantOrder, getMerchantOrderDetail, getMerchantOrders } from '../order'
 
 const originalAdapter = request.defaults.adapter
 
@@ -57,6 +57,23 @@ describe('merchant order API', () => {
     expect(observedConfig.url).toBe('/merchant/orders/deliver')
     expect(JSON.parse(observedConfig.data)).toEqual(payload)
     expect(observedConfig.data).not.toContain('shopId')
+    expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
+  })
+
+  it('gets one merchant-owned order detail by business order number without shopId', async () => {
+    setToken('merchant-token')
+    let observedConfig
+    const detail = { order: { orderNo: '202606300001' }, items: [], payment: null }
+    request.defaults.adapter = async (config) => {
+      observedConfig = config
+      return response(config, { code: 1, msg: 'success', data: detail })
+    }
+
+    await expect(getMerchantOrderDetail('202606300001')).resolves.toEqual(detail)
+
+    expect(observedConfig.method).toBe('get')
+    expect(observedConfig.url).toBe('/merchant/orders/202606300001')
+    expect(observedConfig.params).toBeUndefined()
     expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
   })
 })

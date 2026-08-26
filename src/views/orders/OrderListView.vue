@@ -61,7 +61,7 @@ onMounted(reloadOrders)
       <el-table-column label="收货信息" min-width="290"><template #default="{ row }"><div class="receiver"><strong>{{ row.receiverName }} · {{ row.receiverPhone }}</strong><span>{{ row.receiverAddress }}</span></div></template></el-table-column>
       <el-table-column label="下单时间" width="180"><template #default="{ row }">{{ time(row.createTime) }}</template></el-table-column>
       <el-table-column label="支付时间" width="180"><template #default="{ row }">{{ time(row.payTime) }}</template></el-table-column>
-      <el-table-column label="操作" width="96" fixed="right"><template #default="{ row }"><el-button v-if="canDeliver(row)" :data-testid="`deliver-order-${row.id}`" link type="primary" :loading="isDelivering(row.orderNo)" :disabled="isDelivering(row.orderNo)" @click="openDelivery(row)">发货</el-button><span v-else>—</span></template></el-table-column>
+      <el-table-column label="操作" width="148" fixed="right"><template #default="{ row }"><router-link class="detail-link" :data-testid="`order-detail-${row.id}`" :to="{ name: 'merchant-order-detail', params: { orderNo: row.orderNo } }">查看详情</router-link><el-button v-if="canDeliver(row)" :data-testid="`deliver-order-${row.id}`" link type="primary" :loading="isDelivering(row.orderNo)" :disabled="isDelivering(row.orderNo)" @click="openDelivery(row)">发货</el-button><span v-else>—</span></template></el-table-column>
     </el-table></div>
     <footer><span>共 {{ orderList.total.value }} 笔订单</span><el-pagination :current-page="orderList.page.value" :page-size="orderList.size.value" :page-sizes="[10, 20, 50]" :total="orderList.total.value" layout="sizes, prev, pager, next" background @current-change="changePage" @size-change="changeSize" /></footer></div>
   </section>
@@ -87,5 +87,6 @@ onMounted(reloadOrders)
 .order-state { min-height: 300px; } .order-state h2 { margin-top: 70px; } .order-table-wrap { overflow-x: auto; margin: calc(var(--space-5) * -1); margin-bottom: 0; }
 .receiver { display: grid; gap: var(--space-1); } .receiver span { color: var(--color-muted); font-size: 12px; }
 .order-results footer { padding-top: var(--space-5); }
+.detail-link { margin-right: var(--space-3); color: var(--color-accent-strong); font-size: 14px; text-decoration: none; }
 @media (max-width: 760px) { .order-heading, .order-results footer { align-items: stretch; flex-direction: column; } }
 </style>
