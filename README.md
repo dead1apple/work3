@@ -1,6 +1,6 @@
 # Merchant Frontend
 
-独立商家端 SPA。当前阶段包含登录、商家身份校验、会话恢复、当前店铺只读上下文、Merchant Layout 和基础状态页，不包含商品、订单、优惠券或店铺写入业务。
+独立商家端 SPA。当前包含登录、商家身份校验、会话恢复、当前店铺上下文，以及当前店铺的只读商品列表。商品写操作、订单、优惠券和店铺写入业务尚未实现。
 
 ## 技术栈
 
@@ -38,6 +38,7 @@ npm run build
 | --- | --- | --- |
 | `/login` | `/merchant/login` | 商家登录 |
 | `/` | `/merchant/` | 商家后台首页 |
+| `/products` | `/merchant/products` | 当前店铺商品列表（只读） |
 | `/403` | `/merchant/403` | 无商家权限 |
 | `/:pathMatch(.*)*` | `/merchant/*` | 404 |
 
@@ -68,6 +69,31 @@ role 和用户资料不会写入 localStorage，因此不能通过修改前端 r
 
 当前接口表达的是一个用户对应零或一个当前店铺，没有店铺列表或切换器。页面将用户 `nickname` 与店铺 `shopName` 分开展示。
 
+## 商品列表
+
+`/merchant/products` 在 session 与 Shop Context 恢复完成后调用：
+
+```text
+GET /api/merchant/products
+```
+
+后端根据 Authorization token 限定当前商家的店铺。前端不会从 Shop Store 读取或发送 `shopId`。
+
+接口支持服务器查询参数：
+
+- `keyword`：商品名称关键字
+- `status`：0 下架、1 上架、2 待审核
+- `page`：页码
+- `size`：每页数量
+
+成功响应 `data` 的真实结构为：
+
+```text
+{ total, list: [{ product, minPrice, totalStock, maxPrice }], page, size }
+```
+
+页面使用服务器搜索、状态筛选和分页，不对当前页做伪搜索，也不兼容未声明的 `records`、`rows` 等结构。商品状态保存在页面级 composable 中，离开路由或退出会话后不会保留旧商家商品。当前表格没有详情、新增、编辑、删除、上下架或库存操作。
+
 ## Token 临时策略
 
 三个前端是否共享 token 尚未确定。当前临时采用商家端独立 key：
@@ -97,12 +123,12 @@ Authorization: <token>
 
 ```text
 src/
-├── api/              # 认证与当前店铺只读接口
+├── api/              # 认证、当前店铺与商品列表接口
 ├── config/           # 集中的认证配置
 ├── layouts/          # Merchant Layout
 ├── router/           # 路由与鉴权守卫
 ├── store/            # Pinia session 与 Shop Context
 ├── styles/           # 全局样式和设计变量
 ├── utils/            # request、token 与错误类型
-└── views/            # 登录、首页、403、404
+└── views/            # 登录、首页、商品列表、403、404
 ```
