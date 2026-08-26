@@ -14,7 +14,7 @@ async function mountLayout() {
   setActivePinia(pinia)
   const store = useSessionStore(pinia)
   const shopStore = useShopStore(pinia)
-  store.user = { id: 2, username: 'merchant', nickname: '华为旗舰店', role: 1 }
+  store.user = { id: 2, username: 'merchant', nickname: '经营者小李', role: 1 }
   store.status = 'authenticated'
   shopStore.shop = { id: 1, userId: 2, shopName: '华为官方旗舰店', status: 1 }
   shopStore.status = 'ready'
@@ -51,7 +51,8 @@ describe('MerchantLayout', () => {
     expect(navigation.text()).not.toContain('商品管理')
     expect(navigation.text()).not.toContain('订单管理')
     expect(navigation.text()).not.toContain('优惠券')
-    expect(wrapper.text()).toContain('华为旗舰店')
+    expect(wrapper.get('[data-testid="merchant-identity"]').text()).toContain('经营者小李')
+    expect(wrapper.get('[data-testid="shop-entry"]').text()).toContain('华为官方旗舰店')
     expect(wrapper.get('a[href="/"]').attributes('target')).toBe('_self')
     expect(wrapper.get('[data-testid="shop-entry"]').attributes()).toHaveProperty('disabled')
   })

@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElButton, ElDrawer, ElIcon, ElMessage } from 'element-plus'
 import { Fold, HomeFilled, SwitchButton } from '@element-plus/icons-vue'
@@ -11,6 +11,12 @@ const session = useSessionStore()
 const shop = useShopStore()
 const mobileNavigationOpen = ref(false)
 const signingOut = ref(false)
+const shopLabel = computed(() => {
+  if (shop.status === 'ready') return shop.shop.shopName
+  if (shop.status === 'empty') return '尚未建立店铺'
+  if (shop.status === 'error') return '店铺信息加载失败'
+  return '店铺信息加载中'
+})
 
 async function signOut() {
   if (signingOut.value) return
@@ -71,9 +77,9 @@ async function signOut() {
         </div>
 
         <div class="topbar-actions">
-          <el-button data-testid="shop-entry" plain disabled>店铺入口 · 未开放</el-button>
+          <el-button data-testid="shop-entry" plain disabled>{{ shopLabel }}</el-button>
           <a class="mall-link" href="/" target="_self">返回用户商城</a>
-          <div class="merchant-identity">
+          <div class="merchant-identity" data-testid="merchant-identity">
             <span class="merchant-avatar" aria-hidden="true">
               {{ session.displayName.slice(0, 1) }}
             </span>

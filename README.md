@@ -1,6 +1,6 @@
 # Merchant Frontend
 
-独立商家端 SPA。当前阶段仅包含登录、商家身份校验、会话恢复、Merchant Layout 和基础状态页，不包含商品、订单、优惠券或店铺业务。
+独立商家端 SPA。当前阶段包含登录、商家身份校验、会话恢复、当前店铺只读上下文、Merchant Layout 和基础状态页，不包含商品、订单、优惠券或店铺写入业务。
 
 ## 技术栈
 
@@ -55,6 +55,19 @@ npm run build
 
 role 和用户资料不会写入 localStorage，因此不能通过修改前端 role 获得商家权限。
 
+## 当前店铺上下文
+
+商家 session 通过后才会调用 `GET /api/merchant/shop`。该接口由后端根据 token 定位当前用户作为店主的店铺：返回对象表示当前店铺，成功返回 `data: null` 表示尚无店铺。
+
+- Session Store 只保存可信用户身份和 role。
+- Shop Store 独立维护 `idle / loading / ready / empty / error`。
+- `shopId` 不写入 localStorage，也不作为前端权限凭据。
+- 路由刷新严格按 session → shop 顺序恢复。
+- 退出、HTTP 401、失效 token 或非商家身份都会清空 Shop Context。
+- 店铺接口自身失败时保留可信商家 session，并在页面显示独立错误状态。
+
+当前接口表达的是一个用户对应零或一个当前店铺，没有店铺列表或切换器。页面将用户 `nickname` 与店铺 `shopName` 分开展示。
+
 ## Token 临时策略
 
 三个前端是否共享 token 尚未确定。当前临时采用商家端独立 key：
@@ -84,13 +97,12 @@ Authorization: <token>
 
 ```text
 src/
-├── api/              # 认证接口
+├── api/              # 认证与当前店铺只读接口
 ├── config/           # 集中的认证配置
 ├── layouts/          # Merchant Layout
 ├── router/           # 路由与鉴权守卫
-├── store/            # Pinia session
+├── store/            # Pinia session 与 Shop Context
 ├── styles/           # 全局样式和设计变量
 ├── utils/            # request、token 与错误类型
 └── views/            # 登录、首页、403、404
 ```
-
