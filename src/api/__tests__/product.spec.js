@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setToken } from '../../utils/token'
 import request from '../../utils/request'
-import { getMerchantProducts } from '../product'
+import { createMerchantProduct, getMerchantProducts } from '../product'
 
 const originalAdapter = request.defaults.adapter
 
@@ -74,5 +74,43 @@ describe('merchant product API', () => {
     expect(observedConfig.params).not.toHaveProperty('shopId')
     expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
     expect(result).toEqual(productPage)
+  })
+
+  it('posts the explicit create DTO without identity, status, or shop fields', async () => {
+    setToken('merchant-token')
+    let observedConfig
+    const payload = {
+      categoryId: 11,
+      brandId: 1,
+      name: 'Codex 商家端测试商品',
+      subtitle: null,
+      mainImage: null,
+      images: [],
+      detail: null,
+      skuList: [
+        {
+          skuName: '默认款',
+          specValues: '{"颜色":"黑色"}',
+          price: 99,
+          marketPrice: null,
+          stock: 10,
+          image: null,
+        },
+      ],
+    }
+    request.defaults.adapter = async (config) => {
+      observedConfig = config
+      return response(config, { code: 1, msg: 'success', data: 108 })
+    }
+
+    const result = await createMerchantProduct(payload)
+
+    expect(observedConfig.method).toBe('post')
+    expect(observedConfig.url).toBe('/merchant/products')
+    expect(JSON.parse(observedConfig.data)).toEqual(payload)
+    expect(observedConfig.data).not.toContain('shopId')
+    expect(observedConfig.data).not.toContain('status')
+    expect(observedConfig.data).not.toContain('"id"')
+    expect(result).toBe(108)
   })
 })

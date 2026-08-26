@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { flushPromises, mount } from '@vue/test-utils'
+import { createMemoryHistory, createRouter } from 'vue-router'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import * as productApi from '../../../api/product'
 import { useShopStore } from '../../../store/shop'
@@ -90,9 +91,17 @@ function mountProductList() {
   shop.shop = { id: 1, userId: 2, shopName: '华为官方旗舰店', status: 1 }
   shop.status = 'ready'
 
+  const router = createRouter({
+    history: createMemoryHistory('/merchant/'),
+    routes: [
+      { path: '/products', name: 'merchant-products', component: { template: '<div />' } },
+      { path: '/products/create', name: 'merchant-product-create', component: { template: '<div />' } },
+    ],
+  })
+
   return mount(ProductListView, {
     attachTo: document.body,
-    global: { plugins: [pinia] },
+    global: { plugins: [pinia, router] },
   })
 }
 
@@ -143,7 +152,7 @@ describe('ProductListView', () => {
     expect(wrapper.text()).not.toMatch(/编辑|删除|上架操作|下架操作|商品详情|修改库存/)
   })
 
-  it('renders a legitimate empty page without a fake create action', async () => {
+  it('renders a legitimate empty page with the real create entry', async () => {
     vi.mocked(productApi.getMerchantProducts).mockResolvedValue({
       total: 0,
       list: [],
@@ -155,7 +164,9 @@ describe('ProductListView', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="product-empty"]').text()).toContain('当前店铺暂无商品')
-    expect(wrapper.text()).not.toContain('新增商品')
+    expect(wrapper.get('[data-testid="create-product-link"]').text()).toContain('新增商品')
+    expect(wrapper.get('[data-testid="create-product-link"]').attributes('href'))
+      .toBe('/merchant/products/create')
   })
 
   it('clears stale rows on error and can retry the real request', async () => {

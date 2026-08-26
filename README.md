@@ -1,6 +1,6 @@
 # Merchant Frontend
 
-独立商家端 SPA。当前包含登录、商家身份校验、会话恢复、当前店铺上下文，以及当前店铺的只读商品列表。商品写操作、订单、优惠券和店铺写入业务尚未实现。
+独立商家端 SPA。当前包含登录、商家身份校验、会话恢复、当前店铺上下文、商品列表，以及提交待审核商品。商品编辑、上下架、订单、优惠券和店铺写入业务尚未实现。
 
 ## 技术栈
 
@@ -39,6 +39,7 @@ npm run build
 | `/login` | `/merchant/login` | 商家登录 |
 | `/` | `/merchant/` | 商家后台首页 |
 | `/products` | `/merchant/products` | 当前店铺商品列表（只读） |
+| `/products/create` | `/merchant/products/create` | 新增商品并提交审核 |
 | `/403` | `/merchant/403` | 无商家权限 |
 | `/:pathMatch(.*)*` | `/merchant/*` | 404 |
 
@@ -92,7 +93,43 @@ GET /api/merchant/products
 { total, list: [{ product, minPrice, totalStock, maxPrice }], page, size }
 ```
 
-页面使用服务器搜索、状态筛选和分页，不对当前页做伪搜索，也不兼容未声明的 `records`、`rows` 等结构。商品状态保存在页面级 composable 中，离开路由或退出会话后不会保留旧商家商品。当前表格没有详情、新增、编辑、删除、上下架或库存操作。
+页面使用服务器搜索、状态筛选和分页，不对当前页做伪搜索，也不兼容未声明的 `records`、`rows` 等结构。商品状态保存在页面级 composable 中，离开路由或退出会话后不会保留旧商家商品。当前表格只增加“新增商品”入口，没有详情、编辑、删除、上下架或库存操作。
+
+## 新增商品
+
+`/merchant/products/create` 使用三个真实接口：
+
+```text
+GET  /api/categories/tree
+GET  /api/brands
+POST /api/merchant/products
+```
+
+分类树只按后端的 `{ category, children }` 结构转换为级联选项，并要求选择叶子分类；品牌接口返回完整非分页数组。两项目录数据都不使用 mock，也不猜测其他响应结构。
+
+创建页采用手工 SKU 行，可以逐行添加或删除。`specValues` 严格作为 JSON 对象字符串输入，例如：
+
+```json
+{"颜色":"黑色","容量":"256GB"}
+```
+
+提交前会验证并重新序列化该对象。页面显式构造 `ProductDTO` 和 `SkuDTO`，不会把 reactive form 原样发送，也不会包含商品/SKU `id`、`status`、`shopId` 或 UI 行 key。后端负责按 token 绑定店铺并把新商品设为待审核。
+
+OpenAPI 没有文件或图片上传端点，因此主图、其他图片和 SKU 图片使用完整 URL 输入；其他图片每行一个 URL，提交为字符串数组。详情使用 textarea，不引入富文本编辑器。
+
+前端要求商品名称、叶子分类、品牌、至少一个 SKU、SKU 名称、JSON 对象规格、非负价格和非负整数库存。提交期间复用同一个请求以防止重复创建；后端失败时保留草稿并展示原始业务消息。成功后提示“商品已提交审核”，通过命名路由返回商品列表并由列表页面重新请求服务端。
+
+role 为 1 但 Shop Context 为 `empty` 时，页面不会加载目录或发送创建请求，并明确提示当前账号尚未关联店铺。当前阶段不实现图片上传、规格矩阵、编辑、删除、上下架或独立库存修改。
+
+### 当前后端联调状态
+
+2026-08-26 的真实浏览器联调中，创建接口对契约内完整 DTO、最小 DTO，以及额外携带 `status: 2` 的最小 DTO 均返回：
+
+```json
+{"code":-1,"msg":"系统内部错误，请稍后重试","data":null}
+```
+
+失败后按测试商品精确名称查询均为 0，未产生测试商品。由于显式 `status: 2` 也不能解决问题，前端仍按接口说明省略 status，等待后端通过服务端日志定位内部错误或补充未文档化约束；页面会保留草稿并显示该真实业务消息。
 
 ## Token 临时策略
 
@@ -123,12 +160,12 @@ Authorization: <token>
 
 ```text
 src/
-├── api/              # 认证、当前店铺与商品列表接口
+├── api/              # 认证、店铺、商品与公共目录接口
 ├── config/           # 集中的认证配置
 ├── layouts/          # Merchant Layout
 ├── router/           # 路由与鉴权守卫
 ├── store/            # Pinia session 与 Shop Context
 ├── styles/           # 全局样式和设计变量
 ├── utils/            # request、token 与错误类型
-└── views/            # 登录、首页、商品列表、403、404
+└── views/            # 登录、首页、商品列表与新增、403、404
 ```

@@ -14,6 +14,7 @@ import {
   ElTag,
 } from 'element-plus'
 import { Refresh, Search } from '@element-plus/icons-vue'
+import { RouterLink } from 'vue-router'
 import { useShopStore } from '../../store/shop'
 import {
   PRODUCT_STATUS_OPTIONS,
@@ -59,14 +60,23 @@ onMounted(reloadProducts)
           · 商品归属由服务端根据当前商家身份限定
         </p>
       </div>
-      <el-button
-        data-testid="reload-products"
-        :icon="Refresh"
-        :loading="productList.loading.value"
-        @click="reloadProducts"
-      >
-        刷新
-      </el-button>
+      <div class="product-heading-actions">
+        <router-link
+          class="create-product-link"
+          data-testid="create-product-link"
+          :to="{ name: 'merchant-product-create' }"
+        >
+          新增商品
+        </router-link>
+        <el-button
+          data-testid="reload-products"
+          :icon="Refresh"
+          :loading="productList.loading.value"
+          @click="reloadProducts"
+        >
+          刷新
+        </el-button>
+      </div>
     </header>
 
     <form class="product-filters" aria-label="商品列表筛选" @submit.prevent="submitSearch">
@@ -128,7 +138,7 @@ onMounted(reloadProducts)
       data-testid="product-empty"
     >
       <el-empty description="当前店铺暂无商品" />
-      <p>当前筛选条件没有返回商品。本阶段仅提供只读查看。</p>
+      <p>当前筛选条件没有返回商品，可以创建一个新商品并提交审核。</p>
     </div>
 
     <div v-else class="product-results">
@@ -239,6 +249,31 @@ onMounted(reloadProducts)
 
 .product-heading > div > p strong {
   color: var(--color-ink);
+}
+
+.product-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.create-product-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 15px;
+  border: 1px solid var(--color-accent);
+  border-radius: var(--el-border-radius-base);
+  background: var(--color-accent);
+  color: #fff;
+  font-size: 14px;
+  text-decoration: none;
+}
+
+.create-product-link:hover,
+.create-product-link:focus-visible {
+  background: var(--color-accent-strong);
 }
 
 .product-filters {
@@ -391,6 +426,10 @@ onMounted(reloadProducts)
   .product-pagination {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .product-heading-actions {
+    align-items: stretch;
   }
 
   .product-filters {

@@ -21,6 +21,12 @@ export const routes = [
         component: () => import('../views/products/ProductListView.vue'),
         meta: { title: '商品列表' },
       },
+      {
+        path: 'products/create',
+        name: 'merchant-product-create',
+        component: () => import('../views/products/ProductCreateView.vue'),
+        meta: { title: '新增商品' },
+      },
     ],
   },
   {
