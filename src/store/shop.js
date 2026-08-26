@@ -60,6 +60,11 @@ export const useShopStore = defineStore('merchant-shop', () => {
     error.value = null
   }
 
+  function refresh() {
+    reset()
+    return restore()
+  }
+
   return {
     shop,
     status,
@@ -67,6 +72,7 @@ export const useShopStore = defineStore('merchant-shop', () => {
     isReady,
     hasNoShop,
     restore,
+    refresh,
     reset,
   }
 })
