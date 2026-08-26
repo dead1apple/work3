@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElButton, ElDrawer, ElIcon, ElMessage } from 'element-plus'
-import { Fold, Goods, HomeFilled, SwitchButton } from '@element-plus/icons-vue'
+import { Fold, Goods, HomeFilled, Tickets, SwitchButton } from '@element-plus/icons-vue'
 import { useSessionStore } from '../store/session'
 import { useShopStore } from '../store/shop'
 
@@ -55,6 +55,10 @@ async function signOut() {
         <RouterLink class="navigation-item" :to="{ name: 'merchant-products' }">
           <el-icon aria-hidden="true"><Goods /></el-icon>
           <span>商品列表</span>
+        </RouterLink>
+        <RouterLink class="navigation-item" :to="{ name: 'merchant-orders' }">
+          <el-icon aria-hidden="true"><Tickets /></el-icon>
+          <span>订单管理</span>
         </RouterLink>
       </nav>
 
@@ -126,6 +130,14 @@ async function signOut() {
         >
           <el-icon aria-hidden="true"><HomeFilled /></el-icon>
           <span>首页</span>
+        </RouterLink>
+        <RouterLink
+          class="navigation-item navigation-item--mobile"
+          :to="{ name: 'merchant-orders' }"
+          @click="mobileNavigationOpen = false"
+        >
+          <el-icon aria-hidden="true"><Tickets /></el-icon>
+          <span>订单管理</span>
         </RouterLink>
         <RouterLink
           class="navigation-item navigation-item--mobile"

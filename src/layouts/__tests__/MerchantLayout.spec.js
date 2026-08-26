@@ -28,6 +28,7 @@ async function mountLayout() {
         children: [
           { path: '', name: 'merchant-home', component: EmptyView },
           { path: 'products', name: 'merchant-products', component: EmptyView },
+          { path: 'orders', name: 'merchant-orders', component: EmptyView },
         ],
       },
       { path: '/login', name: 'login', component: EmptyView },
@@ -50,11 +51,10 @@ describe('MerchantLayout', () => {
     const { wrapper } = await mountLayout()
     const navigation = wrapper.get('nav[aria-label="商家后台导航"]')
 
-    expect(navigation.findAll('a').map((link) => link.text())).toEqual(['首页', '商品列表'])
+    expect(navigation.findAll('a').map((link) => link.text())).toEqual(['首页', '商品列表', '订单管理'])
     expect(navigation.get('a[href="/merchant/products"]').exists()).toBe(true)
     expect(navigation.text()).not.toContain('新增商品')
     expect(navigation.text()).not.toContain('库存管理')
-    expect(navigation.text()).not.toContain('订单管理')
     expect(navigation.text()).not.toContain('优惠券')
     expect(wrapper.get('[data-testid="merchant-identity"]').text()).toContain('经营者小李')
     expect(wrapper.get('[data-testid="shop-entry"]').text()).toContain('华为官方旗舰店')

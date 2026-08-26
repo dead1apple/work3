@@ -27,6 +27,12 @@ export const routes = [
         component: () => import('../views/products/ProductCreateView.vue'),
         meta: { title: '新增商品' },
       },
+      {
+        path: 'orders',
+        name: 'merchant-orders',
+        component: () => import('../views/orders/OrderListView.vue'),
+        meta: { title: '订单管理' },
+      },
     ],
   },
   {

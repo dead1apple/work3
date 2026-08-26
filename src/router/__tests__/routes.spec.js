@@ -30,4 +30,13 @@ describe('merchant application routes', () => {
     expect(resolved.meta.requiresMerchant).toBe(true)
     expect(resolved.matched).toHaveLength(2)
   })
+
+  it('registers the order list under the protected Merchant Layout and base', () => {
+    const router = createRouter({ history: createMemoryHistory('/merchant/'), routes })
+    const resolved = router.resolve('/orders')
+
+    expect(resolved.name).toBe('merchant-orders')
+    expect(resolved.href).toBe('/merchant/orders')
+    expect(resolved.meta.requiresMerchant).toBe(true)
+  })
 })
