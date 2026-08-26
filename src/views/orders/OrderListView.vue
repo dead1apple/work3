@@ -1,17 +1,42 @@
 <script setup>
-import { onMounted } from 'vue'
-import { ElButton, ElEmpty, ElOption, ElPagination, ElSelect, ElSkeleton, ElTable, ElTableColumn, ElTag } from 'element-plus'
+import { onMounted, reactive, ref } from 'vue'
+import { ElButton, ElDialog, ElEmpty, ElForm, ElFormItem, ElInput, ElMessage, ElOption, ElPagination, ElSelect, ElSkeleton, ElTable, ElTableColumn, ElTag } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
 import { ORDER_STATUS_OPTIONS, formatAmount, getOrderStatus } from './order-list'
 import { useOrderList } from './useOrderList'
 
 const orderList = useOrderList()
+const deliveryOpen = ref(false)
+const delivery = reactive({ orderNo: '', logisticsCompany: '', logisticsNo: '' })
 function run(request) { void request().catch(() => {}) }
 function reloadOrders() { run(orderList.load) }
 function submitSearch() { run(orderList.search) }
 function changePage(value) { run(() => orderList.changePage(value)) }
 function changeSize(value) { run(() => orderList.changeSize(value)) }
 function time(value) { return value || '—' }
+function canDeliver(order) { return order.status === 1 }
+function isDelivering(orderNo) { return orderList.deliveringOrderNos.value.has(orderNo) }
+function openDelivery(order) {
+  delivery.orderNo = order.orderNo
+  delivery.logisticsCompany = ''
+  delivery.logisticsNo = ''
+  deliveryOpen.value = true
+}
+async function submitDelivery() {
+  const logisticsCompany = delivery.logisticsCompany.trim()
+  const logisticsNo = delivery.logisticsNo.trim()
+  if (!logisticsCompany || !logisticsNo) {
+    ElMessage.warning('请填写快递公司和快递单号')
+    return
+  }
+  try {
+    await orderList.deliver({ orderNo: delivery.orderNo, logisticsCompany, logisticsNo })
+    deliveryOpen.value = false
+    ElMessage.success('发货成功')
+  } catch (error) {
+    ElMessage.error(error.message || '发货失败，请稍后重试')
+  }
+}
 
 onMounted(reloadOrders)
 </script>
@@ -36,9 +61,18 @@ onMounted(reloadOrders)
       <el-table-column label="收货信息" min-width="290"><template #default="{ row }"><div class="receiver"><strong>{{ row.receiverName }} · {{ row.receiverPhone }}</strong><span>{{ row.receiverAddress }}</span></div></template></el-table-column>
       <el-table-column label="下单时间" width="180"><template #default="{ row }">{{ time(row.createTime) }}</template></el-table-column>
       <el-table-column label="支付时间" width="180"><template #default="{ row }">{{ time(row.payTime) }}</template></el-table-column>
+      <el-table-column label="操作" width="96" fixed="right"><template #default="{ row }"><el-button v-if="canDeliver(row)" :data-testid="`deliver-order-${row.id}`" link type="primary" :loading="isDelivering(row.orderNo)" :disabled="isDelivering(row.orderNo)" @click="openDelivery(row)">发货</el-button><span v-else>—</span></template></el-table-column>
     </el-table></div>
     <footer><span>共 {{ orderList.total.value }} 笔订单</span><el-pagination :current-page="orderList.page.value" :page-size="orderList.size.value" :page-sizes="[10, 20, 50]" :total="orderList.total.value" layout="sizes, prev, pager, next" background @current-change="changePage" @size-change="changeSize" /></footer></div>
   </section>
+  <el-dialog v-model="deliveryOpen" title="订单发货" width="460px" :close-on-click-modal="false" :teleported="false">
+    <el-form label-position="top">
+      <el-form-item label="订单号"><el-input :model-value="delivery.orderNo" disabled /></el-form-item>
+      <el-form-item label="快递公司" required><el-input v-model="delivery.logisticsCompany" data-testid="delivery-company" placeholder="例如：顺丰快递" /></el-form-item>
+      <el-form-item label="快递单号" required><el-input v-model="delivery.logisticsNo" data-testid="delivery-number" placeholder="请输入快递单号" /></el-form-item>
+    </el-form>
+    <template #footer><el-button @click="deliveryOpen = false">取消</el-button><el-button data-testid="delivery-submit" type="primary" :loading="isDelivering(delivery.orderNo)" @click="submitDelivery">确认发货</el-button></template>
+  </el-dialog>
 </template>
 
 <style scoped>

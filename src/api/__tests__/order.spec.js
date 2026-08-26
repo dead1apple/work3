@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { setToken } from '../../utils/token'
 import request from '../../utils/request'
-import { getMerchantOrders } from '../order'
+import { deliverMerchantOrder, getMerchantOrders } from '../order'
 
 const originalAdapter = request.defaults.adapter
 
@@ -36,5 +36,27 @@ describe('merchant order API', () => {
     expect(observedConfig.params).not.toHaveProperty('shopId')
     expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
     expect(result).toEqual(orderPage)
+  })
+
+  it('posts the documented delivery DTO without shop identity', async () => {
+    setToken('merchant-token')
+    let observedConfig
+    const payload = {
+      orderNo: '202606300001',
+      logisticsNo: 'SF1234567890',
+      logisticsCompany: '顺丰快递',
+    }
+    request.defaults.adapter = async (config) => {
+      observedConfig = config
+      return response(config, { code: 1, msg: 'success', data: {} })
+    }
+
+    await deliverMerchantOrder(payload)
+
+    expect(observedConfig.method).toBe('post')
+    expect(observedConfig.url).toBe('/merchant/orders/deliver')
+    expect(JSON.parse(observedConfig.data)).toEqual(payload)
+    expect(observedConfig.data).not.toContain('shopId')
+    expect(observedConfig.headers.get('Authorization')).toBe('merchant-token')
   })
 })

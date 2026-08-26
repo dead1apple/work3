@@ -1,5 +1,5 @@
 import { ref } from 'vue'
-import { getMerchantOrders } from '../../api/order'
+import { deliverMerchantOrder, getMerchantOrders } from '../../api/order'
 
 const DOCUMENTED_STATUSES = new Set([0, 1, 2, 3, 4, 5])
 
@@ -11,6 +11,7 @@ export function useOrderList() {
   const total = ref(0)
   const loading = ref(false)
   const error = ref(null)
+  const deliveringOrderNos = ref(new Set())
 
   function buildParams() {
     const params = { page: page.value, size: size.value }
@@ -54,5 +55,22 @@ export function useOrderList() {
     return load()
   }
 
-  return { status, page, size, items, total, loading, error, load, search, changePage, changeSize }
+  async function deliver(payload) {
+    if (deliveringOrderNos.value.has(payload.orderNo)) return
+    deliveringOrderNos.value = new Set(deliveringOrderNos.value).add(payload.orderNo)
+
+    try {
+      await deliverMerchantOrder(payload)
+      await load()
+    } finally {
+      const remainingOrderNos = new Set(deliveringOrderNos.value)
+      remainingOrderNos.delete(payload.orderNo)
+      deliveringOrderNos.value = remainingOrderNos
+    }
+  }
+
+  return {
+    status, page, size, items, total, loading, error, deliveringOrderNos,
+    load, search, changePage, changeSize, deliver,
+  }
 }
