@@ -4,9 +4,11 @@ import { useRouter } from 'vue-router'
 import { ElButton, ElDrawer, ElIcon, ElMessage } from 'element-plus'
 import { Fold, HomeFilled, SwitchButton } from '@element-plus/icons-vue'
 import { useSessionStore } from '../store/session'
+import { useShopStore } from '../store/shop'
 
 const router = useRouter()
 const session = useSessionStore()
+const shop = useShopStore()
 const mobileNavigationOpen = ref(false)
 const signingOut = ref(false)
 
@@ -19,6 +21,7 @@ async function signOut() {
   } catch {
     ElMessage.warning('服务端退出未完成，本地会话已清理')
   } finally {
+    shop.reset()
     signingOut.value = false
     await router.replace({ name: 'login' })
   }

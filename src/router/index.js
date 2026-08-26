@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { pinia } from '../store'
 import { useSessionStore } from '../store/session'
+import { useShopStore } from '../store/shop'
 import { createMerchantGuard } from './guard'
 
 const router = createRouter({
@@ -37,6 +38,6 @@ const router = createRouter({
   scrollBehavior: () => ({ top: 0 }),
 })
 
-router.beforeEach(createMerchantGuard(useSessionStore(pinia)))
+router.beforeEach(createMerchantGuard(useSessionStore(pinia), useShopStore(pinia)))
 
 export default router

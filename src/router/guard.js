@@ -8,12 +8,17 @@ function loginDestination(fullPath) {
   return { name: 'login' }
 }
 
-export function createMerchantGuard(session) {
+export function createMerchantGuard(session, shop) {
   return async function merchantGuard(to) {
     if (to.name === 'login') {
       try {
         await session.restore()
+        if (session.isMerchant) {
+          await shop.restore().catch(() => null)
+          return { name: 'merchant-home' }
+        }
       } catch (error) {
+        shop.reset()
         if (error instanceof MerchantAccessError) {
           return { name: 'forbidden' }
         }
@@ -21,7 +26,8 @@ export function createMerchantGuard(session) {
         return true
       }
 
-      return session.isMerchant ? { name: 'merchant-home' } : true
+      shop.reset()
+      return true
     }
 
     if (!to.meta.requiresMerchant) {
@@ -31,6 +37,7 @@ export function createMerchantGuard(session) {
     try {
       await session.restore()
     } catch (error) {
+      shop.reset()
       if (error instanceof MerchantAccessError) {
         return { name: 'forbidden' }
       }
@@ -38,7 +45,12 @@ export function createMerchantGuard(session) {
       return loginDestination(to.fullPath)
     }
 
-    return session.isMerchant ? true : loginDestination(to.fullPath)
+    if (!session.isMerchant) {
+      shop.reset()
+      return loginDestination(to.fullPath)
+    }
+
+    await shop.restore().catch(() => null)
+    return true
   }
 }
-

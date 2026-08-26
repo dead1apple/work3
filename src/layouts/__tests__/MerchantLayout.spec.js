@@ -4,6 +4,7 @@ import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
 import { describe, expect, it } from 'vitest'
 import { useSessionStore } from '../../store/session'
+import { useShopStore } from '../../store/shop'
 import MerchantLayout from '../MerchantLayout.vue'
 
 const EmptyView = { template: '<div class="route-content">首页内容</div>' }
@@ -12,8 +13,11 @@ async function mountLayout() {
   const pinia = createPinia()
   setActivePinia(pinia)
   const store = useSessionStore(pinia)
+  const shopStore = useShopStore(pinia)
   store.user = { id: 2, username: 'merchant', nickname: '华为旗舰店', role: 1 }
   store.status = 'authenticated'
+  shopStore.shop = { id: 1, userId: 2, shopName: '华为官方旗舰店', status: 1 }
+  shopStore.status = 'ready'
 
   const router = createRouter({
     history: createMemoryHistory('/merchant/'),
@@ -35,7 +39,7 @@ async function mountLayout() {
     },
   })
 
-  return { wrapper, router, store }
+  return { wrapper, router, store, shopStore }
 }
 
 describe('MerchantLayout', () => {
@@ -53,13 +57,15 @@ describe('MerchantLayout', () => {
   })
 
   it('clears the session and returns to login', async () => {
-    const { wrapper, router, store } = await mountLayout()
+    const { wrapper, router, store, shopStore } = await mountLayout()
 
     await wrapper.get('[data-testid="logout-button"]').trigger('click')
     await flushPromises()
 
     expect(store.status).toBe('anonymous')
     expect(store.user).toBeNull()
+    expect(shopStore.status).toBe('idle')
+    expect(shopStore.shop).toBeNull()
     expect(router.currentRoute.value.name).toBe('login')
   })
 })
