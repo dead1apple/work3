@@ -1,10 +1,15 @@
 import { createPinia, setActivePinia } from 'pinia'
-import { mount } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
 import ElementPlus from 'element-plus'
-import { beforeEach, describe, expect, it } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSessionStore } from '../../store/session'
 import { useShopStore } from '../../store/shop'
+import { getMerchantProducts } from '../../api/product'
+import { getMerchantOrders } from '../../api/order'
 import HomeView from '../HomeView.vue'
+
+vi.mock('../../api/product', () => ({ getMerchantProducts: vi.fn() }))
+vi.mock('../../api/order', () => ({ getMerchantOrders: vi.fn() }))
 
 function mountHome(shopState) {
   const pinia = createPinia()
@@ -23,6 +28,10 @@ function mountHome(shopState) {
 describe('HomeView shop context', () => {
   beforeEach(() => {
     document.body.innerHTML = ''
+    getMerchantProducts.mockImplementation(({ status } = {}) => Promise.resolve({
+      total: status === 1 ? 4 : status === 0 ? 2 : status === 2 ? 2 : 8,
+    }))
+    getMerchantOrders.mockImplementation(({ status } = {}) => Promise.resolve({ total: status === 1 ? 3 : 5 }))
   })
 
   it('shows trusted user identity and current shop as separate concepts', () => {
@@ -61,5 +70,28 @@ describe('HomeView shop context', () => {
 
     expect(wrapper.get('[data-testid="shop-summary"]').text()).toContain('店铺信息加载失败')
     expect(wrapper.get('[data-testid="identity-summary"]').text()).toContain('经营者小李')
+  })
+})
+
+describe('HomeView dashboard', () => {
+  beforeEach(() => {
+    getMerchantProducts.mockImplementation(({ status } = {}) => Promise.resolve({
+      total: status === 1 ? 4 : status === 0 ? 2 : status === 2 ? 2 : 8,
+    }))
+    getMerchantOrders.mockImplementation(({ status } = {}) => Promise.resolve({ total: status === 1 ? 3 : 5 }))
+  })
+
+  it('loads exact token-scoped totals for the supported product and order statuses', async () => {
+    const wrapper = mountHome({ status: 'ready', shop: { shopName: '华为官方旗舰店', status: 1 } })
+    await flushPromises()
+
+    expect(wrapper.text()).toContain('商品总数')
+    expect(wrapper.text()).toContain('待发货订单')
+    expect(getMerchantProducts).toHaveBeenCalledWith({ page: 1, size: 1 })
+    expect(getMerchantProducts).toHaveBeenCalledWith({ status: 1, page: 1, size: 1 })
+    expect(getMerchantProducts).toHaveBeenCalledWith({ status: 0, page: 1, size: 1 })
+    expect(getMerchantProducts).toHaveBeenCalledWith({ status: 2, page: 1, size: 1 })
+    expect(getMerchantOrders).toHaveBeenCalledWith({ page: 1, size: 1 })
+    expect(getMerchantOrders).toHaveBeenCalledWith({ status: 1, page: 1, size: 1 })
   })
 })

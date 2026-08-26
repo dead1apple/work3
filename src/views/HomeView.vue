@@ -1,12 +1,14 @@
 <script setup>
 import { computed } from 'vue'
 import { CircleCheckFilled, Shop } from '@element-plus/icons-vue'
-import { ElIcon } from 'element-plus'
+import { ElButton, ElIcon } from 'element-plus'
 import { useSessionStore } from '../store/session'
 import { useShopStore } from '../store/shop'
+import { useMerchantDashboard } from './useMerchantDashboard'
 
 const session = useSessionStore()
 const shopContext = useShopStore()
+const dashboard = useMerchantDashboard()
 
 const shopStatusLabel = computed(() => {
   const labels = {
@@ -24,7 +26,7 @@ const shopStatusLabel = computed(() => {
     <div class="home-heading">
       <p class="home-kicker">WORKSPACE READY</p>
       <h1 id="home-title">商家后台首页</h1>
-      <p>商家身份与当前店铺上下文已经就绪。经营业务将在后续阶段按需开放。</p>
+      <p>展示来自当前商家商品与订单接口的准确经营数量，不包含推算销售额或模拟指标。</p>
     </div>
 
     <div class="context-grid">
@@ -66,16 +68,34 @@ const shopStatusLabel = computed(() => {
       </article>
     </div>
 
-    <div class="readiness-panel">
-      <div class="readiness-panel__icon" aria-hidden="true">
-        <el-icon><CircleCheckFilled /></el-icon>
+    <section class="dashboard-panel" aria-labelledby="dashboard-title">
+      <header class="dashboard-panel__header">
+        <div>
+          <span>OPERATIONS OVERVIEW</span>
+          <h2 id="dashboard-title">经营概览</h2>
+        </div>
+        <el-button :loading="dashboard.loading.value" @click="dashboard.load">刷新数据</el-button>
+      </header>
+      <div class="metric-grid">
+        <article
+          v-for="metric in [
+            { key: 'products', label: '商品总数' },
+            { key: 'onSale', label: '已上架' },
+            { key: 'offSale', label: '已下架' },
+            { key: 'pendingReview', label: '待审核' },
+            { key: 'orders', label: '订单总数' },
+            { key: 'pendingDelivery', label: '待发货订单' },
+          ]"
+          :key="metric.key"
+          class="metric-card"
+        >
+          <span>{{ metric.label }}</span>
+          <strong v-if="dashboard.metrics.value[metric.key] !== null">{{ dashboard.metrics.value[metric.key] }}</strong>
+          <strong v-else>{{ dashboard.loading.value ? '加载中' : '不可用' }}</strong>
+          <small v-if="dashboard.errors.value[metric.key]">接口暂不可用</small>
+        </article>
       </div>
-      <div>
-        <span>当前状态</span>
-        <h2>上下文基础已准备就绪</h2>
-        <p>本阶段只读取当前店铺，不会请求商品、订单、优惠券或店铺写入接口。</p>
-      </div>
-    </div>
+    </section>
 
     <div class="next-stage-note">
       <span>当前阶段</span>
@@ -126,6 +146,62 @@ const shopStatusLabel = computed(() => {
   background: var(--color-surface);
   box-shadow: var(--shadow-soft);
 }
+
+.dashboard-panel {
+  margin-top: var(--space-6);
+  padding: clamp(22px, 4vw, 34px);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-large);
+  background: var(--color-surface);
+  box-shadow: var(--shadow-soft);
+}
+
+.dashboard-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.dashboard-panel__header span {
+  color: var(--color-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+}
+
+.dashboard-panel h2 {
+  margin: var(--space-2) 0 0;
+  font-size: 24px;
+}
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-5);
+}
+
+.metric-card {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-5);
+  border: 1px solid var(--color-line);
+  border-radius: var(--radius-medium);
+  background: var(--color-canvas);
+}
+
+.metric-card span,
+.metric-card small {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.metric-card strong {
+  color: var(--color-accent-strong);
+  font-size: 28px;
+}
+
 
 .context-grid {
   display: grid;
@@ -233,6 +309,9 @@ const shopStatusLabel = computed(() => {
     margin-top: var(--space-8);
   }
 
+  .metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
   .readiness-panel {
     grid-template-columns: 1fr;
     margin-top: var(--space-8);
