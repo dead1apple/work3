@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.OrderCouponSnapshotMapper">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO order_coupon_snapshot
+        (order_id, order_no, user_coupon_id, coupon_template_id, shop_id, coupon_name,
+         coupon_type, coupon_amount, min_amount, goods_amount, discount_amount, pay_amount)
+        VALUES
+        (#{orderId}, #{orderNo}, #{userCouponId}, #{couponTemplateId}, #{shopId}, #{couponName},
+         #{couponType}, #{couponAmount}, #{minAmount}, #{goodsAmount}, #{discountAmount}, #{payAmount})
+    </insert>
+</mapper>

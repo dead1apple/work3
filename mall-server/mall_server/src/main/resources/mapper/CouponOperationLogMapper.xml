@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.CouponOperationLogMapper">
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO coupon_operation_log
+        (coupon_template_id, user_coupon_id, user_id, order_no, operation_type,
+         operator_type, operator_id, reason, detail)
+        VALUES
+        (#{couponTemplateId}, #{userCouponId}, #{userId}, #{orderNo}, #{operationType},
+         #{operatorType}, #{operatorId}, #{reason}, #{detail})
+    </insert>
+
+    <select id="findByTemplateId" resultType="map">
+        SELECT id, coupon_template_id AS couponTemplateId, user_coupon_id AS userCouponId,
+               user_id AS userId, order_no AS orderNo, operation_type AS operationType,
+               operator_type AS operatorType, operator_id AS operatorId, reason, detail,
+               create_time AS createTime
+        FROM coupon_operation_log
+        WHERE coupon_template_id = #{templateId}
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <select id="summarizeByTemplateId" resultType="map">
+        SELECT
+          SUM(operation_type = 'CLAIM') AS claimCount,
+          SUM(operation_type = 'LOCK') AS lockCount,
+          SUM(operation_type = 'USE') AS useCount,
+          SUM(operation_type = 'RELEASE') AS releaseCount,
+          SUM(operation_type = 'EXPIRE') AS expireCount
+        FROM coupon_operation_log
+        WHERE coupon_template_id = #{templateId}
+    </select>
+</mapper>
