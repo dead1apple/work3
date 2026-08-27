@@ -228,6 +228,22 @@ public class CouponServiceImpl implements CouponService {
 
     @Override
     @Transactional
+    public void deleteMerchantCoupon(Long shopId, Long id) {
+        CouponTemplate coupon = couponTemplateMapper.findByIdForUpdate(id);
+        if (coupon == null || !shopId.equals(coupon.getShopId())) {
+            throw new BusinessException("优惠券不存在");
+        }
+        if (userCouponMapper.countByTemplate(id) > 0
+                || (coupon.getIssuedCount() != null && coupon.getIssuedCount() > 0)) {
+            throw new BusinessException("已有用户领取的优惠券不能删除");
+        }
+        if (couponTemplateMapper.deleteById(id) != 1) {
+            throw new BusinessException("优惠券删除失败");
+        }
+    }
+
+    @Override
+    @Transactional
     public void updateMerchantCoupon(Long shopId, Long id, MerchantCouponRequest request) {
         validateMerchantRequest(request);
         CouponTemplate coupon = requireMerchantCoupon(shopId, id);

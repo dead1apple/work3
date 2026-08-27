@@ -23,4 +23,5 @@ public interface UserCouponMapper {
     List<Map<String, Object>> findViewsByUserId(@Param("userId") Long userId, @Param("status") Integer status);
     List<Map<String, Object>> findViewsByTemplateId(@Param("templateId") Long templateId);
     int countByUserAndTemplate(@Param("userId") Long userId, @Param("templateId") Long templateId);
+    int countByTemplate(@Param("templateId") Long templateId);
 }

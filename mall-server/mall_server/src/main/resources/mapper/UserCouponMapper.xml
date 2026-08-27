@@ -98,4 +98,8 @@
     <select id="countByUserAndTemplate" resultType="int">
         SELECT COUNT(*) FROM user_coupon WHERE user_id = #{userId} AND coupon_template_id = #{templateId}
     </select>
+
+    <select id="countByTemplate" resultType="int">
+        SELECT COUNT(*) FROM user_coupon WHERE coupon_template_id = #{templateId}
+    </select>
 </mapper>

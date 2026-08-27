@@ -33,6 +33,10 @@
         WHERE id = #{id}
     </update>
 
+    <delete id="deleteById">
+        DELETE FROM coupon_template WHERE id = #{id}
+    </delete>
+
     <update id="incrementIssuedCount">
         UPDATE coupon_template
         SET issued_count = issued_count + 1

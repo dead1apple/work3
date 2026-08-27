@@ -84,6 +84,32 @@ class CouponServiceImplTest {
         verify(couponTemplateMapper, never()).update(coupon);
     }
 
+    @Test
+    void merchantCanDeleteUnclaimedCouponFromOwnShop() {
+        CouponTemplate coupon = template(5L, 12L, 1, "20.00", "100.00");
+        coupon.setIssuedCount(0);
+        when(couponTemplateMapper.findByIdForUpdate(5L)).thenReturn(coupon);
+        when(userCouponMapper.countByTemplate(5L)).thenReturn(0);
+        when(couponTemplateMapper.deleteById(5L)).thenReturn(1);
+
+        service.deleteMerchantCoupon(12L, 5L);
+
+        verify(couponTemplateMapper).deleteById(5L);
+    }
+
+    @Test
+    void merchantCannotDeleteCouponWithIssuedUsers() {
+        CouponTemplate coupon = template(6L, 12L, 1, "20.00", "100.00");
+        coupon.setIssuedCount(1);
+        when(couponTemplateMapper.findByIdForUpdate(6L)).thenReturn(coupon);
+        when(userCouponMapper.countByTemplate(6L)).thenReturn(1);
+
+        assertThatThrownBy(() -> service.deleteMerchantCoupon(12L, 6L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("已有用户领取的优惠券不能删除");
+        verify(couponTemplateMapper, never()).deleteById(6L);
+    }
+
     private static UserCoupon userCoupon(Long id, Long userId, Long templateId) {
         UserCoupon userCoupon = new UserCoupon();
         userCoupon.setId(id);

@@ -15,6 +15,7 @@ public interface CouponTemplateMapper {
             @Param("keyword") String keyword, @Param("status") Integer status);
     void insert(CouponTemplate template);
     void update(CouponTemplate template);
+    int deleteById(@Param("id") Long id);
     int incrementIssuedCount(@Param("id") Long id);
     int incrementUsedCount(@Param("id") Long id);
     List<CouponTemplate> findByShopIdAndCondition(

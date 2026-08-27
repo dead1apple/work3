@@ -25,6 +25,7 @@ public interface CouponService {
             Long shopId, String keyword, Integer status, Integer page, Integer size);
     CouponTemplate createMerchantCoupon(Long shopId, MerchantCouponRequest request);
     CouponTemplate getMerchantCoupon(Long shopId, Long id);
+    void deleteMerchantCoupon(Long shopId, Long id);
     void updateMerchantCoupon(Long shopId, Long id, MerchantCouponRequest request);
     void updateMerchantCouponStatus(Long shopId, Long id, Integer status);
     Map<String, Object> merchantCouponStatistics(Long shopId, Long id);

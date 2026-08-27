@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -49,6 +50,13 @@ public class MerchantCouponController {
     public Result<?> create(@Valid @RequestBody MerchantCouponRequest request) {
         return Result.success("优惠券创建成功",
                 couponService.createMerchantCoupon(requireActiveShop().getId(), request));
+    }
+
+    @Operation(summary = "删除本店未领取的优惠券")
+    @DeleteMapping("/{id}")
+    public Result<?> delete(@PathVariable Long id) {
+        couponService.deleteMerchantCoupon(requireActiveShop().getId(), id);
+        return Result.success("优惠券删除成功");
     }
 
     @Operation(summary = "查询本店优惠券详情")
