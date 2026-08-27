@@ -47,7 +47,7 @@ npm run build
 | `/products/:id/edit` | `/merchant/products/:id/edit` | 商品详情回填、SKU 编辑、完整 DTO 保存 |
 | `/orders` | `/merchant/orders` | 订单列表、状态服务器筛选、分页与发货入口 |
 | `/orders/:orderNo` | `/merchant/orders/:orderNo` | 商家订单详情、商品明细、收货与物流信息 |
-| `/coupons` | `/merchant/coupons` | 本店优惠券列表、服务器筛选/分页、创建、未领取券编辑、启用/停用和领取明细 |
+| `/coupons` | `/merchant/coupons` | 已完成：本店优惠券列表、服务器筛选/分页、创建、未领取券编辑、启用/停用、统计和领取明细 |
 | `/shop` | `/merchant/shop` | 店铺资料查看、修改与图片上传入口 |
 | `/403` | `/merchant/403` | 无商家权限 |
 | `/:pathMatch(.*)*` | `/merchant/*` | 404 |
@@ -168,7 +168,7 @@ Authorization: <token>
 
 ## 优惠券
 
-优惠券模块只调用商家专用接口：`/api/merchant/coupons`、`/api/merchant/coupons/{id}`、`/api/merchant/coupons/{id}/status`、`/api/merchant/coupons/{id}/users` 与 `/api/merchant/coupons/{id}/statistics`。店铺归属由 token 决定，前端不传或持久化 `shopId`。后端 OpenAPI 只声明优惠券类型取值范围为 `1–3`，未提供业务名称，因此页面忠实显示为“类型 1/2/3”，不自行推断其折扣语义。
+优惠券模块已完成列表、创建、未领取券编辑、启用/停用、统计和领取明细；只调用商家专用接口：`/api/merchant/coupons`、`/api/merchant/coupons/{id}`、`/api/merchant/coupons/{id}/status`、`/api/merchant/coupons/{id}/users` 与 `/api/merchant/coupons/{id}/statistics`。店铺归属由 token 决定，前端不传或持久化 `shopId`。后端 OpenAPI 只声明优惠券类型取值范围为 `1–3`，未提供业务名称，因此页面忠实显示为“类型 1/2/3”，不自行推断其折扣语义。
 
 ## 已知限制（非前端 Bug）
 
