@@ -1,0 +1,10 @@
+# Deploy this file as /www/projects/webs/html/merchant/.htaccess.
+# The parent Apache vhost already proxies /api/ to the backend.
+RewriteEngine On
+
+# Serve Vite assets and any real file normally; route SPA subpaths to index.html.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [END]
+
+RewriteRule ^ index.html [END]
