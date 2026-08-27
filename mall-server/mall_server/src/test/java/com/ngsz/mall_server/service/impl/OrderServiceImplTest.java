@@ -4,9 +4,11 @@ import com.ngsz.mall_server.common.exception.BusinessException;
 import com.ngsz.mall_server.mapper.OrderMapper;
 import com.ngsz.mall_server.mapper.OrderItemMapper;
 import com.ngsz.mall_server.mapper.PaymentMapper;
+import com.ngsz.mall_server.mapper.ProductMapper;
 import com.ngsz.mall_server.pojo.Order;
 import com.ngsz.mall_server.pojo.OrderItem;
 import com.ngsz.mall_server.pojo.Payment;
+import com.ngsz.mall_server.pojo.Product;
 import com.ngsz.mall_server.pojo.dto.DeliverDTO;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -78,5 +80,33 @@ class OrderServiceImplTest {
         assertThat(detail.getOrder()).isSameAs(order);
         assertThat(detail.getItems()).containsExactly(item);
         assertThat(detail.getPayment()).isSameAs(payment);
+    }
+
+    @Test
+    void orderDetailFallsBackToProductMainImageWhenSkuSnapshotIsEmpty() {
+        OrderMapper orderMapper = mock(OrderMapper.class);
+        OrderItemMapper orderItemMapper = mock(OrderItemMapper.class);
+        PaymentMapper paymentMapper = mock(PaymentMapper.class);
+        ProductMapper productMapper = mock(ProductMapper.class);
+        Order order = new Order();
+        order.setOrderNo("ORDER-4");
+        order.setShopId(1L);
+        OrderItem item = new OrderItem();
+        item.setProductId(9L);
+        Product product = new Product();
+        product.setMainImage("https://example.com/product.png");
+        when(orderMapper.findByOrderNo("ORDER-4")).thenReturn(order);
+        when(orderItemMapper.findByOrderNo("ORDER-4")).thenReturn(java.util.List.of(item));
+        when(paymentMapper.findByOrderNo("ORDER-4")).thenReturn(null);
+        when(productMapper.findById(9L)).thenReturn(product);
+        OrderServiceImpl service = new OrderServiceImpl();
+        ReflectionTestUtils.setField(service, "orderMapper", orderMapper);
+        ReflectionTestUtils.setField(service, "orderItemMapper", orderItemMapper);
+        ReflectionTestUtils.setField(service, "paymentMapper", paymentMapper);
+        ReflectionTestUtils.setField(service, "productMapper", productMapper);
+
+        var detail = service.getMerchantOrderDetail(1L, "ORDER-4");
+
+        assertThat(detail.getItems().get(0).getSkuImage()).isEqualTo("https://example.com/product.png");
     }
 }

@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.math.BigDecimal;
@@ -111,7 +112,7 @@ public class OrderServiceImpl implements OrderService {
             OrderItem item = new OrderItem();
             item.setOrderNo(orderNo); item.setSkuId(sku.getId()); item.setProductId(sku.getProductId());
             item.setProductName(product != null ? product.getName() : ""); item.setSkuName(sku.getSkuName());
-            item.setSkuImage(sku.getImage()); item.setPrice(sku.getPrice()); item.setQuantity(cart.getQuantity());
+            item.setSkuImage(resolveOrderItemImage(sku, product)); item.setPrice(sku.getPrice()); item.setQuantity(cart.getQuantity());
             item.setTotalAmount(itemTotal);
             items.add(item);
         }
@@ -167,7 +168,7 @@ public class OrderServiceImpl implements OrderService {
         OrderItem item = new OrderItem();
         item.setOrderId(order.getId()); item.setOrderNo(orderNo); item.setSkuId(sku.getId()); item.setProductId(sku.getProductId());
         item.setProductName(product != null ? product.getName() : ""); item.setSkuName(sku.getSkuName());
-        item.setSkuImage(sku.getImage()); item.setPrice(sku.getPrice()); item.setQuantity(dto.getQuantity());
+        item.setSkuImage(resolveOrderItemImage(sku, product)); item.setPrice(sku.getPrice()); item.setQuantity(dto.getQuantity());
         item.setTotalAmount(itemTotal);
         orderItemMapper.insert(item);
         Map<String, Object> result = new HashMap<>();
@@ -308,9 +309,27 @@ public class OrderServiceImpl implements OrderService {
     }
 
     private OrderDetailVO buildOrderDetail(Order order) {
+        List<OrderItem> items = orderItemMapper.findByOrderNo(order.getOrderNo());
+        fillMissingOrderItemImages(items);
         return new OrderDetailVO(
                 order,
-                orderItemMapper.findByOrderNo(order.getOrderNo()),
+                items,
                 paymentMapper.findByOrderNo(order.getOrderNo()));
+    }
+
+    private String resolveOrderItemImage(Sku sku, Product product) {
+        if (StringUtils.hasText(sku.getImage())) return sku.getImage();
+        return product != null ? product.getMainImage() : null;
+    }
+
+    private void fillMissingOrderItemImages(List<OrderItem> items) {
+        if (items == null) return;
+        for (OrderItem item : items) {
+            if (StringUtils.hasText(item.getSkuImage()) || item.getProductId() == null) continue;
+            Product product = productMapper.findById(item.getProductId());
+            if (product != null && StringUtils.hasText(product.getMainImage())) {
+                item.setSkuImage(product.getMainImage());
+            }
+        }
     }
 }
