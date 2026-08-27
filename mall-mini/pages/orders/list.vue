@@ -1,0 +1,31 @@
+<template>
+	<view class="orders-page">
+		<scroll-view class="status-tabs" scroll-x><view class="tabs-inner"><view v-for="item in tabs" :key="item.value" class="tab" :class="{active:status===item.value}" @tap="changeStatus(item.value)">{{ item.label }}</view></view></scroll-view>
+		<view v-if="orders.length" class="order-list">
+			<view v-for="order in orders" :key="order.orderNo" class="order-card">
+				<view class="order-head"><text>订单 {{ order.orderNo }}</text><text>{{ order.statusText }}</text></view>
+				<view v-if="order.items.length" class="goods-row"><image v-for="item in order.items.slice(0,3)" :key="item.id" :src="item.image||'/static/logo.png'" mode="aspectFill" /><text v-if="order.items.length>3">+{{ order.items.length-3 }}</text></view>
+				<view class="order-summary"><text>{{ formatDate(order.createTime) }}</text><view><text>实付</text><text class="amount">¥{{ formatPrice(order.payAmount) }}</text></view></view>
+				<view class="actions"><button class="plain" @tap="showOrder(order)">查看详情</button><button v-if="order.status===0||order.status===1" class="plain" @tap="cancel(order)">取消订单</button><button v-if="order.status===2" class="primary" @tap="receive(order)">确认收货</button><button v-if="order.status===3" class="primary" @tap="openReview(order)">去评价</button><button v-if="[3,4,5].includes(order.status)" class="plain" @tap="remove(order)">删除订单</button></view>
+			</view>
+		</view>
+		<StateView v-else-if="!loading" title="暂无相关订单" description="下单后可以在这里查看进度" action-text="去逛逛" @action="goShopping" />
+		<view v-if="loading" class="loading">正在加载订单...</view><view v-else-if="orders.length&&finished" class="loading">没有更多订单了</view>
+	</view>
+</template>
+
+<script>
+	import StateView from '../../components/StateView.vue'
+	import {cancelOrder,deleteOrder,getOrders,receiveOrder} from '../../api/index.js'
+	import {formatDate,formatMoney} from '../../utils/format.js'
+	import {normalizeOrderList} from '../../utils/normalizers.js'
+	export default{
+		components:{StateView},data(){return{status:'',page:1,size:10,total:0,orders:[],loading:false,finished:false,tabs:[{label:'全部',value:''},{label:'待付款',value:0},{label:'待发货',value:1},{label:'待收货',value:2},{label:'已完成',value:3}]}},
+		onLoad(options){this.status=options.status!==undefined&&options.status!==''?Number(options.status):'';this.loadOrders()},onShow(){if(this.orders.length)this.restart()},onReachBottom(){if(!this.loading&&!this.finished)this.loadOrders()},onPullDownRefresh(){this.restart()},
+		methods:{formatDate,formatPrice:formatMoney,async loadOrders(reset=false){if(this.loading)return;if(reset){this.page=1;this.orders=[];this.finished=false}this.loading=true;try{const result=normalizeOrderList(await getOrders({status:this.status===''?undefined:this.status,page:this.page,size:this.size}));this.orders=reset?result.list:[...this.orders,...result.list];this.total=result.total;this.finished=result.list.length<this.size||this.orders.length>=this.total;if(!this.finished)this.page+=1}catch(error){uni.showToast({title:error.message,icon:'none'})}finally{this.loading=false;uni.stopPullDownRefresh()}},restart(){this.loadOrders(true)},changeStatus(value){if(this.status===value)return;this.status=value;this.restart()},confirmAction(title,content,handler){uni.showModal({title,content,confirmColor:'#e1251b',success:async(result)=>{if(!result.confirm)return;try{await handler();uni.showToast({title:'操作成功',icon:'success'});this.restart()}catch(error){uni.showToast({title:error.message,icon:'none'})}}})},cancel(order){this.confirmAction('取消订单','确定取消该订单吗？',()=>cancelOrder(order.orderNo))},receive(order){this.confirmAction('确认收货','请确认已经收到商品',()=>receiveOrder(order.orderNo))},remove(order){this.confirmAction('删除订单','删除后无法恢复，是否继续？',()=>deleteOrder(order.orderNo))},openReview(order){uni.navigateTo({url:`/pages/orders/review?orderNo=${encodeURIComponent(order.orderNo)}`})},showOrder(order){uni.showModal({title:`订单 ${order.orderNo}`,content:`状态：${order.statusText}\n实付：¥${formatMoney(order.payAmount)}\n下单时间：${formatDate(order.createTime)||'--'}`,showCancel:false,confirmText:'知道了'})},goShopping(){uni.switchTab({url:'/pages/index/index'})}},
+	}
+</script>
+
+<style scoped>
+	.orders-page{min-height:100vh;padding-bottom:36rpx;background:#f5f6f8}.status-tabs{position:sticky;top:0;z-index:5;height:86rpx;border-bottom:1rpx solid #e8eaed;background:#fff;white-space:nowrap}.tabs-inner{display:flex;min-width:100%;height:86rpx}.tab{position:relative;display:flex;min-width:140rpx;height:86rpx;align-items:center;justify-content:center;color:#606773;font-size:24rpx}.tab.active{color:#e1251b;font-weight:700}.tab.active::after{position:absolute;right:38rpx;bottom:0;left:38rpx;height:5rpx;background:#e1251b;content:''}.order-list{padding:18rpx 22rpx}.order-card{margin-bottom:16rpx;padding:0 24rpx 22rpx;border:1rpx solid #eceef1;border-radius:12rpx;background:#fff}.order-head{display:flex;height:82rpx;align-items:center;justify-content:space-between;border-bottom:1rpx solid #eff0f2;color:#3a414a;font-size:22rpx}.order-head text:first-child{max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.order-head text:last-child{color:#e1251b;font-weight:700}.goods-row{display:flex;padding:20rpx 0;align-items:center;gap:12rpx}.goods-row image{width:120rpx;height:120rpx;border-radius:8rpx;background:#f2f3f5}.goods-row>text{color:#9299a3;font-size:22rpx}.order-summary{display:flex;padding:18rpx 0;align-items:flex-end;justify-content:space-between;border-top:1rpx solid #f0f1f3;color:#999fa7;font-size:21rpx}.order-summary view text{color:#666e78}.amount{margin-left:8rpx;color:#e1251b!important;font-size:30rpx;font-weight:800}.actions{display:flex;justify-content:flex-end;gap:12rpx}.actions button{height:58rpx;margin:0;padding:0 24rpx;border-radius:7rpx;font-size:22rpx;line-height:58rpx}.actions button::after{border:0}.plain{border:1rpx solid #d8dce1;color:#59616c;background:#fff}.primary{border:1rpx solid #e1251b;color:#fff;background:#e1251b}.loading{padding:44rpx;color:#969da6;font-size:23rpx;text-align:center}
+</style>

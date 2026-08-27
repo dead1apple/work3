@@ -1,17 +1,104 @@
 {
-	"pages": [ //pages数组中第一项表示应用启动页，参考：https://uniapp.dcloud.io/collocation/pages
+	"pages": [
 		{
 			"path": "pages/index/index",
 			"style": {
-				"navigationBarTitleText": "uni-app"
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/category/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/cart/index",
+			"style": {
+				"navigationStyle": "custom",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/profile/index",
+			"style": {
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/products/list",
+			"style": {
+				"navigationBarTitleText": "商品列表",
+				"enablePullDownRefresh": true,
+				"onReachBottomDistance": 120
+			}
+		},
+		{
+			"path": "pages/products/detail",
+			"style": {
+				"navigationBarTitleText": "商品详情"
+			}
+		},
+		{
+			"path": "pages/auth/login",
+			"style": {
+				"navigationBarTitleText": "账号登录",
+				"navigationBarBackgroundColor": "#f6f7f9"
+			}
+		},
+		{
+			"path": "pages/orders/list",
+			"style": {
+				"navigationBarTitleText": "我的订单",
+				"enablePullDownRefresh": true,
+				"onReachBottomDistance": 120
+			}
+		},
+		{
+			"path": "pages/orders/review",
+			"style": {
+				"navigationBarTitleText": "发表评价",
+				"navigationBarBackgroundColor": "#ffffff"
+			}
+		},
+		{
+			"path": "pages/favorites/index",
+			"style": {
+				"navigationBarTitleText": "我的收藏"
+			}
+		},
+		{
+			"path": "pages/address/index",
+			"style": {
+				"navigationBarTitleText": "收货地址"
+			}
+		},
+		{
+			"path": "pages/checkout/index",
+			"style": {
+				"navigationBarTitleText": "确认订单"
 			}
 		}
 	],
+	"tabBar": {
+		"color": "#8b95a5",
+		"selectedColor": "#e1251b",
+		"backgroundColor": "#ffffff",
+		"borderStyle": "black",
+		"list": [
+			{ "pagePath": "pages/index/index", "text": "首页", "iconPath": "static/icons/tab-home.png", "selectedIconPath": "static/icons/tab-home-active.png" },
+			{ "pagePath": "pages/category/index", "text": "分类", "iconPath": "static/icons/tab-category.png", "selectedIconPath": "static/icons/tab-category-active.png" },
+			{ "pagePath": "pages/cart/index", "text": "购物车", "iconPath": "static/icons/tab-cart.png", "selectedIconPath": "static/icons/tab-cart-active.png" },
+			{ "pagePath": "pages/profile/index", "text": "我的", "iconPath": "static/icons/tab-profile.png", "selectedIconPath": "static/icons/tab-profile-active.png" }
+		]
+	},
 	"globalStyle": {
 		"navigationBarTextStyle": "black",
-		"navigationBarTitleText": "uni-app",
-		"navigationBarBackgroundColor": "#F8F8F8",
-		"backgroundColor": "#F8F8F8"
+		"navigationBarTitleText": "京东商城",
+		"navigationBarBackgroundColor": "#ffffff",
+		"backgroundColor": "#f5f6f8",
+		"backgroundTextStyle": "dark"
 	},
 	"uniIdRouter": {}
 }
