@@ -45,8 +45,15 @@ describe('ShopView', () => {
     vi.mocked(shopApi.getCurrentShop).mockResolvedValueOnce({ ...shopData, description: '新的店铺简介' })
     await wrapper.get('[data-testid="save-shop"]').trigger('click')
     await flushPromises()
-    expect(shopApi.updateCurrentShop).toHaveBeenLastCalledWith(expect.objectContaining({ description: '新的店铺简介' }))
-    expect(shopApi.updateCurrentShop.mock.calls[1][0]).not.toHaveProperty('userId')
+    expect(shopApi.updateCurrentShop).toHaveBeenLastCalledWith(expect.objectContaining({
+      id: 1,
+      userId: 2,
+      status: 1,
+      rating: 4.8,
+      description: '新的店铺简介',
+      createTime: '2026-08-01 10:00:00',
+      updateTime: '2026-08-20 10:00:00',
+    }))
     expect(shopApi.getCurrentShop).toHaveBeenCalled()
     expect(wrapper.text()).toContain('新的店铺简介')
   })

@@ -58,6 +58,12 @@ export function useProductList() {
     return load()
   }
 
+  function changeStatus(nextStatus) {
+    status.value = nextStatus
+    page.value = 1
+    return load()
+  }
+
   function changePage(nextPage) {
     page.value = nextPage
     return load()
@@ -98,6 +104,7 @@ export function useProductList() {
     updatingProductIds,
     load,
     search,
+    changeStatus,
     changePage,
     changeSize,
     updateStatus,

@@ -4,6 +4,7 @@ import { ORDER_STATUS_OPTIONS, formatAmount, getOrderStatus } from '../order-lis
 describe('merchant order presentation', () => {
   it('maps documented order statuses and formats server money amounts', () => {
     expect(ORDER_STATUS_OPTIONS).toEqual([
+      { label: '全部状态', value: '' },
       { label: '待付款', value: 0 },
       { label: '待发货', value: 1 },
       { label: '待收货', value: 2 },

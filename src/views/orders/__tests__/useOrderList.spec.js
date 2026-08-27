@@ -30,6 +30,16 @@ describe('useOrderList', () => {
     expect(state.total.value).toBe(1)
   })
 
+  it('returns to page one and omits status when the all-status option is selected', async () => {
+    vi.mocked(orderApi.getMerchantOrders).mockResolvedValue(orderPage)
+    const state = useOrderList()
+    state.page.value = 3
+
+    await state.changeStatus('')
+
+    expect(orderApi.getMerchantOrders).toHaveBeenCalledWith({ page: 1, size: 10 })
+  })
+
   it('clears stale orders and exposes errors for retry', async () => {
     const failure = new Error('orders unavailable')
     vi.mocked(orderApi.getMerchantOrders).mockResolvedValueOnce(orderPage).mockRejectedValueOnce(failure)

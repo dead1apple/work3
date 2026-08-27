@@ -8,6 +8,7 @@ const ORDER_STATUS = Object.freeze({
 })
 
 export const ORDER_STATUS_OPTIONS = Object.freeze([
+  Object.freeze({ label: '全部状态', value: '' }),
   Object.freeze({ label: '待付款', value: 0 }),
   Object.freeze({ label: '待发货', value: 1 }),
   Object.freeze({ label: '待收货', value: 2 }),

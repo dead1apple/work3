@@ -8,6 +8,7 @@ import {
 describe('product list display domain', () => {
   it('maps only the documented merchant product statuses', () => {
     expect(PRODUCT_STATUS_OPTIONS).toEqual([
+      { label: '全部状态', value: '' },
       { label: '已下架', value: 0 },
       { label: '已上架', value: 1 },
       { label: '待审核', value: 2 },

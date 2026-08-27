@@ -106,6 +106,16 @@ describe('useProductList', () => {
     })
   })
 
+  it('returns to page one and omits status when the all-status option is selected', async () => {
+    vi.mocked(productApi.getMerchantProducts).mockResolvedValue(firstPage)
+    const state = useProductList()
+    state.page.value = 3
+
+    await state.changeStatus('')
+
+    expect(productApi.getMerchantProducts).toHaveBeenCalledWith({ page: 1, size: 10 })
+  })
+
   it('uses the real page and size query names for server pagination', async () => {
     vi.mocked(productApi.getMerchantProducts).mockResolvedValue(firstPage)
     const state = useProductList()

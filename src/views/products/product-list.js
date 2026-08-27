@@ -5,6 +5,7 @@ const PRODUCT_STATUS = Object.freeze({
 })
 
 export const PRODUCT_STATUS_OPTIONS = Object.freeze([
+  Object.freeze({ label: '全部状态', value: '' }),
   Object.freeze({ label: '已下架', value: 0 }),
   Object.freeze({ label: '已上架', value: 1 }),
   Object.freeze({ label: '待审核', value: 2 }),

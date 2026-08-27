@@ -11,6 +11,7 @@ const delivery = reactive({ orderNo: '', logisticsCompany: '', logisticsNo: '' }
 function run(request) { void request().catch(() => {}) }
 function reloadOrders() { run(orderList.load) }
 function submitSearch() { run(orderList.search) }
+function changeStatus(nextStatus) { run(() => orderList.changeStatus(nextStatus)) }
 function changePage(value) { run(() => orderList.changePage(value)) }
 function changeSize(value) { run(() => orderList.changeSize(value)) }
 function time(value) { return value || '—' }
@@ -48,7 +49,7 @@ onMounted(reloadOrders)
       <el-button data-testid="reload-orders" :icon="Refresh" :loading="orderList.loading.value" @click="reloadOrders">刷新</el-button>
     </header>
     <form class="order-filters" aria-label="订单筛选" @submit.prevent="submitSearch">
-      <label><span>订单状态</span><el-select v-model="orderList.status.value" aria-label="订单状态" clearable placeholder="全部状态"><el-option v-for="option in ORDER_STATUS_OPTIONS" :key="option.value" :label="option.label" :value="option.value" /></el-select></label>
+      <label><span>订单状态</span><el-select v-model="orderList.status.value" aria-label="订单状态" @change="changeStatus"><el-option v-for="option in ORDER_STATUS_OPTIONS" :key="option.value" :label="option.label" :value="option.value" /></el-select></label>
       <el-button native-type="submit" type="primary">查询</el-button>
     </form>
     <div v-if="orderList.loading.value" class="order-state" data-testid="order-loading"><span>正在加载订单</span><el-skeleton :rows="5" animated /></div>

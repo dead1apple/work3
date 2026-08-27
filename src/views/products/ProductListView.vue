@@ -36,6 +36,10 @@ function submitSearch() {
   run(productList.search)
 }
 
+function changeFilterStatus(nextStatus) {
+  run(() => productList.changeStatus(nextStatus))
+}
+
 function reloadProducts() {
   run(productList.load)
 }
@@ -137,8 +141,7 @@ onMounted(reloadProducts)
         <el-select
           v-model="productList.status.value"
           aria-label="商品状态"
-          clearable
-          placeholder="全部状态"
+          @change="changeFilterStatus"
         >
           <el-option
             v-for="option in PRODUCT_STATUS_OPTIONS"

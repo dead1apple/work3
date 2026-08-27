@@ -44,6 +44,12 @@ export function useOrderList() {
     return load()
   }
 
+  function changeStatus(nextStatus) {
+    status.value = nextStatus
+    page.value = 1
+    return load()
+  }
+
   function changePage(nextPage) {
     page.value = nextPage
     return load()
@@ -71,6 +77,6 @@ export function useOrderList() {
 
   return {
     status, page, size, items, total, loading, error, deliveringOrderNos,
-    load, search, changePage, changeSize, deliver,
+    load, search, changeStatus, changePage, changeSize, deliver,
   }
 }

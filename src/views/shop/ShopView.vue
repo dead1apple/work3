@@ -5,6 +5,7 @@ import { EditPen, Refresh } from '@element-plus/icons-vue'
 import { applyForCurrentShop, updateCurrentShop } from '../../api/shop'
 import { useShopStore } from '../../store/shop'
 import ShopFormFields from './ShopFormFields.vue'
+import { buildShopApplicationPayload, buildShopUpdatePayload } from './shop-payload'
 
 const shop = useShopStore()
 const editing = ref(false)
@@ -15,9 +16,6 @@ const SHOP_STATUS = { 0: ['待审核', 'warning'], 1: ['营业中', 'success'], 
 const current = computed(() => shop.shop)
 const currentStatus = computed(() => SHOP_STATUS[current.value?.status] || ['未知状态', 'info'])
 
-function editablePayload(source = form) {
-  return { shopName: source.shopName.trim(), logo: source.logo || null, description: source.description.trim() || null, licenseImage: source.licenseImage || null, location: source.location.trim() || null, address: source.address.trim() || null }
-}
 function copyToForm(value) { Object.assign(form, { shopName: value?.shopName || '', logo: value?.logo || '', description: value?.description || '', licenseImage: value?.licenseImage || '', location: value?.location || '', address: value?.address || '' }) }
 async function load() { try { await shop.refresh(); copyToForm(shop.shop) } catch {} }
 function startEdit() { submitError.value = null; copyToForm(current.value); editing.value = true }
@@ -26,13 +24,13 @@ async function save() {
   if (saving.value) return
   if (!form.shopName.trim()) { ElMessage.warning('请输入店铺名称'); return }
   saving.value = true; submitError.value = null
-  try { await updateCurrentShop(editablePayload()); await shop.refresh(); copyToForm(shop.shop); editing.value = false; ElMessage.success('店铺资料已更新') } catch (error) { submitError.value = error } finally { saving.value = false }
+  try { await updateCurrentShop(buildShopUpdatePayload(current.value, form)); await shop.refresh(); copyToForm(shop.shop); editing.value = false; ElMessage.success('店铺资料已更新') } catch (error) { submitError.value = error } finally { saving.value = false }
 }
 async function apply() {
   if (saving.value) return
   if (!form.shopName.trim()) { ElMessage.warning('请输入店铺名称'); return }
   saving.value = true; submitError.value = null
-  try { await applyForCurrentShop(editablePayload()); await shop.refresh(); copyToForm(shop.shop); ElMessage.success('店铺申请已提交') } catch (error) { submitError.value = error } finally { saving.value = false }
+  try { await applyForCurrentShop(buildShopApplicationPayload(form)); await shop.refresh(); copyToForm(shop.shop); ElMessage.success('店铺申请已提交') } catch (error) { submitError.value = error } finally { saving.value = false }
 }
 onMounted(load)
 </script>
