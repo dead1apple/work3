@@ -1,6 +1,6 @@
 # Merchant Frontend
 
-独立商家端 SPA。当前包含登录、商家身份校验、会话恢复、当前店铺上下文、商品列表，以及提交待审核商品。商品编辑、上下架、订单、优惠券和店铺写入业务尚未实现。
+独立商家端 SPA，部署在现有商城站点的 `/merchant/` 前缀下。它与用户商城 `/`、管理员端 `/admin/` 及后端 `/api/` 共存；商家归属与权限始终由后端根据当前 token 判定，前端不把 `shopId` 当作权限依据。
 
 ## 技术栈
 
@@ -11,6 +11,10 @@
 - Element Plus
 - JavaScript
 - Vitest + Vue Test Utils
+
+## 测试账号
+
+仅限已授权的联调环境使用测试商家账号。账号凭据通过安全渠道提供，不提交到仓库；登录后仍会调用可信的 `GET /api/user/info`，只有 `role === 1` 才建立商家 Session。
 
 ## 本地运行
 
@@ -38,12 +42,16 @@ npm run build
 | --- | --- | --- |
 | `/login` | `/merchant/login` | 商家登录 |
 | `/` | `/merchant/` | 商家后台首页 |
-| `/products` | `/merchant/products` | 当前店铺商品列表（只读） |
-| `/products/create` | `/merchant/products/create` | 新增商品并提交审核 |
+| `/products` | `/merchant/products` | 商品列表、关键字/状态服务器筛选、分页、上架/下架 |
+| `/products/create` | `/merchant/products/create` | 新增待审核商品、SKU 与真实图片上传 |
+| `/products/:id/edit` | `/merchant/products/:id/edit` | 商品详情回填、SKU 编辑、完整 DTO 保存 |
+| `/orders` | `/merchant/orders` | 订单列表、状态服务器筛选、分页与发货入口 |
+| `/orders/:orderNo` | `/merchant/orders/:orderNo` | 商家订单详情、商品明细、收货与物流信息 |
+| `/shop` | `/merchant/shop` | 店铺资料查看、修改与图片上传入口 |
 | `/403` | `/merchant/403` | 无商家权限 |
 | `/:pathMatch(.*)*` | `/merchant/*` | 404 |
 
-生产环境必须为 `/merchant/` 配置 history fallback，否则直接访问或刷新子路由会由 Nginx 返回 404。参考 [deploy/nginx-merchant.conf.example](deploy/nginx-merchant.conf.example)。该文件只是示例，不会自动修改服务器。
+生产环境必须为 `/merchant/` 配置 history fallback，否则直接访问或刷新子路由会返回 404。生产机当前使用 Apache：将 `dist/` 内容部署至 `/www/projects/webs/html/merchant/`，并部署 [deploy/merchant.htaccess](deploy/merchant.htaccess) 为该目录的 `.htaccess`。它会保留真实文件（包括 `/merchant/assets/*`），并将其他 `/merchant/*` 回退到 `/merchant/index.html`。现有 Apache vhost 已将同源 `/api/` 反代到 `127.0.0.1:8080/api/`；不要替换 `/` 或 `/admin/` 的配置。使用 Nginx 的其他环境可参考 [deploy/nginx-merchant.conf.example](deploy/nginx-merchant.conf.example)。
 
 ## Session 与角色校验
 
@@ -93,7 +101,7 @@ GET /api/merchant/products
 { total, list: [{ product, minPrice, totalStock, maxPrice }], page, size }
 ```
 
-页面使用服务器搜索、状态筛选和分页，不对当前页做伪搜索，也不兼容未声明的 `records`、`rows` 等结构。商品状态保存在页面级 composable 中，离开路由或退出会话后不会保留旧商家商品。当前表格只增加“新增商品”入口，没有详情、编辑、删除、上下架或库存操作。
+页面使用服务器搜索、状态筛选和分页，不对当前页做伪搜索，也不兼容未声明的 `records`、`rows` 等结构。“全部状态”为默认选项，请求完全不传 `status`；选择具体状态才传真实状态码，并回到第 1 页重新请求。商品状态保存在页面级 composable 中，离开路由或退出会话后不会保留旧商家商品。表格提供新增、编辑以及真实允许状态下的上架/下架操作；操作成功后重新 GET 服务端状态。
 
 ## 新增商品
 
@@ -115,31 +123,32 @@ POST /api/merchant/products
 
 提交前会验证并重新序列化该对象。页面显式构造 `ProductDTO` 和 `SkuDTO`，不会把 reactive form 原样发送，也不会包含商品/SKU `id`、`status`、`shopId` 或 UI 行 key。后端负责按 token 绑定店铺并把新商品设为待审核。
 
-OpenAPI 没有文件或图片上传端点，因此主图、其他图片和 SKU 图片使用完整 URL 输入；其他图片每行一个 URL，提交为字符串数组。详情使用 textarea，不引入富文本编辑器。
+主图、其他图片和 SKU 图片复用 `POST /api/merchant/uploads/images`，使用 multipart `file` 字段和后端返回的绝对 URL。详情使用 textarea，不引入富文本编辑器。
 
 前端要求商品名称、叶子分类、品牌、至少一个 SKU、SKU 名称、JSON 对象规格、非负价格和非负整数库存。提交期间复用同一个请求以防止重复创建；后端失败时保留草稿并展示原始业务消息。成功后提示“商品已提交审核”，通过命名路由返回商品列表并由列表页面重新请求服务端。
 
-role 为 1 但 Shop Context 为 `empty` 时，页面不会加载目录或发送创建请求，并明确提示当前账号尚未关联店铺。当前阶段不实现图片上传、规格矩阵、编辑、删除、上下架或独立库存修改。
+role 为 1 但 Shop Context 为 `empty` 时，页面不会加载目录或发送创建请求，并明确提示当前账号尚未关联店铺。当前阶段不实现删除、独立库存修改或商品详情独立页面。
 
-### 当前后端联调状态
+## 订单与店铺
 
-2026-08-26 的真实浏览器联调中，创建接口对契约内完整 DTO、最小 DTO，以及额外携带 `status: 2` 的最小 DTO 均返回：
+- 订单列表只调用商家专用接口，支持真实状态筛选和分页；订单详情按 `orderNo` 获取。
+- 发货仅在后端允许的订单状态显示入口，提交后重新 GET 订单列表；为避免污染不可逆真实订单，生产环境没有实际发货测试。
+- 店铺页面读取当前 token 所属店铺。修改时会将 GET 得到的完整 `Shop` DTO 原样带回，仅允许 UI 修改店铺名称、简介、地址、经纬度、Logo 与营业执照 URL，保存成功后刷新 Shop Context。
+- 店铺 Logo 与营业执照复用商品页已验证的图片上传组件和接口。
 
-```json
-{"code":-1,"msg":"系统内部错误，请稍后重试","data":null}
-```
+## Dashboard
 
-失败后按测试商品精确名称查询均为 0，未产生测试商品。由于显式 `status: 2` 也不能解决问题，前端仍按接口说明省略 status，等待后端通过服务端日志定位内部错误或补充未文档化约束；页面会保留草稿并显示该真实业务消息。
+首页只展示可从现有商家接口准确获得的数量：商品总数、上架/下架/待审核数量、订单总数和待发货数量。各指标独立请求和失败显示，不推算销售额、访客或转化率，也不使用 mock 业务数据。
 
 ## Token 临时策略
 
-三个前端是否共享 token 尚未确定。当前临时采用商家端独立 key：
+当前商家端采用独立 token key：
 
 ```text
 merchant_access_token
 ```
 
-该 key 只在 `src/config/auth.js` 中定义，业务模块通过 `src/utils/token.js` 读写。最终策略确定后可以单点修改，不需要搜索替换整个项目。
+该 key 只在 `src/config/auth.js` 中定义，业务模块通过 `src/utils/token.js` 读写。这是隔离策略，不是前端缺陷。
 
 ## 请求约定
 
@@ -156,16 +165,32 @@ Authorization: <token>
 - 缺少任一约定字段：抛出协议错误
 - 不尝试兼容未声明的响应结构
 
-## 第一阶段目录
+## 已知限制（非前端 Bug）
+
+- 商家优惠券模块未实现：最新后端 OpenAPI 没有商家专用优惠券接口，前端不会调用管理员优惠券接口或创建假页面。
+- `POST /api/merchant/orders/deliver` 已有自动测试与请求构造验证；为避免污染不可逆真实订单，未对生产订单实际发货。
+- 真实图片上传会生成服务端文件。联调应使用可追溯的测试图片并遵守环境数据清理规则。
+
+## 交付检查
+
+```bash
+npm test -- --run
+npm run build
+git status --short --branch
+```
+
+预期：测试与构建成功、分支为 `merchant-frontend`、工作区 clean，且与 `origin/merchant-frontend` 同步。
+
+## 目录
 
 ```text
 src/
-├── api/              # 认证、店铺、商品与公共目录接口
+├── api/              # 认证、店铺、商品、订单与公共目录接口
 ├── config/           # 集中的认证配置
 ├── layouts/          # Merchant Layout
 ├── router/           # 路由与鉴权守卫
 ├── store/            # Pinia session 与 Shop Context
 ├── styles/           # 全局样式和设计变量
 ├── utils/            # request、token 与错误类型
-└── views/            # 登录、首页、商品列表与新增、403、404
+└── views/            # 登录、Dashboard、商品、订单、店铺、403、404
 ```
