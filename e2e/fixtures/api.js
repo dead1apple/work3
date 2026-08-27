@@ -181,6 +181,7 @@ const listProducts = (query) => {
 }
 
 const knownProtectedRoute = (path, method) => (
+  (path === '/user/info' && method === 'GET') ||
   (path.match(/^\/favorites\/check\/\d+$/) && method === 'GET') ||
   (path.match(/^\/favorites\/\d+$/) && (method === 'POST' || method === 'DELETE')) ||
   (path === '/cart' && (method === 'GET' || method === 'POST')) ||
@@ -221,9 +222,16 @@ const routeApi = async ({ method, path, query, request, state }) => {
   if (path.match(/^\/products\/\d+$/) && method === 'GET') return ok(clone(findProduct(path.split('/').pop())))
   if (path.match(/^\/products\/\d+\/reviews$/) && method === 'GET') return ok({ list: clone(productReviews), total: productReviews.length })
 
+  if (path === '/user/info' && method === 'GET' && !requireAuth(state, request)) return null
   if (!knownProtectedRoute(path, method)) return null
   if (!requireAuth(state, request)) return fail(401, '未登录')
   const account = currentAccount(state, request)
+
+  if (path === '/user/info' && method === 'GET') {
+    const token = normalizeAuth(request)
+    const session = state.sessions.get(token)
+    return ok({ id: 2, username: session?.username || 'user', nickname: session?.username || '用户', role: 0 })
+  }
 
   if (path.match(/^\/favorites\/check\/\d+$/) && method === 'GET') return ok(account.favoriteProductIds.has(Number(path.split('/').pop())))
   if (path.match(/^\/favorites\/\d+$/) && method === 'POST') {

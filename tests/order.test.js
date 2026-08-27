@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {
   getOrderActions,
+  getOrderActionPresentation,
   getOrderStatusMeta,
   normalizeOrderDetail,
   normalizeOrderList,
@@ -82,4 +83,17 @@ test('exposes only operations allowed by each order status', () => {
   assert.deepEqual(getOrderActions(3), ['detail', 'review', 'delete'])
   assert.deepEqual(getOrderActions(4), ['detail', 'delete'])
   assert.deepEqual(getOrderActions(5), ['detail', 'delete'])
+})
+
+test('marks the pay action as a high-contrast primary order action', () => {
+  assert.deepEqual(getOrderActionPresentation('pay'), {
+    type: 'danger',
+    plain: false,
+    className: 'pay-order-action',
+  })
+  assert.deepEqual(getOrderActionPresentation('cancel'), {
+    type: '',
+    plain: true,
+    className: '',
+  })
 })

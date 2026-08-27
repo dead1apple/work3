@@ -112,3 +112,12 @@ export function getOrderActions(status) {
   }
   return actions[Number(status)] || ['detail']
 }
+
+export function getOrderActionPresentation(action) {
+  const isPrimaryAction = action === 'pay' || action === 'receive'
+  return {
+    type: isPrimaryAction ? 'danger' : '',
+    plain: !isPrimaryAction,
+    className: action === 'pay' ? 'pay-order-action' : '',
+  }
+}

@@ -8,6 +8,14 @@ const login = async (page) => {
   await expect(page).toHaveURL(/\/home$/)
 }
 
+test('unpaid order pay action keeps its inner label readable', async ({ page, api }) => {
+  await login(page)
+  await page.goto('/orders?status=0')
+  const payButton = page.getByRole('button', { name: '立即付款' }).first()
+  await expect(payButton).toBeVisible()
+  await expect(payButton.locator('span')).toHaveCSS('color', 'rgb(255, 255, 255)')
+})
+
 test('ambiguous payment polls to paid and review submits the exact DTO', async ({ page, api }) => {
   await login(page)
   await page.goto('/payment/ORD-PAY-1')
