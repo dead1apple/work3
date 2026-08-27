@@ -3,8 +3,14 @@
 <mapper namespace="com.ngsz.mall_server.mapper.CouponTemplateMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO coupon_template (shop_id, name, type, amount, min_amount, total_count, start_time, end_time, status)
-        VALUES (#{shopId}, #{name}, #{type}, #{amount}, #{minAmount}, #{totalCount}, #{startTime}, #{endTime}, #{status})
+        INSERT INTO coupon_template
+        (shop_id, name, type, amount, min_amount, total_count, start_time, end_time,
+         receive_start_time, receive_end_time, use_start_time, use_end_time,
+         per_user_limit, max_discount_amount, status)
+        VALUES
+        (#{shopId}, #{name}, #{type}, #{amount}, #{minAmount}, #{totalCount}, #{startTime}, #{endTime},
+         #{receiveStartTime}, #{receiveEndTime}, #{useStartTime}, #{useEndTime},
+         #{perUserLimit}, #{maxDiscountAmount}, #{status})
     </insert>
 
     <update id="update">
@@ -17,12 +23,23 @@
             total_count = #{totalCount},
             start_time = #{startTime},
             end_time = #{endTime},
+            receive_start_time = #{receiveStartTime},
+            receive_end_time = #{receiveEndTime},
+            use_start_time = #{useStartTime},
+            use_end_time = #{useEndTime},
+            per_user_limit = #{perUserLimit},
+            max_discount_amount = #{maxDiscountAmount},
             status = #{status}
         WHERE id = #{id}
     </update>
 
     <update id="incrementIssuedCount">
-        UPDATE coupon_template SET issued_count = issued_count + 1 WHERE id = #{id} AND issued_count &lt; total_count
+        UPDATE coupon_template
+        SET issued_count = issued_count + 1
+        WHERE id = #{id}
+          AND status = 1
+          AND issued_count &lt; total_count
+          AND NOW() BETWEEN COALESCE(receive_start_time, start_time) AND COALESCE(receive_end_time, end_time)
     </update>
 
     <update id="incrementUsedCount">
@@ -33,9 +50,23 @@
         SELECT * FROM coupon_template WHERE id = #{id}
     </select>
 
+    <select id="findByIdForUpdate" resultType="com.ngsz.mall_server.pojo.CouponTemplate">
+        SELECT * FROM coupon_template WHERE id = #{id} FOR UPDATE
+    </select>
+
     <select id="findAvailable" resultType="com.ngsz.mall_server.pojo.CouponTemplate">
-        SELECT * FROM coupon_template WHERE status = 1 AND issued_count &lt; total_count AND NOW() BETWEEN start_time AND end_time
-        <if test="shopId != null">AND (shop_id = #{shopId} OR shop_id IS NULL)</if>
+        SELECT * FROM coupon_template WHERE status = 1 AND issued_count &lt; total_count
+          AND NOW() BETWEEN COALESCE(receive_start_time, start_time) AND COALESCE(receive_end_time, end_time)
+        <choose>
+            <when test="shopId != null">AND (shop_id = #{shopId} OR shop_id IS NULL)</when>
+            <otherwise>AND shop_id IS NULL</otherwise>
+        </choose>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findAllAvailable" resultType="com.ngsz.mall_server.pojo.CouponTemplate">
+        SELECT * FROM coupon_template WHERE status = 1 AND issued_count &lt; total_count
+          AND NOW() BETWEEN COALESCE(receive_start_time, start_time) AND COALESCE(receive_end_time, end_time)
         ORDER BY create_time DESC
     </select>
 
@@ -49,6 +80,18 @@
                 AND status = #{status}
             </if>
         </where>
+        ORDER BY create_time DESC, id DESC
+    </select>
+
+    <select id="findByShopIdAndCondition" resultType="com.ngsz.mall_server.pojo.CouponTemplate">
+        SELECT * FROM coupon_template
+        WHERE shop_id = #{shopId}
+        <if test="keyword != null and keyword != ''">
+            AND name LIKE CONCAT('%', #{keyword}, '%')
+        </if>
+        <if test="status != null">
+            AND status = #{status}
+        </if>
         ORDER BY create_time DESC, id DESC
     </select>
 </mapper>

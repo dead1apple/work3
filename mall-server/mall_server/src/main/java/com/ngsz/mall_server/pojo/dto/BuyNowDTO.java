@@ -22,6 +22,9 @@ public class BuyNowDTO {
     @Schema(description = "收货地址 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long addressId;
 
+    @Schema(description = "使用的用户优惠券 ID（可选，不使用不传）", example = "5")
+    private Long couponId;
+
     @Schema(description = "订单备注（可选）", example = "请尽快发货")
     private String remark;
 }

@@ -45,10 +45,29 @@ public class CouponTemplate {
     @Schema(description = "失效时间", example = "2026-07-31 23:59:59")
     private LocalDateTime endTime;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime receiveStartTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime receiveEndTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime useStartTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime useEndTime;
+
+    private Integer perUserLimit;
+
+    private BigDecimal maxDiscountAmount;
+
     @Schema(description = "状态：0 关闭，1 启用", example = "1")
     private Integer status;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "创建时间")
     private LocalDateTime createTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime updateTime;
 }

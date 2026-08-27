@@ -59,3 +59,5 @@ mall:
     mock: ${MALL_PAY_MOCK:true}
   upload:
     directory: ${MALL_UPLOAD_DIR:uploads}
+  coupon:
+    expire-scan-delay-ms: ${MALL_COUPON_EXPIRE_SCAN_DELAY_MS:60000}

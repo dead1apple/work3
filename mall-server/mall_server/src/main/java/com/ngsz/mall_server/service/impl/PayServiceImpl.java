@@ -6,6 +6,7 @@ import com.ngsz.mall_server.mapper.*;
 import com.ngsz.mall_server.pojo.*;
 import com.ngsz.mall_server.service.PayService;
 import com.ngsz.mall_server.service.OrderService;
+import com.ngsz.mall_server.service.CouponService;
 import com.ngsz.mall_server.service.SystemConfigService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ public class PayServiceImpl implements PayService {
     @Autowired private OrderItemMapper orderItemMapper;
     @Autowired private SkuMapper skuMapper;
     @Autowired private OrderService orderService;
+    @Autowired private CouponService couponService;
     @Autowired private SystemConfigService systemConfigService;
     @Value("${mall.pay.mock:true}") private boolean payMock;
     @Value("${mall.order.payment-timeout-minutes:30}")
@@ -91,6 +93,9 @@ public class PayServiceImpl implements PayService {
         paymentMapper.update(payment);
         order.setStatus(1); order.setPayType(payment.getPayType()); order.setPayTime(payment.getPayTime());
         orderMapper.update(order);
+        if (order.getCouponId() != null) {
+            couponService.consumeLockedCoupon(order.getOrderNo());
+        }
         orderItemMapper.findByOrderNo(payment.getOrderNo()).forEach(i -> {
             if (skuMapper.deductStock(i.getSkuId(), i.getQuantity()) != 1) {
                 throw new BusinessException("扣减库存失败: " + i.getSkuId());

@@ -29,6 +29,12 @@ public class OrderController {
         return Result.success(orderService.createOrder(StpUtil.getLoginIdAsLong(), dto));
     }
 
+    @Operation(summary = "订单结算预览", description = "服务端计算同店购物车商品的可用优惠券和应付金额，不锁库存、不锁券")
+    @PostMapping("/preview")
+    public Result<?> preview(@Valid @RequestBody CreateOrderDTO dto) {
+        return Result.success(orderService.previewOrder(StpUtil.getLoginIdAsLong(), dto));
+    }
+
     @Operation(summary = "立即购买下单", description = "从商品详情页直接购买（不走购物车）")
     @PostMapping("/buy-now")
     public Result<?> buyNow(@Valid @RequestBody BuyNowDTO dto) {

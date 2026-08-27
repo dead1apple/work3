@@ -34,7 +34,7 @@ public class Order {
     @Schema(description = "优惠抵扣金额（元）", example = "30.00")
     private BigDecimal discountAmount;
 
-    @Schema(description = "使用的优惠券 ID，未使用为 null", example = "1")
+    @Schema(description = "使用的用户优惠券 ID，未使用为 null", example = "1")
     private Long couponId;
 
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")

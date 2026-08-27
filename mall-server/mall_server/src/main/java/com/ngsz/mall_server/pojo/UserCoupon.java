@@ -18,7 +18,7 @@ public class UserCoupon {
     @Schema(description = "对应优惠券模板 ID", example = "1")
     private Long couponTemplateId;
 
-    @Schema(description = "状态：0 未使用，1 已使用，2 已过期", example = "0")
+    @Schema(description = "状态：0 未使用，1 已使用，2 已过期，3 已锁定待支付", example = "0")
     private Integer status;
 
     @Schema(description = "使用该券的订单号（未使用为 null）", example = "202606300001")
@@ -31,4 +31,16 @@ public class UserCoupon {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "使用时间（未使用为 null）")
     private LocalDateTime useTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime lockTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime effectiveStartTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime effectiveEndTime;
+
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    private LocalDateTime statusUpdateTime;
 }

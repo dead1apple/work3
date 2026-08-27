@@ -7,6 +7,7 @@ import com.ngsz.mall_server.mapper.*;
 import com.ngsz.mall_server.pojo.*;
 import com.ngsz.mall_server.pojo.dto.*;
 import com.ngsz.mall_server.pojo.vo.OrderDetailVO;
+import com.ngsz.mall_server.service.CouponService;
 import com.ngsz.mall_server.service.OrderService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,12 +31,48 @@ public class OrderServiceImpl implements OrderService {
     @Autowired private ProductMapper productMapper;
     @Autowired private UserAddressMapper addressMapper;
     @Autowired private PaymentMapper paymentMapper;
+    @Autowired private CouponService couponService;
     @Value("${mall.order.payment-timeout-minutes:30}")
     private long paymentTimeoutMinutes;
     @Value("${mall.order.timeout-scan-batch-size:100}")
     private int timeoutScanBatchSize;
 
     private String generateOrderNo() { return "JD" + IdUtil.getSnowflakeNextIdStr(); }
+
+    @Override
+    public Map<String, Object> previewOrder(Long userId, CreateOrderDTO dto) {
+        List<Cart> selected = cartMapper.findByUserId(userId).stream()
+                .filter(cart -> dto.getCartIds().contains(cart.getId()) && cart.getSelected() == 1).toList();
+        if (selected.isEmpty()) throw new BusinessException("请选择要购买的商品");
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        Long shopId = null;
+        List<Map<String, Object>> items = new ArrayList<>();
+        for (Cart cart : selected) {
+            Sku sku = skuMapper.findById(cart.getSkuId());
+            if (sku == null || sku.getStatus() != 1) throw new BusinessException("商品已下架");
+            Product product = productMapper.findById(sku.getProductId());
+            if (product == null || product.getShopId() == null) throw new BusinessException("商品所属店铺不存在");
+            if (shopId == null) shopId = product.getShopId();
+            else if (!shopId.equals(product.getShopId())) throw new BusinessException("一次结算只能选择同一店铺的商品");
+            BigDecimal itemTotal = sku.getPrice().multiply(BigDecimal.valueOf(cart.getQuantity()));
+            totalAmount = totalAmount.add(itemTotal);
+            items.add(Map.of("skuId", sku.getId(), "productId", product.getId(),
+                    "quantity", cart.getQuantity(), "totalAmount", itemTotal));
+        }
+        List<Map<String, Object>> coupons = couponService.listUsableCouponsForOrder(userId, shopId, totalAmount);
+        BigDecimal discountAmount = BigDecimal.ZERO;
+        if (dto.getCouponId() != null) {
+            Map<String, Object> selectedCoupon = coupons.stream()
+                    .filter(coupon -> dto.getCouponId().equals(((Number) coupon.get("userCouponId")).longValue()))
+                    .findFirst().orElseThrow(() -> new BusinessException("优惠券当前不可用于该订单"));
+            discountAmount = (BigDecimal) selectedCoupon.get("discountAmount");
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("shopId", shopId); result.put("items", items); result.put("totalAmount", totalAmount);
+        result.put("freightAmount", BigDecimal.ZERO); result.put("coupons", coupons);
+        result.put("discountAmount", discountAmount); result.put("payAmount", totalAmount.subtract(discountAmount));
+        return result;
+    }
 
     @Override @Transactional
     public Map<String, Object> createOrder(Long userId, CreateOrderDTO dto) {
@@ -48,11 +85,12 @@ public class OrderServiceImpl implements OrderService {
         BigDecimal totalAmount = BigDecimal.ZERO;
         List<OrderItem> items = new ArrayList<>();
         Order order = new Order();
-        order.setOrderNo(orderNo); order.setUserId(userId); order.setShopId(1L);
+        Long shopId = null;
+        order.setOrderNo(orderNo); order.setUserId(userId);
         order.setReceiverName(address.getReceiverName()); order.setReceiverPhone(address.getReceiverPhone());
         order.setReceiverAddress(address.getProvince() + address.getCity() + address.getDistrict() + address.getDetailAddress());
         order.setRemark(dto.getRemark()); order.setStatus(0);
-        order.setFreightAmount(BigDecimal.ZERO); order.setDiscountAmount(BigDecimal.ZERO); order.setCouponId(dto.getCouponId());
+        order.setFreightAmount(BigDecimal.ZERO);
         for (Cart cart : selected) {
             Sku sku = skuMapper.findById(cart.getSkuId());
             if (sku == null || sku.getStatus() != 1) throw new BusinessException("商品已下架");
@@ -60,6 +98,14 @@ public class OrderServiceImpl implements OrderService {
                 throw new BusinessException("库存不足: " + sku.getSkuName());
             }
             Product product = productMapper.findById(sku.getProductId());
+            if (product == null || product.getShopId() == null) {
+                throw new BusinessException("商品所属店铺不存在");
+            }
+            if (shopId == null) {
+                shopId = product.getShopId();
+            } else if (!shopId.equals(product.getShopId())) {
+                throw new BusinessException("一次结算只能选择同一店铺的商品");
+            }
             BigDecimal itemTotal = sku.getPrice().multiply(BigDecimal.valueOf(cart.getQuantity()));
             totalAmount = totalAmount.add(itemTotal);
             OrderItem item = new OrderItem();
@@ -69,9 +115,15 @@ public class OrderServiceImpl implements OrderService {
             item.setTotalAmount(itemTotal);
             items.add(item);
         }
-        order.setTotalAmount(totalAmount); order.setPayAmount(totalAmount);
+        BigDecimal discountAmount = dto.getCouponId() == null ? BigDecimal.ZERO
+                : couponService.lockCouponForOrder(userId, dto.getCouponId(), shopId, totalAmount, orderNo);
+        order.setShopId(shopId);
+        order.setCouponId(dto.getCouponId());
+        order.setDiscountAmount(discountAmount);
+        order.setTotalAmount(totalAmount); order.setPayAmount(totalAmount.subtract(discountAmount));
         order.setPayDeadline(LocalDateTime.now().plusMinutes(paymentTimeoutMinutes));
         orderMapper.insert(order);
+        couponService.recordOrderCouponSnapshot(order);
         items.forEach(item -> {
             item.setOrderId(order.getId());
             orderItemMapper.insert(item);
@@ -94,16 +146,24 @@ public class OrderServiceImpl implements OrderService {
         }
         String orderNo = generateOrderNo();
         Product product = productMapper.findById(sku.getProductId());
+        if (product == null || product.getShopId() == null) {
+            throw new BusinessException("商品所属店铺不存在");
+        }
         BigDecimal itemTotal = sku.getPrice().multiply(BigDecimal.valueOf(dto.getQuantity()));
         Order order = new Order();
-        order.setOrderNo(orderNo); order.setUserId(userId); order.setShopId(product != null ? product.getShopId() : 1L);
+        order.setOrderNo(orderNo); order.setUserId(userId); order.setShopId(product.getShopId());
         order.setReceiverName(address.getReceiverName()); order.setReceiverPhone(address.getReceiverPhone());
         order.setReceiverAddress(address.getProvince() + address.getCity() + address.getDistrict() + address.getDetailAddress());
         order.setRemark(dto.getRemark()); order.setStatus(0);
-        order.setFreightAmount(BigDecimal.ZERO); order.setDiscountAmount(BigDecimal.ZERO);
-        order.setTotalAmount(itemTotal); order.setPayAmount(itemTotal);
+        BigDecimal discountAmount = dto.getCouponId() == null ? BigDecimal.ZERO
+                : couponService.lockCouponForOrder(
+                        userId, dto.getCouponId(), order.getShopId(), itemTotal, orderNo);
+        order.setFreightAmount(BigDecimal.ZERO); order.setCouponId(dto.getCouponId());
+        order.setDiscountAmount(discountAmount);
+        order.setTotalAmount(itemTotal); order.setPayAmount(itemTotal.subtract(discountAmount));
         order.setPayDeadline(LocalDateTime.now().plusMinutes(paymentTimeoutMinutes));
         orderMapper.insert(order);
+        couponService.recordOrderCouponSnapshot(order);
         OrderItem item = new OrderItem();
         item.setOrderId(order.getId()); item.setOrderNo(orderNo); item.setSkuId(sku.getId()); item.setProductId(sku.getProductId());
         item.setProductName(product != null ? product.getName() : ""); item.setSkuName(sku.getSkuName());
@@ -193,6 +253,9 @@ public class OrderServiceImpl implements OrderService {
         order.setCancelReason(reason);
         orderMapper.update(order);
         paymentMapper.expirePendingByOrderNo(order.getOrderNo());
+        if (order.getCouponId() != null) {
+            couponService.releaseLockedCoupon(order.getOrderNo());
+        }
         orderItemMapper.findByOrderNo(order.getOrderNo()).forEach(item -> {
             if (skuMapper.unlockStock(item.getSkuId(), item.getQuantity()) != 1) {
                 log.warn("跳过库存释放: orderNo={}, skuId={}, quantity={}", order.getOrderNo(), item.getSkuId(), item.getQuantity());

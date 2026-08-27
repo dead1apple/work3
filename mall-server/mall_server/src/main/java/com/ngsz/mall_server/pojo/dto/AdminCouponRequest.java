@@ -48,6 +48,21 @@ public class AdminCouponRequest {
     @NotNull(message = "失效时间不能为空")
     private LocalDateTime endTime;
 
+    private LocalDateTime receiveStartTime;
+
+    private LocalDateTime receiveEndTime;
+
+    private LocalDateTime useStartTime;
+
+    private LocalDateTime useEndTime;
+
+    @Min(value = 1, message = "每人限领数量必须大于 0")
+    private Integer perUserLimit;
+
+    @DecimalMin(value = "0.01", message = "折扣券最高优惠金额必须大于 0")
+    @Digits(integer = 10, fraction = 2, message = "折扣券最高优惠金额最多保留两位小数")
+    private BigDecimal maxDiscountAmount;
+
     @NotNull(message = "优惠券状态不能为空")
     @Min(value = 0, message = "优惠券状态只能是 0 或 1")
     @Max(value = 1, message = "优惠券状态只能是 0 或 1")

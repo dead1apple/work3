@@ -3,8 +3,10 @@
 <mapper namespace="com.ngsz.mall_server.mapper.UserCouponMapper">
 
     <insert id="insert" useGeneratedKeys="true" keyProperty="id">
-        INSERT INTO user_coupon (user_id, coupon_template_id, status)
-        VALUES (#{userId}, #{couponTemplateId}, #{status})
+        INSERT INTO user_coupon
+        (user_id, coupon_template_id, status, effective_start_time, effective_end_time, status_update_time)
+        VALUES
+        (#{userId}, #{couponTemplateId}, #{status}, #{effectiveStartTime}, #{effectiveEndTime}, CURRENT_TIMESTAMP)
     </insert>
 
     <update id="update">
@@ -25,6 +27,72 @@
 
     <select id="findById" resultType="com.ngsz.mall_server.pojo.UserCoupon">
         SELECT * FROM user_coupon WHERE id = #{id}
+    </select>
+
+    <select id="findByIdForUpdate" resultType="com.ngsz.mall_server.pojo.UserCoupon">
+        SELECT * FROM user_coupon WHERE id = #{id} FOR UPDATE
+    </select>
+
+    <select id="findByIdForUpdateByOrderNo" resultType="com.ngsz.mall_server.pojo.UserCoupon">
+        SELECT * FROM user_coupon WHERE order_no = #{orderNo} AND status = 3 FOR UPDATE
+    </select>
+
+    <select id="findByOrderNo" resultType="com.ngsz.mall_server.pojo.UserCoupon">
+        SELECT * FROM user_coupon WHERE order_no = #{orderNo}
+    </select>
+
+    <update id="lockForOrder">
+        UPDATE user_coupon
+        SET status = 3, order_no = #{orderNo}, lock_time = CURRENT_TIMESTAMP,
+            status_update_time = CURRENT_TIMESTAMP
+        WHERE id = #{id} AND user_id = #{userId} AND status = 0
+    </update>
+
+    <update id="consumeLockedByOrderNo">
+        UPDATE user_coupon
+        SET status = 1, use_time = CURRENT_TIMESTAMP, status_update_time = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo} AND status = 3
+    </update>
+
+    <update id="releaseLockedByOrderNo">
+        UPDATE user_coupon
+        SET status = 0, order_no = NULL, lock_time = NULL, status_update_time = CURRENT_TIMESTAMP
+        WHERE order_no = #{orderNo} AND status = 3
+    </update>
+
+    <update id="expireAvailableCoupons">
+        UPDATE user_coupon uc
+        JOIN coupon_template ct ON ct.id = uc.coupon_template_id
+        SET uc.status = 2, uc.status_update_time = CURRENT_TIMESTAMP
+        WHERE uc.status = 0
+          AND COALESCE(uc.effective_end_time, ct.use_end_time, ct.end_time) &lt; NOW()
+    </update>
+
+    <select id="findViewsByUserId" resultType="map">
+        SELECT uc.id AS userCouponId, uc.coupon_template_id AS couponTemplateId,
+               uc.status AS userStatus, uc.order_no AS orderNo, uc.receive_time AS receiveTime,
+               uc.use_time AS useTime, uc.lock_time AS lockTime,
+               COALESCE(uc.effective_start_time, ct.use_start_time, ct.start_time) AS effectiveStartTime,
+               COALESCE(uc.effective_end_time, ct.use_end_time, ct.end_time) AS effectiveEndTime,
+               ct.shop_id AS shopId, ct.name, ct.type, ct.amount, ct.min_amount AS minAmount,
+               ct.max_discount_amount AS maxDiscountAmount, ct.status AS templateStatus
+        FROM user_coupon uc
+        JOIN coupon_template ct ON ct.id = uc.coupon_template_id
+        WHERE uc.user_id = #{userId}
+        <if test="status != null">AND uc.status = #{status}</if>
+        ORDER BY uc.receive_time DESC, uc.id DESC
+    </select>
+
+    <select id="findViewsByTemplateId" resultType="map">
+        SELECT uc.id AS userCouponId, uc.user_id AS userId, u.username,
+               uc.status AS userStatus, uc.order_no AS orderNo, uc.receive_time AS receiveTime,
+               uc.use_time AS useTime, uc.lock_time AS lockTime,
+               COALESCE(uc.effective_end_time, ct.use_end_time, ct.end_time) AS effectiveEndTime
+        FROM user_coupon uc
+        JOIN coupon_template ct ON ct.id = uc.coupon_template_id
+        JOIN user u ON u.id = uc.user_id
+        WHERE uc.coupon_template_id = #{templateId}
+        ORDER BY uc.receive_time DESC, uc.id DESC
     </select>
 
     <select id="countByUserAndTemplate" resultType="int">

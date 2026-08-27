@@ -23,6 +23,7 @@ public class AdminCouponController {
         this.contentService = contentService;
     }
 
+    @Operation(summary = "分页查询优惠券模板")
     @GetMapping
     public Result<?> list(
             @RequestParam(required = false) String keyword,
@@ -32,11 +33,13 @@ public class AdminCouponController {
         return Result.success(contentService.listCoupons(keyword, status, page, size));
     }
 
+    @Operation(summary = "创建优惠券模板")
     @PostMapping
     public Result<?> create(@Valid @RequestBody AdminCouponRequest request) {
         return Result.success("优惠券创建成功", contentService.createCoupon(request));
     }
 
+    @Operation(summary = "更新优惠券模板")
     @PutMapping("/{id}")
     public Result<?> update(
             @PathVariable Long id, @Valid @RequestBody AdminCouponRequest request) {
@@ -44,6 +47,7 @@ public class AdminCouponController {
         return Result.success("优惠券更新成功");
     }
 
+    @Operation(summary = "启用或停用优惠券模板")
     @PutMapping("/{id}/status")
     public Result<?> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
         contentService.updateCouponStatus(id, status);
@@ -53,6 +57,24 @@ public class AdminCouponController {
     @Operation(summary = "查询可发放的优惠券", description = "管理员视角查询所有可用的优惠券模板（不分店铺）")
     @GetMapping("/available")
     public Result<?> available() {
-        return Result.success(couponService.listAvailable(null));
+        return Result.success(couponService.listAllAvailable());
+    }
+
+    @Operation(summary = "优惠券详情")
+    @GetMapping("/{id}")
+    public Result<?> detail(@PathVariable Long id) {
+        return Result.success(couponService.getCoupon(id));
+    }
+
+    @Operation(summary = "优惠券操作流水")
+    @GetMapping("/{id}/operations")
+    public Result<?> operations(@PathVariable Long id) {
+        return Result.success(couponService.listCouponOperations(id));
+    }
+
+    @Operation(summary = "优惠券统计")
+    @GetMapping("/{id}/statistics")
+    public Result<?> statistics(@PathVariable Long id) {
+        return Result.success(couponService.couponStatistics(id));
     }
 }

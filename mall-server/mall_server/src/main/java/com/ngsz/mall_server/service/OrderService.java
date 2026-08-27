@@ -7,6 +7,7 @@ import com.ngsz.mall_server.pojo.vo.OrderDetailVO;
 import java.util.Map;
 
 public interface OrderService {
+    Map<String, Object> previewOrder(Long userId, CreateOrderDTO dto);
     Map<String, Object> createOrder(Long userId, CreateOrderDTO dto);
     Map<String, Object> buyNow(Long userId, BuyNowDTO dto);
     OrderDetailVO getOrderDetail(Long userId, String orderNo);

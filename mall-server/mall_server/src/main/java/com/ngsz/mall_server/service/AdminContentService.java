@@ -14,6 +14,8 @@ import com.ngsz.mall_server.pojo.dto.AdminCouponRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 
@@ -167,6 +169,20 @@ public class AdminContentService {
                 || !request.getEndTime().isAfter(request.getStartTime())) {
             throw new BusinessException("优惠券结束时间必须晚于开始时间");
         }
+        LocalDateTime receiveStart = request.getReceiveStartTime() == null
+                ? request.getStartTime() : request.getReceiveStartTime();
+        LocalDateTime receiveEnd = request.getReceiveEndTime() == null
+                ? request.getEndTime() : request.getReceiveEndTime();
+        LocalDateTime useStart = request.getUseStartTime() == null
+                ? request.getStartTime() : request.getUseStartTime();
+        LocalDateTime useEnd = request.getUseEndTime() == null
+                ? request.getEndTime() : request.getUseEndTime();
+        if (!receiveEnd.isAfter(receiveStart) || !useEnd.isAfter(useStart)) {
+            throw new BusinessException("领取和使用结束时间必须晚于开始时间");
+        }
+        if (request.getType() == 2 && request.getAmount().compareTo(new BigDecimal("100")) >= 0) {
+            throw new BusinessException("折扣券折扣值必须小于 100");
+        }
     }
 
     private static void validateCategory(AdminCategoryRequest request) {
@@ -193,6 +209,14 @@ public class AdminContentService {
         coupon.setTotalCount(request.getTotalCount());
         coupon.setStartTime(request.getStartTime());
         coupon.setEndTime(request.getEndTime());
+        coupon.setReceiveStartTime(request.getReceiveStartTime());
+        coupon.setReceiveEndTime(request.getReceiveEndTime());
+        coupon.setUseStartTime(request.getUseStartTime());
+        coupon.setUseEndTime(request.getUseEndTime());
+        coupon.setPerUserLimit(request.getPerUserLimit() == null
+                ? (coupon.getPerUserLimit() == null ? 1 : coupon.getPerUserLimit())
+                : request.getPerUserLimit());
+        coupon.setMaxDiscountAmount(request.getMaxDiscountAmount());
         coupon.setStatus(request.getStatus());
     }
 

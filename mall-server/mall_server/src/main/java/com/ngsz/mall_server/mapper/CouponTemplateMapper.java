@@ -8,11 +8,16 @@ import java.util.List;
 @Mapper
 public interface CouponTemplateMapper {
     CouponTemplate findById(@Param("id") Long id);
+    CouponTemplate findByIdForUpdate(@Param("id") Long id);
     List<CouponTemplate> findAvailable(@Param("shopId") Long shopId);
+    List<CouponTemplate> findAllAvailable();
     List<CouponTemplate> findByCondition(
             @Param("keyword") String keyword, @Param("status") Integer status);
     void insert(CouponTemplate template);
     void update(CouponTemplate template);
-    void incrementIssuedCount(@Param("id") Long id);
-    void incrementUsedCount(@Param("id") Long id);
+    int incrementIssuedCount(@Param("id") Long id);
+    int incrementUsedCount(@Param("id") Long id);
+    List<CouponTemplate> findByShopIdAndCondition(
+            @Param("shopId") Long shopId, @Param("keyword") String keyword,
+            @Param("status") Integer status);
 }

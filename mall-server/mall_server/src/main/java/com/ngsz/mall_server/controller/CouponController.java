@@ -34,11 +34,11 @@ public class CouponController {
     }
 
     @Operation(summary = "我的优惠券",
-            description = "查询当前登录用户已领取的优惠券；不传 status 返回全部，可按状态过滤：0 未使用 1 已使用 2 已过期")
+            description = "查询当前登录用户已领取的优惠券；不传 status 返回全部，可按状态过滤：0 未使用 1 已使用 2 已过期 3 已锁定待支付")
     @GetMapping("/mine")
     public Result<?> mine(
-            @Parameter(description = "状态：0 未使用，1 已使用，2 已过期", example = "0")
+            @Parameter(description = "状态：0 未使用，1 已使用，2 已过期，3 已锁定待支付", example = "0")
             @RequestParam(required = false) Integer status) {
-        return Result.success(couponService.listMyCoupons(StpUtil.getLoginIdAsLong(), status));
+        return Result.success(couponService.listMyCouponViews(StpUtil.getLoginIdAsLong(), status));
     }
 }

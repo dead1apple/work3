@@ -8,6 +8,7 @@ import com.ngsz.mall_server.mapper.SkuMapper;
 import com.ngsz.mall_server.pojo.Order;
 import com.ngsz.mall_server.pojo.Payment;
 import com.ngsz.mall_server.service.OrderService;
+import com.ngsz.mall_server.service.CouponService;
 import com.ngsz.mall_server.service.SystemConfigService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -37,6 +38,7 @@ class PayServiceImplTest {
     @Mock private SkuMapper skuMapper;
     @Mock private OrderService orderService;
     @Mock private SystemConfigService systemConfigService;
+    @Mock private CouponService couponService;
     @InjectMocks private PayServiceImpl service;
 
     @BeforeEach
@@ -96,6 +98,19 @@ class PayServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("订单支付已超时，请重新下单");
         verify(orderService).cancelExpiredOrder("ORDER-1");
+    }
+
+    @Test
+    void consumesLockedCouponAfterPaymentCompletes() {
+        Order order = unpaidOrder();
+        order.setCouponId(9L);
+        when(orderMapper.findByOrderNo("ORDER-1")).thenReturn(order);
+        when(systemConfigService.isPayMockEnabled(true)).thenReturn(true);
+        when(orderItemMapper.findByOrderNo("ORDER-1")).thenReturn(List.of());
+
+        service.createPayment("ORDER-1", 1, 7L);
+
+        verify(couponService).consumeLockedCoupon("ORDER-1");
     }
 
     private static Order unpaidOrder() {

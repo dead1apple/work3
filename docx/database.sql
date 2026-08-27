@@ -183,7 +183,7 @@ CREATE TABLE `order` (
   `pay_amount` DECIMAL(12,2) NOT NULL COMMENT '实付金额',
   `freight_amount` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '运费',
   `discount_amount` DECIMAL(10,2) NOT NULL DEFAULT 0 COMMENT '优惠金额',
-  `coupon_id` BIGINT DEFAULT NULL COMMENT '优惠券ID',
+  `coupon_id` BIGINT DEFAULT NULL COMMENT '用户优惠券ID',
   `pay_deadline` DATETIME DEFAULT NULL COMMENT '支付截止时间',
   `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态:0待付款 1待发货 2待收货 3已完成 4已取消 5已退款',
   `receiver_name` VARCHAR(50) NOT NULL COMMENT '收货人',
@@ -284,8 +284,15 @@ CREATE TABLE `coupon_template` (
   `used_count` INT NOT NULL DEFAULT 0 COMMENT '已使用数量',
   `start_time` DATETIME NOT NULL COMMENT '生效时间',
   `end_time` DATETIME NOT NULL COMMENT '失效时间',
+  `receive_start_time` DATETIME DEFAULT NULL COMMENT '领取开始时间，NULL 回退 start_time',
+  `receive_end_time` DATETIME DEFAULT NULL COMMENT '领取结束时间，NULL 回退 end_time',
+  `use_start_time` DATETIME DEFAULT NULL COMMENT '使用开始时间，NULL 回退 start_time',
+  `use_end_time` DATETIME DEFAULT NULL COMMENT '使用结束时间，NULL 回退 end_time',
+  `per_user_limit` INT NOT NULL DEFAULT 1 COMMENT '每人限领数',
+  `max_discount_amount` DECIMAL(10,2) DEFAULT NULL COMMENT '折扣券最高优惠金额',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:0禁用 1启用',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='优惠券模板表';
 
@@ -294,14 +301,60 @@ CREATE TABLE `user_coupon` (
   `id` BIGINT NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT NOT NULL,
   `coupon_template_id` BIGINT NOT NULL,
-  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态:0未使用 1已使用 2已过期',
-  `order_no` VARCHAR(50) DEFAULT NULL COMMENT '使用的订单号',
+  `status` TINYINT NOT NULL DEFAULT 0 COMMENT '状态:0未使用 1已使用 2已过期 3已锁定待支付',
+  `order_no` VARCHAR(50) DEFAULT NULL COMMENT '锁定或使用的订单号',
   `receive_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `use_time` DATETIME DEFAULT NULL,
+  `lock_time` DATETIME DEFAULT NULL COMMENT '订单锁券时间',
+  `effective_start_time` DATETIME DEFAULT NULL COMMENT '领取时固化的使用开始时间',
+  `effective_end_time` DATETIME DEFAULT NULL COMMENT '领取时固化的使用结束时间',
+  `status_update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  KEY `idx_user_template` (`user_id`, `coupon_template_id`),
   KEY `idx_user_id` (`user_id`),
-  KEY `idx_coupon_template_id` (`coupon_template_id`)
+  KEY `idx_coupon_template_id` (`coupon_template_id`),
+  KEY `idx_order_status` (`order_no`, `status`),
+  KEY `idx_user_coupon_status_end` (`user_id`, `status`, `effective_end_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户优惠券记录表';
+
+CREATE TABLE `coupon_operation_log` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `coupon_template_id` BIGINT NOT NULL,
+  `user_coupon_id` BIGINT DEFAULT NULL,
+  `user_id` BIGINT DEFAULT NULL,
+  `order_no` VARCHAR(50) DEFAULT NULL,
+  `operation_type` VARCHAR(20) NOT NULL,
+  `operator_type` VARCHAR(20) NOT NULL,
+  `operator_id` BIGINT DEFAULT NULL,
+  `reason` VARCHAR(255) DEFAULT NULL,
+  `detail` VARCHAR(1000) DEFAULT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_coupon_operation_template_time` (`coupon_template_id`, `create_time`),
+  KEY `idx_coupon_operation_user_time` (`user_coupon_id`, `create_time`),
+  KEY `idx_coupon_operation_order` (`order_no`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='优惠券业务操作流水';
+
+CREATE TABLE `order_coupon_snapshot` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT,
+  `order_id` BIGINT NOT NULL,
+  `order_no` VARCHAR(50) NOT NULL,
+  `user_coupon_id` BIGINT NOT NULL,
+  `coupon_template_id` BIGINT NOT NULL,
+  `shop_id` BIGINT DEFAULT NULL,
+  `coupon_name` VARCHAR(100) NOT NULL,
+  `coupon_type` TINYINT NOT NULL,
+  `coupon_amount` DECIMAL(10,2) NOT NULL,
+  `min_amount` DECIMAL(10,2) DEFAULT NULL,
+  `goods_amount` DECIMAL(12,2) NOT NULL,
+  `discount_amount` DECIMAL(10,2) NOT NULL,
+  `pay_amount` DECIMAL(12,2) NOT NULL,
+  `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_order_coupon_snapshot_order` (`order_no`),
+  KEY `idx_order_coupon_snapshot_template` (`coupon_template_id`),
+  KEY `idx_order_coupon_snapshot_user_coupon` (`user_coupon_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单优惠券规则快照';
 
 -- ============================================================
 -- 7. 初始数据
