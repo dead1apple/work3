@@ -14,12 +14,16 @@ vi.mock('../../../api/coupon', () => ({
 }))
 
 describe('CouponListView', () => {
-  it('uses calendar time pickers for the required coupon validity period', async () => {
+  it('uses calendar time pickers for every coupon time field', async () => {
     const wrapper = mount(CouponListView, { global: { plugins: [ElementPlus] } })
     await wrapper.get('[data-testid="create-coupon"]').trigger('click')
     await flushPromises()
 
     expect(wrapper.get('input[placeholder="请选择开始时间"]').exists()).toBe(true)
     expect(wrapper.get('input[placeholder="请选择结束时间"]').exists()).toBe(true)
+    expect(wrapper.get('input[placeholder="请选择领取开始时间"]').exists()).toBe(true)
+    expect(wrapper.get('input[placeholder="请选择领取结束时间"]').exists()).toBe(true)
+    expect(wrapper.get('input[placeholder="请选择使用开始时间"]').exists()).toBe(true)
+    expect(wrapper.get('input[placeholder="请选择使用结束时间"]').exists()).toBe(true)
   })
 })
