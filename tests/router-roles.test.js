@@ -43,34 +43,6 @@ test('an unauthenticated visitor is sent from cart to login with its internal ta
   assert.deepEqual(result, { name: 'login', query: { redirect: '/cart' } })
 })
 
-test('an unauthenticated visitor is sent from merchant console to login', async () => {
-  const result = await createGuard(makeStore())(protectedRoute('/merchant', [1]))
-  assert.deepEqual(result, { name: 'login', query: { redirect: '/merchant' } })
-})
-
-test('an unauthenticated visitor is sent from admin console to login', async () => {
-  const result = await createGuard(makeStore())(protectedRoute('/admin', [2]))
-  assert.deepEqual(result, { name: 'login', query: { redirect: '/admin' } })
-})
-
-test('a regular user is forbidden from both consoles', async () => {
-  const guard = createGuard(makeStore({ token: 'token', role: 0 }))
-  assert.deepEqual(await guard(protectedRoute('/merchant', [1])), { name: 'forbidden' })
-  assert.deepEqual(await guard(protectedRoute('/admin', [2])), { name: 'forbidden' })
-})
-
-test('a merchant can enter merchant console but not admin console', async () => {
-  const guard = createGuard(makeStore({ token: 'token', role: 1 }))
-  assert.equal(await guard(protectedRoute('/merchant', [1])), true)
-  assert.deepEqual(await guard(protectedRoute('/admin', [2])), { name: 'forbidden' })
-})
-
-test('an administrator can enter admin console but not merchant console', async () => {
-  const guard = createGuard(makeStore({ token: 'token', role: 2 }))
-  assert.equal(await guard(protectedRoute('/admin', [2])), true)
-  assert.deepEqual(await guard(protectedRoute('/merchant', [1])), { name: 'forbidden' })
-})
-
 test('an administrator can browse storefront public and authenticated routes', async () => {
   const guard = createGuard(makeStore({ token: 'admin-token', role: 2 }))
 
@@ -78,35 +50,21 @@ test('an administrator can browse storefront public and authenticated routes', a
   assert.equal(await guard(protectedRoute('/profile')), true)
 })
 
-test('returning from admin console to storefront is not redirected back to admin', async () => {
-  const guard = createGuard(makeStore({ token: 'admin-token', role: 2 }))
-
-  assert.equal(await guard(protectedRoute('/admin', [2])), true)
-  assert.equal(await guard(makeRoute({ path: '/home', records: [{ public: true }] })), true)
-})
-
-test('invalid numeric and string roles cannot enter admin console', async () => {
-  for (const role of [99, '2']) {
-    const result = await createGuard(makeStore({ token: 'token', role }))(protectedRoute('/admin', [2]))
-    assert.deepEqual(result, { name: 'forbidden' })
-  }
-})
-
 test('parent route authentication and role meta apply to a nested child route', async () => {
-  const nestedAdminRoute = makeRoute({
-    path: '/admin/settings',
-    records: [{ requiresAuth: true, roles: [2] }, { title: '设置' }],
+  const onboardingRoute = makeRoute({
+    path: '/merchant/apply',
+    records: [{ title: '商城' }, { requiresAuth: true, roles: [0, 1], title: '商家入驻' }],
   })
 
-  assert.deepEqual(await createGuard(makeStore())(nestedAdminRoute), {
+  assert.deepEqual(await createGuard(makeStore())(onboardingRoute), {
     name: 'login',
-    query: { redirect: '/admin/settings' },
+    query: { redirect: '/merchant/apply' },
   })
   assert.deepEqual(
-    await createGuard(makeStore({ token: 'token', role: 1 }))(nestedAdminRoute),
+    await createGuard(makeStore({ token: 'token', role: 2 }))(onboardingRoute),
     { name: 'forbidden' },
   )
-  assert.equal(await createGuard(makeStore({ token: 'token', role: 2 }))(nestedAdminRoute), true)
+  assert.equal(await createGuard(makeStore({ token: 'token', role: 1 }))(onboardingRoute), true)
 })
 
 test('guard waits for session restoration before authorizing a role route', async () => {
@@ -116,13 +74,13 @@ test('guard waits for session restoration before authorizing a role route', asyn
     initialized: false,
     restoreSession: async () => {
       events.push('restore')
-      store.role = 2
-      store.userInfo = { id: 1, username: 'admin', status: 1, role: 2 }
+      store.role = 1
+      store.userInfo = { id: 1, username: 'merchant', status: 1, role: 1 }
       store.sessionInitialized = true
     },
   })
 
-  const result = await createGuard(store)(protectedRoute('/admin', [2]))
+  const result = await createGuard(store)(protectedRoute('/merchant/apply', [0, 1]))
 
   assert.deepEqual(events, ['restore'])
   assert.equal(result, true)
@@ -149,10 +107,10 @@ test('router and startup restoration share the user store single-flight request'
     store.restoreSession = () => originalRestore({ fetchUserInfo })
 
     const startupRestore = store.restoreSession()
-    const navigation = createGuard(store)(protectedRoute('/admin', [2]))
+    const navigation = createGuard(store)(protectedRoute('/merchant/apply', [0, 1]))
     assert.equal(requests, 1)
 
-    resolveUser({ id: 1, username: 'admin', status: 1, role: 2 })
+    resolveUser({ id: 1, username: 'merchant', status: 1, role: 1 })
     await startupRestore
     assert.equal(await navigation, true)
     assert.equal(requests, 1)
@@ -162,47 +120,49 @@ test('router and startup restoration share the user store single-flight request'
   }
 })
 
-test('forbidden navigation preserves the authenticated session', async () => {
-  const store = makeStore({ token: 'active-token', role: 0 })
+test('forbidden onboarding navigation preserves the authenticated session', async () => {
+  const store = makeStore({ token: 'active-token', role: 2 })
 
-  const result = await createGuard(store)(protectedRoute('/admin', [2]))
+  const result = await createGuard(store)(protectedRoute('/merchant/apply', [0, 1]))
 
   assert.deepEqual(result, { name: 'forbidden' })
   assert.equal(store.token, 'active-token')
-  assert.deepEqual(store.userInfo, { id: 1, username: 'tester', status: 1, role: 0 })
+  assert.deepEqual(store.userInfo, { id: 1, username: 'tester', status: 1, role: 2 })
   assert.equal(store.isLoggedIn, true)
 })
 
-test('a safe login redirect is chosen before the role default and remains guard-authorized', async () => {
+test('a safe storefront login redirect is chosen before the role default and remains guard-authorized', async () => {
   const store = makeStore({ token: 'admin-token', role: 2 })
   const loginRoute = makeRoute({
     path: '/login',
     name: 'login',
-    query: { redirect: '/admin' },
+    query: { redirect: '/cart' },
     records: [{ public: true }],
   })
 
-  assert.equal(await createGuard(store)(loginRoute), '/admin')
-  assert.equal(await createGuard(store)(protectedRoute('/admin', [2])), true)
+  assert.equal(await createGuard(store)(loginRoute), '/cart')
+  assert.equal(await createGuard(store)(protectedRoute('/cart')), true)
 
   const regularStore = makeStore({ token: 'user-token', role: 0 })
-  assert.equal(await createGuard(regularStore)(loginRoute), '/admin')
-  assert.deepEqual(await createGuard(regularStore)(protectedRoute('/admin', [2])), { name: 'forbidden' })
+  assert.equal(await createGuard(regularStore)(loginRoute), '/cart')
+  assert.equal(await createGuard(regularStore)(protectedRoute('/cart')), true)
 })
 
 test('login without a safe redirect uses the role default destination', () => {
   assert.equal(access.resolvePostLoginDestination(undefined, 0), '/home')
-  assert.equal(access.resolvePostLoginDestination(undefined, 1), '/merchant')
-  assert.equal(access.resolvePostLoginDestination(undefined, 2), '/admin')
+  assert.equal(access.resolvePostLoginDestination(undefined, 1), '/home')
+  assert.equal(access.resolvePostLoginDestination(undefined, 2), '/home')
   assert.equal(access.resolvePostLoginDestination(undefined, 99), '/home')
 })
 
 test('external, executable, protocol-relative and auth-loop redirects are rejected', () => {
   for (const redirect of ['https://evil.example.com', '//evil.example.com', 'javascript:alert(1)']) {
-    assert.equal(access.resolvePostLoginDestination(redirect, 2), '/admin')
+    assert.equal(access.resolvePostLoginDestination(redirect, 2), '/home')
   }
-  assert.equal(access.resolvePostLoginDestination('/login', 1), '/merchant')
-  assert.equal(access.resolvePostLoginDestination('/register', 2), '/admin')
+  assert.equal(access.resolvePostLoginDestination('/login', 1), '/home')
+  assert.equal(access.resolvePostLoginDestination('/register', 2), '/home')
+  assert.equal(access.resolvePostLoginDestination('/admin/', 2), '/home')
+  assert.equal(access.resolvePostLoginDestination('/merchant/', 1), '/home')
 })
 
 test('the forbidden page is public and cannot redirect itself in a loop', async () => {
@@ -227,10 +187,4 @@ test('merchant onboarding rejects administrators', async () => {
     protectedRoute('/merchant/apply', [0, 1]),
   )
   assert.deepEqual(result, { name: 'forbidden' })
-})
-
-test('merchant onboarding does not weaken the merchant console role boundary', async () => {
-  const guard = createGuard(makeStore({ token: 'user-token', role: 0 }))
-  assert.equal(await guard(protectedRoute('/merchant/apply', [0, 1])), true)
-  assert.deepEqual(await guard(protectedRoute('/merchant', [1])), { name: 'forbidden' })
 })

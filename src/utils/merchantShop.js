@@ -58,10 +58,12 @@ export const validateShopApplication = (form) => {
   return errors
 }
 
+export const MERCHANT_PORTAL_HREF = '/merchant/'
+
 export const getMerchantProfileEntry = (role) => {
   if (role === 0) return { label: '商家入驻', path: '/merchant/apply' }
-  if (role === 1) return { label: '商家中心', path: '/merchant' }
-  if (role === 2) return { label: '管理后台', path: '/admin' }
+  if (role === 1) return { label: '商家中心', href: MERCHANT_PORTAL_HREF }
+  if (role === 2) return { label: '管理后台', href: '/admin/' }
   return null
 }
 

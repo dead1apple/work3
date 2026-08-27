@@ -2,17 +2,24 @@ import { resolveRedirect } from '../utils/auth.js'
 
 const AUTH_ROUTE_NAMES = new Set(['login', 'register'])
 
-const defaultDestinationForRole = (role) => {
-  if (role === 1) return '/merchant'
-  if (role === 2) return '/admin'
-  return '/home'
-}
+const defaultDestinationForRole = () => '/home'
+
+const isExternalPortalPath = (path) => (
+  path === '/admin'
+  || path.startsWith('/admin/')
+  || path === '/merchant'
+  || (path.startsWith('/merchant/') && path !== '/merchant/apply')
+)
 
 export const resolvePostLoginDestination = (redirect, role) => {
   const safeRedirect = resolveRedirect(redirect)
   if (typeof redirect === 'string' && safeRedirect === redirect) {
     const targetPath = redirect.split(/[?#]/, 1)[0]
-    if (targetPath !== '/login' && targetPath !== '/register') return safeRedirect
+    if (
+      targetPath !== '/login'
+      && targetPath !== '/register'
+      && !isExternalPortalPath(targetPath)
+    ) return safeRedirect
   }
   return defaultDestinationForRole(role)
 }

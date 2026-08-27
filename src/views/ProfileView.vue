@@ -36,19 +36,22 @@
       </el-card>
 
       <el-card class="menu-card" shadow="never">
-        <button
-          v-for="item in menuItems"
-          :key="item.label"
-          class="menu-item"
-          type="button"
-          @click="router.push(item.path)"
-        >
-          <span class="menu-leading">
-            <el-icon :size="19"><component :is="item.icon" /></el-icon>
-            <span>{{ item.label }}</span>
-          </span>
-          <span class="menu-arrow" aria-hidden="true">›</span>
-        </button>
+        <template v-for="item in menuItems" :key="item.label">
+          <a v-if="item.href" class="menu-item" :href="item.href">
+            <span class="menu-leading">
+              <el-icon :size="19"><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </span>
+            <span class="menu-arrow" aria-hidden="true">›</span>
+          </a>
+          <button v-else class="menu-item" type="button" @click="router.push(item.path)">
+            <span class="menu-leading">
+              <el-icon :size="19"><component :is="item.icon" /></el-icon>
+              <span>{{ item.label }}</span>
+            </span>
+            <span class="menu-arrow" aria-hidden="true">›</span>
+          </button>
+        </template>
       </el-card>
 
       <el-button class="logout-button" type="danger" size="large" @click="handleLogout">
@@ -231,7 +234,7 @@ onMounted(loadUserInfo)
 .order-icon { color: #666; }
 
 .menu-card { padding: 0 16px; }
-.menu-item { display: flex; align-items: center; justify-content: space-between; width: 100%; height: 56px; padding: 0; border-bottom: 1px solid #f0f0f0; color: #333; text-align: left; transition: background-color 160ms ease, color 160ms ease; }
+.menu-item { display: flex; box-sizing: border-box; align-items: center; justify-content: space-between; width: 100%; height: 56px; padding: 0; border-bottom: 1px solid #f0f0f0; color: #333; text-align: left; text-decoration: none; transition: background-color 160ms ease, color 160ms ease; }
 .menu-item:last-child { border-bottom: 0; }
 .menu-leading { display: flex; align-items: center; gap: 12px; }
 .menu-leading .el-icon { color: #e1251b; }

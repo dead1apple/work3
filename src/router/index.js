@@ -31,22 +31,6 @@ const router = createRouter({
     { path: '/login', name: 'login', meta: { public: true }, component: () => import('../views/auth/Login.vue') },
     { path: '/register', name: 'register', meta: { public: true }, component: () => import('../views/auth/Register.vue') },
     { path: '/403', name: 'forbidden', meta: { title: '无权访问', public: true }, component: () => import('../views/errors/ForbiddenView.vue') },
-    {
-      path: '/merchant',
-      component: () => import('../views/merchant/layout/index.vue'),
-      meta: { title: '商家中心', requiresAuth: true, roles: [1] },
-      children: [
-        { path: '', name: 'merchant-home', meta: { title: '商家首页' }, component: () => import('../views/merchant/HomeView.vue') },
-      ],
-    },
-    {
-      path: '/admin',
-      component: () => import('../views/admin/layout/index.vue'),
-      meta: { title: '管理后台', requiresAuth: true, roles: [2] },
-      children: [
-        { path: '', name: 'admin-home', meta: { title: '后台首页' }, component: () => import('../views/admin/HomeView.vue') },
-      ],
-    },
     { path: '/:pathMatch(.*)*', redirect: '/home' },
   ],
 })

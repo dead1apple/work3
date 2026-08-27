@@ -1,16 +1,15 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue'
-import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { applyForShop, getMyShop } from '../../api/merchant.js'
 import { useUserStore } from '../../store/user.js'
 import {
   createMerchantShopFlow,
   getMerchantShopView,
+  MERCHANT_PORTAL_HREF,
   validateShopApplication,
 } from '../../utils/merchantShop.js'
 
-const router = useRouter()
 const userStore = useUserStore()
 const formRef = ref()
 const refreshingUser = ref(false)
@@ -69,7 +68,7 @@ const refreshAccountRole = async () => {
   try {
     await userStore.refreshUserInfo()
     if (userStore.role === 1) {
-      await router.replace('/merchant')
+      window.location.assign(MERCHANT_PORTAL_HREF)
       return
     }
     ElMessage.warning('账号角色尚未同步，请重新登录或联系平台管理员')
@@ -157,7 +156,7 @@ onMounted(loadShop)
       <h2 id="shop-status-title">{{ statusView.title }}</h2>
       <p>{{ statusView.description }}</p>
       <div class="state-actions">
-        <el-button v-if="statusView.canEnterMerchant" type="danger" @click="router.push('/merchant')">进入商家中心</el-button>
+        <a v-if="statusView.canEnterMerchant" class="merchant-portal-link" :href="MERCHANT_PORTAL_HREF">进入商家中心</a>
         <el-button v-if="statusView.canRefreshUser" type="danger" :loading="refreshingUser" @click="refreshAccountRole">刷新账号状态</el-button>
         <el-button plain @click="loadShop">重新读取店铺状态</el-button>
       </div>
@@ -170,5 +169,6 @@ onMounted(loadShop)
 .page-heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 24px; padding: 26px 30px; border: 1px solid #eceef1; border-radius: 18px; background: linear-gradient(120deg, #fff 55%, #fff2f1); }.eyebrow,.state-label { margin: 0 0 8px; color: var(--merchant-red); font-size: 11px; font-weight: 800; letter-spacing: .15em; }.page-heading h1 { margin: 0; font-size: clamp(27px, 4vw, 38px); letter-spacing: -.05em; }.heading-copy { margin: 12px 0 0; color: var(--merchant-muted); }.page-heading a { color: var(--merchant-red); font-size: 14px; font-weight: 700; text-decoration: none; white-space: nowrap; }.page-heading a:hover { text-decoration: underline; }.page-heading a:focus-visible { outline: 3px solid rgba(225,37,27,.2); outline-offset: 4px; }
 .state-panel,.application-shell { min-height: 430px; border: 1px solid #e9ebee; border-radius: 18px; background: #fff; box-shadow: 0 16px 44px rgba(32,36,43,.06); }.state-panel { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 48px; text-align: center; }.state-mark { display: grid; width: 68px; height: 68px; place-items: center; margin-bottom: 22px; border-radius: 50%; color: var(--merchant-red); background: #fff0ef; font-size: 30px; font-weight: 900; }.state-panel h2 { margin: 0; font-size: clamp(24px, 4vw, 34px); }.state-panel>p:not(.state-label) { max-width: 560px; margin: 15px 0 26px; color: var(--merchant-muted); line-height: 1.8; }.state-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }.warning-panel .state-mark { color: #b86800; background: #fff7e8; }.error-panel .state-mark,.is-disabled .state-mark,.is-rejected .state-mark,.is-unknown .state-mark { color: #8b4a46; background: #f7eeee; }.is-active .state-mark { color: #15803d; background: #edf9f1; }
 .application-shell { display: grid; grid-template-columns: minmax(240px, .72fr) minmax(0, 1.28fr); overflow: hidden; }.application-intro { padding: 48px 38px; color: #fff; background: #25282e; }.application-intro .state-label { color: #ff8d87; }.application-intro h2 { margin: 0; font-size: 30px; }.application-intro>p:not(.state-label) { margin: 18px 0 28px; color: #c7cbd2; line-height: 1.8; }.application-intro ul { margin: 0; padding-left: 20px; color: #aeb4bd; font-size: 13px; line-height: 2; }.application-form { padding: 42px; }.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }.form-note { margin: 4px 0 20px; color: #929aa5; font-size: 12px; line-height: 1.7; }.submit-button { width: 100%; border-radius: 10px; }.application-form :deep(.el-input__wrapper),.application-form :deep(.el-textarea__inner) { border-radius: 9px; }.application-form :deep(.el-input__wrapper.is-focus),.application-form :deep(.el-textarea__inner:focus) { box-shadow: 0 0 0 1px var(--merchant-red) inset; }
+.merchant-portal-link { display: inline-flex; align-items: center; justify-content: center; height: 32px; padding: 0 15px; border: 1px solid var(--merchant-red); border-radius: 4px; color: #fff; background: var(--merchant-red); font-size: 14px; line-height: 1; text-decoration: none; }.merchant-portal-link:hover { background: #c51f17; }.merchant-portal-link:focus-visible { outline: 3px solid rgba(225,37,27,.24); outline-offset: 3px; }
 @media (max-width: 760px) { .page-heading { align-items: flex-start; flex-direction: column; padding: 22px; }.application-shell { grid-template-columns: 1fr; }.application-intro,.application-form { padding: 30px 24px; }.form-grid { grid-template-columns: 1fr; gap: 0; }.state-panel { min-height: 380px; padding: 36px 22px; } }
 </style>

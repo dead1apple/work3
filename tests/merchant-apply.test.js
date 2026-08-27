@@ -234,8 +234,8 @@ test('post-submit refresh invalidates an older initial GET result', async () => 
 
 test('profile role entry routes each trusted role to its matching destination', () => {
   assert.deepEqual(merchantShop.getMerchantProfileEntry(0), { label: '商家入驻', path: '/merchant/apply' })
-  assert.deepEqual(merchantShop.getMerchantProfileEntry(1), { label: '商家中心', path: '/merchant' })
-  assert.deepEqual(merchantShop.getMerchantProfileEntry(2), { label: '管理后台', path: '/admin' })
+  assert.deepEqual(merchantShop.getMerchantProfileEntry(1), { label: '商家中心', href: '/merchant/' })
+  assert.deepEqual(merchantShop.getMerchantProfileEntry(2), { label: '管理后台', href: '/admin/' })
 })
 
 test('profile role entry is hidden for missing, string and unsupported roles', () => {
