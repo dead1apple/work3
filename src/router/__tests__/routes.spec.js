@@ -39,4 +39,13 @@ describe('merchant application routes', () => {
     expect(resolved.href).toBe('/merchant/orders')
     expect(resolved.meta.requiresMerchant).toBe(true)
   })
+
+  it('registers coupon management under the protected Merchant Layout and base', () => {
+    const router = createRouter({ history: createMemoryHistory('/merchant/'), routes })
+    const resolved = router.resolve('/coupons')
+
+    expect(resolved.name).toBe('merchant-coupons')
+    expect(resolved.href).toBe('/merchant/coupons')
+    expect(resolved.meta.requiresMerchant).toBe(true)
+  })
 })

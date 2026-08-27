@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElButton, ElDrawer, ElIcon, ElMessage } from 'element-plus'
-import { Fold, Goods, HomeFilled, Tickets, SwitchButton, Shop } from '@element-plus/icons-vue'
+import { Fold, Goods, HomeFilled, Tickets, SwitchButton, Shop, Ticket } from '@element-plus/icons-vue'
 import { useSessionStore } from '../store/session'
 import { useShopStore } from '../store/shop'
 
@@ -59,6 +59,10 @@ async function signOut() {
         <RouterLink class="navigation-item" :to="{ name: 'merchant-orders' }">
           <el-icon aria-hidden="true"><Tickets /></el-icon>
           <span>订单管理</span>
+        </RouterLink>
+        <RouterLink class="navigation-item" :to="{ name: 'merchant-coupons' }">
+          <el-icon aria-hidden="true"><Ticket /></el-icon>
+          <span>优惠券管理</span>
         </RouterLink>
         <RouterLink class="navigation-item" :to="{ name: 'merchant-shop' }">
           <el-icon aria-hidden="true"><Shop /></el-icon>
@@ -150,6 +154,14 @@ async function signOut() {
         >
           <el-icon aria-hidden="true"><Tickets /></el-icon>
           <span>订单管理</span>
+        </RouterLink>
+        <RouterLink
+          class="navigation-item navigation-item--mobile"
+          :to="{ name: 'merchant-coupons' }"
+          @click="mobileNavigationOpen = false"
+        >
+          <el-icon aria-hidden="true"><Ticket /></el-icon>
+          <span>优惠券管理</span>
         </RouterLink>
         <RouterLink
           class="navigation-item navigation-item--mobile"

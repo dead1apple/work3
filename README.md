@@ -47,6 +47,7 @@ npm run build
 | `/products/:id/edit` | `/merchant/products/:id/edit` | 商品详情回填、SKU 编辑、完整 DTO 保存 |
 | `/orders` | `/merchant/orders` | 订单列表、状态服务器筛选、分页与发货入口 |
 | `/orders/:orderNo` | `/merchant/orders/:orderNo` | 商家订单详情、商品明细、收货与物流信息 |
+| `/coupons` | `/merchant/coupons` | 本店优惠券列表、服务器筛选/分页、创建、未领取券编辑、启用/停用和领取明细 |
 | `/shop` | `/merchant/shop` | 店铺资料查看、修改与图片上传入口 |
 | `/403` | `/merchant/403` | 无商家权限 |
 | `/:pathMatch(.*)*` | `/merchant/*` | 404 |
@@ -165,9 +166,12 @@ Authorization: <token>
 - 缺少任一约定字段：抛出协议错误
 - 不尝试兼容未声明的响应结构
 
+## 优惠券
+
+优惠券模块只调用商家专用接口：`/api/merchant/coupons`、`/api/merchant/coupons/{id}`、`/api/merchant/coupons/{id}/status`、`/api/merchant/coupons/{id}/users` 与 `/api/merchant/coupons/{id}/statistics`。店铺归属由 token 决定，前端不传或持久化 `shopId`。后端 OpenAPI 只声明优惠券类型取值范围为 `1–3`，未提供业务名称，因此页面忠实显示为“类型 1/2/3”，不自行推断其折扣语义。
+
 ## 已知限制（非前端 Bug）
 
-- 商家优惠券模块未实现：最新后端 OpenAPI 没有商家专用优惠券接口，前端不会调用管理员优惠券接口或创建假页面。
 - `POST /api/merchant/orders/deliver` 已有自动测试与请求构造验证；为避免污染不可逆真实订单，未对生产订单实际发货。
 - 真实图片上传会生成服务端文件。联调应使用可追溯的测试图片并遵守环境数据清理规则。
 

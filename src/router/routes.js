@@ -46,6 +46,12 @@ export const routes = [
         meta: { title: '订单详情' },
       },
       {
+        path: 'coupons',
+        name: 'merchant-coupons',
+        component: () => import('../views/coupons/CouponListView.vue'),
+        meta: { title: '优惠券管理' },
+      },
+      {
         path: 'shop',
         name: 'merchant-shop',
         component: () => import('../views/shop/ShopView.vue'),
