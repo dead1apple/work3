@@ -48,6 +48,19 @@
 			}
 		},
 		{
+			"path": "pages/auth/register",
+			"style": {
+				"navigationBarTitleText": "注册账号",
+				"navigationBarBackgroundColor": "#f6f7f9"
+			}
+		},
+		{
+			"path": "pages/profile/edit",
+			"style": {
+				"navigationBarTitleText": "编辑个人资料"
+			}
+		},
+		{
 			"path": "pages/orders/list",
 			"style": {
 				"navigationBarTitleText": "我的订单",
@@ -60,6 +73,41 @@
 			"style": {
 				"navigationBarTitleText": "发表评价",
 				"navigationBarBackgroundColor": "#ffffff"
+			}
+		},
+		{
+			"path": "pages/orders/detail",
+			"style": {
+				"navigationBarTitleText": "订单详情",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/payment/index",
+			"style": {
+				"navigationBarTitleText": "收银台"
+			}
+		},
+		{
+			"path": "pages/coupons/index",
+			"style": {
+				"navigationBarTitleText": "优惠券",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/brands/index",
+			"style": {
+				"navigationBarTitleText": "品牌馆",
+				"enablePullDownRefresh": true
+			}
+		},
+		{
+			"path": "pages/brands/detail",
+			"style": {
+				"navigationBarTitleText": "品牌详情",
+				"enablePullDownRefresh": true,
+				"onReachBottomDistance": 120
 			}
 		},
 		{

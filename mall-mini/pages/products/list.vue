@@ -16,13 +16,13 @@
 	import { normalizeProductList } from '../../utils/normalizers.js'
 	export default {
 		components:{ProductCard,StateView},
-		data(){return{keyword:'',categoryId:'',sortBy:'default',page:1,size:10,total:0,products:[],loading:false,finished:false,sorts:[{label:'综合',value:'default'},{label:'销量',value:'sales'},{label:'价格升序',value:'price_asc'},{label:'价格降序',value:'price_desc'}]}},
-		onLoad(options){this.keyword=decodeURIComponent(options.keyword||'');this.categoryId=options.categoryId||'';this.loadProducts()},
+		data(){return{keyword:'',categoryId:'',brandId:'',sortBy:'default',page:1,size:10,total:0,products:[],loading:false,finished:false,sorts:[{label:'综合',value:'default'},{label:'销量',value:'sales'},{label:'价格升序',value:'price_asc'},{label:'价格降序',value:'price_desc'}]}},
+		onLoad(options){this.keyword=decodeURIComponent(options.keyword||'');this.categoryId=options.categoryId||'';this.brandId=options.brandId||'';this.loadProducts()},
 		onReachBottom(){if(!this.loading&&!this.finished)this.loadProducts()},
 		onPullDownRefresh(){this.restart(true)},
 		methods:{
-			async loadProducts(reset=false){if(this.loading)return;if(reset){this.page=1;this.products=[];this.finished=false}this.loading=true;try{const result=normalizeProductList(await getProducts({keyword:this.keyword.trim()||undefined,categoryId:this.categoryId||undefined,sortBy:this.sortBy,page:this.page,size:this.size}));this.products=reset?result.list:[...this.products,...result.list];this.total=result.total;this.finished=result.list.length<this.size||this.products.length>=this.total;if(!this.finished)this.page+=1}catch(error){uni.showToast({title:error.message,icon:'none'})}finally{this.loading=false;uni.stopPullDownRefresh()}},
-			restart(){this.loadProducts(true)},changeSort(value){if(this.sortBy===value)return;this.sortBy=value;this.restart()},clearFilters(){this.keyword='';this.categoryId='';this.sortBy='default';this.restart()},openDetail(product){uni.navigateTo({url:`/pages/products/detail?id=${product.id}`})},
+			async loadProducts(reset=false){if(this.loading)return;if(reset){this.page=1;this.products=[];this.finished=false}this.loading=true;try{const result=normalizeProductList(await getProducts({keyword:this.keyword.trim()||undefined,categoryId:this.categoryId||undefined,brandId:this.brandId||undefined,sortBy:this.sortBy,page:this.page,size:this.size}));this.products=reset?result.list:[...this.products,...result.list];this.total=result.total;this.finished=result.list.length<this.size||this.products.length>=this.total;if(!this.finished)this.page+=1}catch(error){uni.showToast({title:error.message,icon:'none'})}finally{this.loading=false;uni.stopPullDownRefresh()}},
+			restart(){this.loadProducts(true)},changeSort(value){if(this.sortBy===value)return;this.sortBy=value;this.restart()},clearFilters(){this.keyword='';this.categoryId='';this.brandId='';this.sortBy='default';this.restart()},openDetail(product){uni.navigateTo({url:`/pages/products/detail?id=${product.id}`})},
 		},
 	}
 </script>

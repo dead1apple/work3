@@ -39,6 +39,24 @@ export function normalizeProductList(payload) {
 	return { list, total: Math.max(0, number(payload?.total, list.length)) }
 }
 
+export function normalizeBrandList(payload) {
+	return readList(payload).map((item) => {
+		const brand = item?.brand || item || {}
+		return {
+			...brand,
+			id: number(first(brand.id, brand.brandId)),
+			name: first(brand.name, brand.brandName, '未命名品牌'),
+			logo: resolveAssetUrl(first(brand.logo, brand.logoUrl, brand.image)),
+			description: first(brand.description, brand.introduction, brand.summary, ''),
+		}
+	}).filter((item) => item.id)
+}
+
+export function normalizeBrandDetail(payload) {
+	const source = payload?.brand || payload || {}
+	return normalizeBrandList([source])[0] || null
+}
+
 function parseSpecs(value) {
 	if (value && typeof value === 'object' && !Array.isArray(value)) return value
 	try {
@@ -141,6 +159,7 @@ export function normalizeOrderItem(item) {
 		image: resolveAssetUrl(first(item.productImage, item.skuImage, item.image, item.mainImage, item.product?.mainImage)),
 		price,
 		quantity,
+		subtotal: Math.max(0, number(first(item.subtotal, item.totalAmount, item.amount), price * quantity)),
 	}
 }
 
@@ -149,14 +168,32 @@ export function normalizeOrderDetail(payload) {
 	const order = source.order || source.orderInfo || source
 	const items = source.items || source.orderItems || source.details || order.items || order.orderItems || []
 	const status = number(order.status, -1)
+	const address = source.address || source.deliveryAddress || order.address || {}
+	const addressParts = [address.province, address.city, address.district, address.detailAddress || address.address].filter(Boolean)
+	const normalizedItems = Array.isArray(items) ? items.map(normalizeOrderItem) : []
+	const goodsAmount = Math.max(0, number(first(order.goodsAmount, order.productAmount), normalizedItems.reduce((sum, item) => sum + item.subtotal, 0)))
 	return {
 		...order,
 		orderNo: first(order.orderNo, order.orderNumber, order.id, ''),
 		status,
 		statusText: order.statusName || order.statusText || ORDER_STATUS[status] || '处理中',
 		payAmount: Math.max(0, number(first(order.payAmount, order.totalAmount, order.actualAmount))),
+		goodsAmount,
+		freightAmount: Math.max(0, number(first(order.freightAmount, order.shippingFee))),
+		discountAmount: Math.max(0, number(first(order.discountAmount, order.couponAmount))),
 		createTime: first(order.createTime, order.createdAt, ''),
-		items: Array.isArray(items) ? items.map(normalizeOrderItem) : [],
+		payTime: first(order.payTime, ''),
+		deliveryTime: first(order.deliveryTime, order.shipTime, ''),
+		receiveTime: first(order.receiveTime, order.completeTime, ''),
+		payDeadline: first(order.payDeadline, ''),
+		receiverName: first(address.receiverName, address.name, order.receiverName, ''),
+		receiverPhone: first(address.receiverPhone, address.phone, order.receiverPhone, ''),
+		fullAddress: first(order.receiverAddress, address.fullAddress, addressParts.join(''), ''),
+		remark: first(order.remark, order.orderRemark, ''),
+		logisticsCompany: first(order.logisticsCompany, order.expressCompany, ''),
+		logisticsNo: first(order.logisticsNo, order.trackingNo, order.expressNo, ''),
+		payment: source.payment || order.payment || null,
+		items: normalizedItems,
 	}
 }
 
@@ -168,8 +205,84 @@ export function normalizeUser(payload) {
 		username: first(user.username, user.userName, ''),
 		nickname: first(user.nickname, user.nickName, user.username, user.userName, '商城用户'),
 		phone: first(user.phone, user.mobile, ''),
+		email: first(user.email, ''),
 		avatar: resolveAssetUrl(first(user.avatar, user.avatarUrl, '')),
+		gender: [0, 1, 2].includes(number(user.gender)) ? number(user.gender) : 0,
+		birthday: /^\d{4}-\d{2}-\d{2}/.test(String(user.birthday || '')) ? String(user.birthday).slice(0, 10) : '',
 	}
+}
+
+const COUPON_STATUS = { 0: '未使用', 1: '已使用', 2: '已过期' }
+
+export function normalizeCouponList(payload, mode = 'available', templates = []) {
+	const templateMap = new Map((templates || []).map((item) => [number(first(item.templateId, item.id)), item]))
+	return readList(payload).map((item) => {
+		const record = item?.userCoupon || item || {}
+		const embedded = item?.couponTemplate || item?.template || item?.coupon || record?.couponTemplate
+		const templateId = first(record.couponTemplateId, record.templateId, item.couponTemplateId, item.templateId, embedded?.id, item.id)
+		const template = embedded || templateMap.get(number(templateId)) || record
+		const status = mode === 'mine' ? number(first(record.status, item.status), 0) : null
+		const id = mode === 'mine' ? first(record.id, item.userCouponId, item.id) : templateId
+		const hasTemplateData = mode !== 'mine' || Boolean(embedded || templateMap.get(number(templateId)) || record.amount != null || record.discountAmount != null)
+		const shopId = first(template.shopId, item.shopId)
+		return {
+			id,
+			templateId,
+			name: first(template.name, template.couponName, item.name, '优惠券'),
+			amount: Math.max(0, number(first(template.amount, template.discountAmount, item.amount))),
+			minAmount: Math.max(0, number(first(template.minAmount, template.threshold, item.minAmount))),
+			type: number(first(template.type, item.type), 1) || 1,
+			status,
+			statusText: mode === 'mine' ? first(record.statusName, item.statusName, COUPON_STATUS[status], '状态未知') : '可领取',
+			startTime: String(first(template.startTime, record.startTime, item.startTime, '')).slice(0, 10),
+			endTime: String(first(template.endTime, record.endTime, item.endTime, '')).slice(0, 10),
+			shopName: first(template.shopName, item.shopName, shopId ? '店铺专享券' : '商城平台券'),
+			hasTemplateData,
+		}
+	}).filter((item) => item.id != null && item.templateId != null)
+}
+
+export function filterUsableCoupons(coupons, goodsAmount) {
+	const amount = Math.max(0, number(goodsAmount))
+	return (coupons || []).filter((item) => item.hasTemplateData !== false && Number(item.status) === 0 && amount >= item.minAmount)
+}
+
+export function getCouponValueText(coupon) {
+	if (coupon?.hasTemplateData === false) return '优惠待同步'
+	const amount = Math.max(0, number(coupon?.amount))
+	if (Number(coupon?.type) === 2) return `${Number.isInteger(amount / 10) ? amount / 10 : (amount / 10).toFixed(1)}折`
+	return `¥${Number.isInteger(amount) ? amount : amount.toFixed(2)}`
+}
+
+export function getCouponDiscount(coupon, goodsAmount) {
+	const goods = Math.max(0, number(goodsAmount))
+	if (!coupon || coupon.hasTemplateData === false) return 0
+	const value = Math.max(0, number(coupon.amount))
+	const discount = Number(coupon.type) === 2 ? goods * (1 - Math.min(100, value) / 100) : value
+	return Math.round(Math.min(goods, Math.max(0, discount)) * 100) / 100
+}
+
+const PAID_STATUS = new Set([1, '1', 'PAID', 'SUCCESS', 'SUCCESSFUL', '已支付', '支付成功'])
+const FAILED_STATUS = new Set([-1, 2, '-1', '2', 'FAIL', 'FAILED', 'CLOSED', 'CANCELLED', '支付失败', '已关闭'])
+
+export function extractPaymentNo(payload) {
+	const source = payload || {}
+	if (typeof source === 'string' || typeof source === 'number') return String(source)
+	return String(first(source.paymentNo, source.payment?.paymentNo, source.id, ''))
+}
+
+export function normalizePaymentStatus(payload) {
+	const source = payload || {}
+	const payment = source.payment || (source.paymentNo || source.status != null ? source : null)
+	const rawStatus = first(payment?.status, source.status)
+	const statusName = first(payment?.statusName, source.statusName, '')
+	const upperStatus = String(rawStatus || '').toUpperCase()
+	const isPaid = source.isPaid === true || PAID_STATUS.has(rawStatus) || PAID_STATUS.has(statusName) || PAID_STATUS.has(upperStatus)
+	const isFailed = FAILED_STATUS.has(rawStatus) || FAILED_STATUS.has(statusName) || FAILED_STATUS.has(upperStatus)
+	if (isPaid) return { state: 'paid', title: '支付成功', description: '订单已支付，商家将尽快发货。', paymentNo: extractPaymentNo(payment), payType: number(payment?.payType, 0) }
+	if (isFailed) return { state: 'failed', title: '支付未完成', description: '本次支付没有成功，可以重新选择支付方式。', paymentNo: extractPaymentNo(payment), payType: number(payment?.payType, 0) }
+	if (payment) return { state: 'processing', title: '支付处理中', description: '支付结果正在确认，请稍候。', paymentNo: extractPaymentNo(payment), payType: number(payment?.payType, 0) }
+	return { state: 'unpaid', title: '等待付款', description: '请选择支付方式完成付款。', paymentNo: '', payType: 0 }
 }
 
 export function normalizeFavoriteList(payload) {

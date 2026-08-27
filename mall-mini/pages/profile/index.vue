@@ -1,6 +1,6 @@
 <template>
 	<view class="profile-page">
-		<view class="profile-header">
+		<view class="profile-header" @tap="loggedIn?openProfileEdit():goLogin()">
 			<view class="avatar"><image v-if="user?.avatar" :src="user.avatar" mode="aspectFill" /><text v-else>{{ loggedIn?(user?.nickname||'用').slice(0,1):'JD' }}</text></view>
 			<view class="profile-copy" @tap="!loggedIn&&goLogin()"><text class="name">{{ loggedIn?(user?.nickname||user?.username||'商城用户'):'登录 / 注册' }}</text><text class="member">{{ loggedIn?'京东会员 · 欢迎回来':'登录后同步订单与收藏' }}</text></view>
 			<image class="header-arrow" src="/static/icons/chevron-right-white.png" mode="aspectFit" />
@@ -28,8 +28,11 @@
 					{ label: '已完成', status: 3, icon: '/static/icons/order-complete.png' },
 				],
 				menus: [
+					{ label: '个人资料', url: '/pages/profile/edit', icon: '/static/icons/order-complete.png' },
+					{ label: '我的优惠券', url: '/pages/coupons/index?tab=mine', icon: '/static/icons/order-payment.png' },
 					{ label: '我的收藏', url: '/pages/favorites/index', icon: '/static/icons/heart-red.png' },
 					{ label: '收货地址', url: '/pages/address/index', icon: '/static/icons/map-pin.png' },
+					{ label: '品牌馆', url: '/pages/brands/index', icon: '/static/icons/category.png' },
 					{ label: '购物车', url: '/pages/cart/index', tab: true, icon: '/static/icons/cart-red.png' },
 					{ label: '商品分类', url: '/pages/category/index', tab: true, icon: '/static/icons/category.png' },
 				],
@@ -52,6 +55,9 @@
 			goLogin() {
 				uni.navigateTo({ url: '/pages/auth/login' })
 			},
+			openProfileEdit() {
+				uni.navigateTo({ url: '/pages/profile/edit' })
+			},
 			openOrders(status = '') {
 				if (!this.loggedIn) {
 					this.goLogin()
@@ -61,7 +67,7 @@
 				uni.navigateTo({ url: `/pages/orders/list${query}` })
 			},
 			openMenu(item) {
-				const requiresLogin = item.url.includes('favorites') || item.url.includes('address')
+				const requiresLogin = item.url.includes('favorites') || item.url.includes('address') || item.url.includes('profile/edit') || item.url.includes('coupons')
 				if (requiresLogin && !this.loggedIn) {
 					this.goLogin()
 					return

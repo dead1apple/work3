@@ -6,9 +6,14 @@ export const getProductReviews = (id, query) => request({ url: `/products/${id}/
 export const getCategoryTree = () => request({ url: '/categories/tree', auth: false })
 export const getCategoryChildren = (parentId) => request({ url: '/categories/children', query: { parentId }, auth: false })
 export const getBrands = () => request({ url: '/brands', auth: false })
+export const getBrandDetail = (id) => request({ url: `/brands/${id}`, auth: false })
 
 export const login = (data) => request({ url: '/auth/login', method: 'POST', data, auth: false })
+export const sendCode = (data) => request({ url: '/auth/send-code', method: 'POST', data, auth: false })
+export const register = (data) => request({ url: '/auth/register', method: 'POST', data, auth: false })
+export const getMockCode = (phone) => request({ url: '/auth/mock-code', query: { phone }, auth: false })
 export const getUserInfo = () => request({ url: '/user/info' })
+export const updateUserInfo = (data) => request({ url: '/user/info', method: 'PUT', data })
 export const logout = () => request({ url: '/user/logout', method: 'POST' })
 
 export const getCart = () => request({ url: '/cart' })
@@ -32,7 +37,16 @@ export const cancelOrder = (orderNo) => request({ url: `/orders/${orderNo}/cance
 export const receiveOrder = (orderNo) => request({ url: `/orders/${orderNo}/receive`, method: 'PUT' })
 export const deleteOrder = (orderNo) => request({ url: `/orders/${orderNo}`, method: 'DELETE' })
 
+export const createPayment = (orderNo, payType) => request({ url: '/pay/create', method: 'POST', query: { orderNo, payType } })
+export const confirmPayment = (paymentNo) => request({ url: '/pay/confirm', method: 'POST', query: { paymentNo } })
+export const getPaymentStatus = (orderNo) => request({ url: '/pay/status', query: { orderNo } })
+
+export const claimCoupon = (templateId) => request({ url: `/coupons/claim/${templateId}`, method: 'POST' })
+export const getMyCoupons = (query) => request({ url: '/coupons/mine', query })
+export const getAvailableCoupons = (query) => request({ url: '/coupons/available', query })
+
 export const getAddressList = () => request({ url: '/address/list' })
+export const getAddressDetail = (id) => request({ url: `/address/${id}` })
 export const addAddress = (data) => request({ url: '/address', method: 'POST', data })
 export const updateAddress = (data) => request({ url: '/address', method: 'PUT', data })
 export const deleteAddress = (id) => request({ url: `/address/${id}`, method: 'DELETE' })
