@@ -21,7 +21,7 @@ test('normalizes the deployed nested cart record used by single selection and ch
   const [item] = normalizeCartList([{
     cart: { id: 27, skuId: 262, productId: 69, quantity: 3, selected: 1 },
     sku: { id: 262, skuName: '标准版-1', price: 329, image: '/sku.png' },
-    product: { id: 69, name: '安踏 综训鞋 运动鞋', mainImage: '/product.png' },
+    product: { id: 69, shopId: 41, name: '安踏 综训鞋 运动鞋', mainImage: '/product.png' },
   }])
 
   assert.deepEqual(item, {
@@ -32,6 +32,7 @@ test('normalizes the deployed nested cart record used by single selection and ch
     image: '/sku.png',
     price: 329,
     quantity: 3,
+    shopId: 41,
     checked: true,
     isValid: true,
   })

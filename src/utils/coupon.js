@@ -8,6 +8,30 @@ const STATUS_TEXT = {
   2: '已过期',
 }
 
+const toShopId = (value) => {
+  const number = Number(value)
+  return Number.isSafeInteger(number) && number > 0 ? number : null
+}
+
+const getSingleCheckoutShopId = (checkoutItems = []) => {
+  const items = Array.isArray(checkoutItems) ? checkoutItems : []
+  const shopIds = items.map((item) => toShopId(item?.shopId))
+  return shopIds.length && shopIds.every((shopId) => shopId != null) && new Set(shopIds).size === 1
+    ? shopIds[0]
+    : null
+}
+
+const isApplicableToCheckout = (coupon, amount, checkoutShopId) => {
+  if (amount < toNonNegativeMoney(coupon?.minAmount, 0)) return false
+  const couponShopId = toShopId(coupon?.shopId)
+  return couponShopId == null || couponShopId === checkoutShopId
+}
+
+const getTemplateKey = (coupon) => {
+  const value = coupon?.templateId ?? coupon?.id
+  return value == null || value === '' ? null : String(value)
+}
+
 export function normalizeCouponRouteState(query = {}) {
   return {
     tab: query.tab === 'mine' ? 'mine' : 'available',
@@ -52,7 +76,7 @@ export function normalizeCouponList(payload, mode = 'available', templates = [])
       record?.discountAmount != null,
     )
     const id = mode === 'mine' ? (record?.id ?? item?.userCouponId ?? item?.id) : templateId
-    const shopId = template?.shopId ?? item?.shopId
+    const shopId = toShopId(template?.shopId ?? item?.shopId)
 
     return {
       id,
@@ -65,6 +89,7 @@ export function normalizeCouponList(payload, mode = 'available', templates = [])
       statusText: mode === 'mine' ? (record?.statusName || item?.statusName || STATUS_TEXT[status] || '状态未知') : '可领取',
       startTime: toDate(template?.startTime ?? record?.startTime ?? item?.startTime),
       endTime: toDate(template?.endTime ?? record?.endTime ?? item?.endTime),
+      ...(shopId != null ? { shopId } : {}),
       shopName: template?.shopName || item?.shopName || (shopId ? '店铺专享券' : '京东商城平台券'),
       ...(mode === 'mine' ? { hasTemplateData } : {}),
     }
@@ -81,9 +106,23 @@ export function filterCouponsByStatus(coupons, status) {
   return (coupons || []).filter((item) => Number(item.status) === Number(status))
 }
 
-export function filterUsableCoupons(coupons, goodsAmount) {
+export function filterUsableCoupons(coupons, goodsAmount, checkoutItems = []) {
   const amount = toNonNegativeMoney(goodsAmount, 0)
-  return (coupons || []).filter((item) => item.hasTemplateData !== false && Number(item.status) === 0 && amount >= toNonNegativeMoney(item.minAmount, 0))
+  const checkoutShopId = getSingleCheckoutShopId(checkoutItems)
+
+  return (coupons || []).filter((item) => {
+    return item.hasTemplateData !== false && Number(item.status) === 0 && isApplicableToCheckout(item, amount, checkoutShopId)
+  })
+}
+
+export function filterClaimableCouponTemplates(templates, claimedCoupons, goodsAmount, checkoutItems = []) {
+  const amount = toNonNegativeMoney(goodsAmount, 0)
+  const checkoutShopId = getSingleCheckoutShopId(checkoutItems)
+  const claimedTemplateKeys = new Set((claimedCoupons || []).map(getTemplateKey).filter(Boolean))
+  return (templates || []).filter((template) => {
+    const templateKey = getTemplateKey(template)
+    return templateKey != null && !claimedTemplateKeys.has(templateKey) && isApplicableToCheckout(template, amount, checkoutShopId)
+  })
 }
 
 export function getCouponValueText(coupon) {

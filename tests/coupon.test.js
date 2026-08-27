@@ -12,6 +12,7 @@ import {
   runActiveCouponRouteLoad,
   shouldReplaceCouponRoute,
 } from '../src/utils/coupon.js'
+import * as couponUtils from '../src/utils/coupon.js'
 
 test('normalizes available coupon templates for claiming', () => {
   const result = normalizeCouponList({
@@ -84,6 +85,44 @@ test('keeps only unused coupons whose minimum amount is satisfied at checkout', 
     { id: 3, status: 1, minAmount: 0 },
   ]
   assert.deepEqual(filterUsableCoupons(coupons, 200).map((item) => item.id), [1])
+})
+
+test('keeps platform and matching shop coupons for a single-shop checkout', () => {
+  const coupons = [
+    { id: 1, status: 0, minAmount: 100 },
+    { id: 2, status: 0, minAmount: 100, shopId: 10 },
+    { id: 3, status: 0, minAmount: 100, shopId: 20 },
+  ]
+  const items = [{ shopId: 10, price: 200, quantity: 1 }]
+
+  assert.deepEqual(filterUsableCoupons(coupons, 200, items).map((item) => item.id), [1, 2])
+})
+
+test('excludes shop coupons when a checkout contains multiple shops', () => {
+  const coupons = [
+    { id: 1, status: 0, minAmount: 100 },
+    { id: 2, status: 0, minAmount: 100, shopId: 10 },
+  ]
+  const items = [
+    { shopId: 10, price: 100, quantity: 1 },
+    { shopId: 20, price: 100, quantity: 1 },
+  ]
+
+  assert.deepEqual(filterUsableCoupons(coupons, 200, items).map((item) => item.id), [1])
+})
+
+test('lists only unclaimed templates applicable to the checkout for claiming', () => {
+  const templates = [
+    { id: 1, templateId: 1, minAmount: 100 },
+    { id: 2, templateId: 2, minAmount: 100, shopId: 10 },
+    { id: 3, templateId: 3, minAmount: 100, shopId: 20 },
+    { id: 4, templateId: 4, minAmount: 500 },
+  ]
+  const claimedCoupons = [{ id: 91, templateId: 1, status: 0 }]
+  const items = [{ shopId: 10, price: 200, quantity: 1 }]
+
+  assert.equal(typeof couponUtils.filterClaimableCouponTemplates, 'function')
+  assert.deepEqual(couponUtils.filterClaimableCouponTemplates(templates, claimedCoupons, 200, items).map((item) => item.templateId), [2])
 })
 
 test('formats and calculates percentage discount coupons', () => {

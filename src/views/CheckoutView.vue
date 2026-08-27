@@ -2,11 +2,11 @@
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRoute, useRouter } from 'vue-router'
-import { buyNow, createOrder, getAddressList, getAvailableCoupons, getMyCoupons, getProductDetail } from '../api/index.js'
+import { buyNow, claimCoupon, createOrder, getAddressList, getAvailableCoupons, getMyCoupons, getProductDetail } from '../api/index.js'
 import { useCartStore } from '../store/cart.js'
 import { buildBuyNowPayload, buildCartOrderPayload, completeCheckoutSuccess, normalizeBuyNowItem, parseBuyNowQuery, refreshCartAfterCheckout } from '../utils/checkout.js'
 import { calculateCheckoutTotals, formatMoney, normalizeAddressList } from '../utils/commerce.js'
-import { filterUsableCoupons, getCouponValueText, normalizeCouponList } from '../utils/coupon.js'
+import { filterClaimableCouponTemplates, filterUsableCoupons, getCouponValueText, normalizeCouponList } from '../utils/coupon.js'
 import { createLatestRequestGuard } from '../utils/requestState.js'
 
 const route = useRoute()
@@ -23,6 +23,9 @@ const addressId = ref(null)
 const items = ref([])
 const coupons = ref([])
 const couponId = ref(null)
+const availableCouponTemplates = ref([])
+const claimCouponTemplateId = ref(null)
+const claimingCouponTemplateId = ref(null)
 const remark = ref('')
 const orderSubmitted = ref(false)
 const committedLoadSequence = ref(0)
@@ -31,7 +34,13 @@ const loadRequests = createLatestRequestGuard()
 const isBuyNow = computed(() => route.params.mode === 'buy-now')
 const selectedAddress = computed(() => addresses.value.find((item) => item.id === addressId.value))
 const goodsAmount = computed(() => items.value.reduce((sum, item) => sum + Number(item.price || 0) * Number(item.quantity || 0), 0))
-const usableCoupons = computed(() => filterUsableCoupons(coupons.value, goodsAmount.value))
+const usableCoupons = computed(() => filterUsableCoupons(coupons.value, goodsAmount.value, items.value))
+const claimableCoupons = computed(() => filterClaimableCouponTemplates(
+  availableCouponTemplates.value,
+  coupons.value,
+  goodsAmount.value,
+  items.value,
+))
 const selectedCoupon = computed(() => usableCoupons.value.find((item) => item.id === couponId.value))
 const totals = computed(() => calculateCheckoutTotals(items.value, isBuyNow.value ? null : selectedCoupon.value))
 const hasInvalidItem = computed(() => items.value.some((item) => item.isValid === false || Number(item.stock ?? 1) <= 0))
@@ -49,6 +58,32 @@ const canSubmit = computed(() => Boolean(
 ))
 
 const pickDefaultAddressId = (addressList) => addressList.find((item) => item.isDefault)?.id || addressList[0]?.id || null
+
+const getSingleCheckoutShopId = (checkoutItems) => {
+  const shopIds = checkoutItems.map((item) => Number(item?.shopId))
+  return shopIds.length && shopIds.every((shopId) => Number.isSafeInteger(shopId) && shopId > 0) && new Set(shopIds).size === 1
+    ? shopIds[0]
+    : null
+}
+
+const loadCartCoupons = async (checkoutItems) => {
+  const shopId = getSingleCheckoutShopId(checkoutItems)
+  const availableRequests = [getAvailableCoupons()]
+  if (shopId != null) availableRequests.push(getAvailableCoupons({ shopId }))
+  const [mineResult, ...templateResults] = await Promise.all([
+    getMyCoupons({ status: 0 }),
+    ...availableRequests,
+  ])
+  const templateMap = new Map()
+  templateResults.flatMap((result) => normalizeCouponList(result, 'available').list).forEach((template) => {
+    templateMap.set(String(template.templateId), template)
+  })
+  const templates = [...templateMap.values()]
+  return {
+    coupons: normalizeCouponList(mineResult, 'mine', templates).list,
+    availableCouponTemplates: templates,
+  }
+}
 
 const loadBuyNow = async (snapshot) => {
   const selection = parseBuyNowQuery(snapshot.query)
@@ -79,16 +114,10 @@ const loadCartCheckout = async () => {
     items: [],
     coupons: [],
     couponId: null,
+    availableCouponTemplates: [],
     cartUnavailable: false,
     protocolDataInvalid: false,
     warnings: [],
-  }
-  try {
-    const [mineResult, templateResult] = await Promise.all([getMyCoupons({ status: 0 }), getAvailableCoupons()])
-    const templates = normalizeCouponList(templateResult, 'available').list
-    nextData.coupons = normalizeCouponList(mineResult, 'mine', templates).list
-  } catch {
-    nextData.warnings.push('优惠券暂时无法加载，可稍后重试或不使用优惠券')
   }
   try {
     const cartList = await cartStore.fetchCartList()
@@ -96,6 +125,15 @@ const loadCartCheckout = async () => {
     nextData.protocolDataInvalid = nextData.items.some((item) => item.isValid === false)
   } catch {
     nextData.cartUnavailable = true
+  }
+  if (!nextData.cartUnavailable) {
+    try {
+      const couponData = await loadCartCoupons(nextData.items)
+      nextData.coupons = couponData.coupons
+      nextData.availableCouponTemplates = couponData.availableCouponTemplates
+    } catch {
+      nextData.warnings.push('优惠券暂时无法加载，可稍后重试或不使用优惠券')
+    }
   }
   return nextData
 }
@@ -119,6 +157,8 @@ const loadCheckout = async () => {
   addressId.value = null
   coupons.value = []
   couponId.value = null
+  availableCouponTemplates.value = []
+  claimCouponTemplateId.value = null
   try {
     const nextData = snapshot.mode === 'buy-now'
       ? await loadBuyNow(snapshot)
@@ -132,6 +172,7 @@ const loadCheckout = async () => {
       items.value = nextData.items
       coupons.value = nextData.coupons
       couponId.value = nextData.couponId
+      availableCouponTemplates.value = nextData.availableCouponTemplates || []
       cartUnavailable.value = nextData.cartUnavailable
       protocolDataInvalid.value = nextData.protocolDataInvalid
       committedLoadSequence.value = request.sequence
@@ -148,6 +189,25 @@ const loadCheckout = async () => {
 }
 
 const chooseAddress = (id) => { addressId.value = id }
+
+const claimAvailableCoupon = async () => {
+  const template = claimableCoupons.value.find((item) => String(item.templateId) === String(claimCouponTemplateId.value))
+  if (!template || claimingCouponTemplateId.value != null) return
+  claimingCouponTemplateId.value = template.templateId
+  try {
+    await claimCoupon(template.templateId)
+    const couponData = await loadCartCoupons(items.value)
+    coupons.value = couponData.coupons
+    availableCouponTemplates.value = couponData.availableCouponTemplates
+    couponId.value = coupons.value.find((item) => String(item.templateId) === String(template.templateId))?.id || null
+    claimCouponTemplateId.value = null
+    ElMessage.success('优惠券领取成功，已自动选中')
+  } catch (error) {
+    ElMessage.error(error?.message || '优惠券领取失败，请稍后重试')
+  } finally {
+    claimingCouponTemplateId.value = null
+  }
+}
 
 const submitOrder = async () => {
   if (submitting.value) return
@@ -284,6 +344,15 @@ watch(() => route.fullPath, loadCheckout, { immediate: true })
               <el-option v-for="coupon in usableCoupons" :key="coupon.id" :label="`${coupon.name} - ${getCouponValueText(coupon)}`" :value="coupon.id" />
             </el-select>
           </div>
+          <div v-if="!isBuyNow" class="discount-row">
+            <label for="claim-coupon-select">可领取优惠券</label>
+            <div class="coupon-claim-control">
+              <el-select id="claim-coupon-select" v-model="claimCouponTemplateId" clearable :disabled="claimingCouponTemplateId != null" :placeholder="claimableCoupons.length ? '选择可领取优惠券' : '暂无可领取优惠券'">
+                <el-option v-for="coupon in claimableCoupons" :key="coupon.templateId" :label="`${coupon.name} - ${getCouponValueText(coupon)}`" :value="coupon.templateId" />
+              </el-select>
+              <el-button type="danger" plain :loading="claimingCouponTemplateId != null" :disabled="!claimCouponTemplateId" @click="claimAvailableCoupon">领取</el-button>
+            </div>
+          </div>
           <div v-else class="discount-row static-row"><span>优惠券</span><p>当前立即购买接口暂不支持优惠券，可加入购物车后使用</p></div>
           <div class="discount-row static-row"><span>配送方式</span><p><b>京东快递</b>　预计下单后尽快送达　<em>免运费</em></p></div>
           <div class="remark-row"><label for="order-remark">订单备注</label><el-input id="order-remark" v-model="remark" type="textarea" :rows="2" maxlength="200" show-word-limit resize="none" placeholder="选填，请先与商家协商一致" /></div>
@@ -307,4 +376,5 @@ watch(() => route.fullPath, loadCheckout, { immediate: true })
 <style scoped>
 .checkout-page{min-height:calc(100vh - 136px);padding:22px 16px 52px;color:#333;background:#f5f5f5;font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif}.checkout-shell{width:min(1180px,100%);margin:0 auto}.checkout-header{display:flex;align-items:center;justify-content:space-between;min-height:96px;padding:0 28px;border-bottom:2px solid #e1251b;background:#fff}.checkout-header p{margin:0 0 6px;color:#999;font-size:11px;letter-spacing:.16em}.checkout-header h1{margin:0;font-size:23px;font-weight:600}.checkout-steps{display:flex;margin:0;padding:0;list-style:none}.checkout-steps li{display:flex;position:relative;align-items:center;gap:7px;margin-left:34px;color:#aaa;font-size:12px}.checkout-steps li:not(:last-child)::after{position:absolute;top:50%;left:calc(100% + 9px);width:17px;border-top:1px solid #ddd;content:''}.checkout-steps span{display:grid;width:24px;height:24px;place-items:center;border:1px solid #ccc;border-radius:50%;font-family:Arial}.checkout-steps .active{color:#e1251b}.checkout-steps .active span{border-color:#e1251b;color:#fff;background:#e1251b}.checkout-loading{min-height:600px;padding:44px;background:#fff}.checkout-section{margin-top:14px;padding:0 28px 26px;border:1px solid #eee;background:#fff}.section-head{display:flex;align-items:center;justify-content:space-between;min-height:64px;border-bottom:1px solid #eee}.section-head h2{margin:0;color:#222;font-size:16px;font-weight:600}.section-head button{border:0;color:#e1251b;background:transparent;font:inherit;font-size:12px;cursor:pointer}.section-head button:focus-visible,.address-option:focus-visible{outline:2px solid #e1251b;outline-offset:2px}.section-head>span{color:#999;font-size:12px}.address-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;padding-top:20px}.address-option{position:relative;min-height:112px;padding:17px 18px;overflow:hidden;border:1px solid #ddd;color:#333;background:#fff;text-align:left;font:inherit;cursor:pointer}.address-option:hover{border-color:#f0a5a0}.address-option.selected{border:2px solid #e1251b;padding:16px 17px;background:#fffafa}.recipient-row{display:flex;align-items:center;gap:12px}.recipient-row strong{font-size:15px}.recipient-row span{color:#666;font-size:13px}.recipient-row em{padding:2px 6px;color:#fff;background:#e1251b;font-size:10px;font-style:normal}.address-option p{margin:17px 0 0;color:#666;font-size:13px;line-height:1.6}.selected-corner{position:absolute;right:-17px;bottom:-17px;width:42px;height:42px;padding:4px 0 0 8px;color:#fff;background:#e1251b;transform:rotate(45deg);font-size:11px}.address-empty{display:flex;align-items:center;justify-content:space-between;min-height:116px;padding:20px 0}.address-empty strong{font-size:15px}.address-empty p{margin:7px 0 0;color:#999;font-size:12px}.goods-table-head,.goods-row{display:grid;grid-template-columns:minmax(0,1fr) 130px 90px 140px;align-items:center}.goods-table-head{min-height:42px;color:#999;background:#fafafa;font-size:12px;text-align:center}.goods-table-head span:first-child{text-align:left;padding-left:14px}.goods-row{min-height:132px;border-bottom:1px solid #eee}.goods-row:last-child{border-bottom:0}.goods-info{display:flex;min-width:0;align-items:center;gap:15px;padding:16px 14px}.goods-image{display:grid;width:88px;height:88px;flex:0 0 88px;place-items:center;overflow:hidden;border:1px solid #eee;background:#fafafa;color:#bbb;font-size:11px}.goods-image img{width:100%;height:100%;object-fit:contain}.goods-info h3{display:-webkit-box;margin:0 0 8px;overflow:hidden;font-size:14px;font-weight:500;line-height:1.6;-webkit-box-orient:vertical;-webkit-line-clamp:2}.goods-info p{margin:0 0 9px;color:#999;font-size:12px}.service-tag{padding:2px 5px;border:1px solid #e1251b;color:#e1251b;font-size:10px}.unit-price,.quantity,.subtotal{text-align:center}.unit-price strong,.unit-price del{display:block}.unit-price strong{font-size:14px;font-weight:500}.unit-price del{margin-top:4px;color:#aaa;font-size:11px}.quantity{font-size:13px}.quantity small{display:block;margin-top:6px;color:#999}.subtotal{color:#e1251b;font-size:15px}.goods-empty{padding:50px;color:#999;text-align:center}.discount-section{padding-bottom:20px}.discount-row,.remark-row{display:grid;grid-template-columns:110px minmax(0,1fr);align-items:center;min-height:58px;border-bottom:1px dashed #eee;font-size:13px}.discount-row label,.discount-row>span,.remark-row label{font-weight:600}.discount-row .el-select{width:min(360px,100%)}.static-row p{margin:0;color:#666}.static-row b{color:#333}.static-row em{color:#e1251b;font-style:normal}.remark-row{align-items:start;padding:16px 0;border-bottom:0}.remark-row label{padding-top:9px}.remark-row .el-textarea{max-width:620px}.order-summary{position:relative;min-height:228px;margin-top:14px;padding:24px 28px 72px;border:1px solid #eee;background:#fff;text-align:right}.summary-lines{width:310px;margin-left:auto}.summary-lines p{display:flex;justify-content:space-between;margin:0 0 11px;font-size:13px}.summary-lines span{color:#666}.summary-lines strong{font-weight:500}.discount-amount{color:#e1251b}.payable-row{margin-top:20px;padding-top:16px;border-top:1px solid #eee;font-size:14px}.payable-row strong{margin-left:8px;color:#e1251b;font-family:Arial;font-size:27px}.payable-row small{font-size:15px}.delivery-address{margin:10px 0 0;color:#777;font-size:12px}.submit-order{position:absolute;right:28px;bottom:22px;width:166px;border-radius:0;font-weight:600}.cart-alert{margin-top:14px}.checkout-state{display:flex;min-height:560px;flex-direction:column;align-items:center;justify-content:center;background:#fff;text-align:center}.checkout-state>span{display:grid;width:68px;height:68px;place-items:center;border-radius:50%;color:#e1251b;background:#fff1f0;font-family:Arial;font-size:31px;font-weight:700}.checkout-state h2{margin:18px 0 8px;font-size:18px}.checkout-state p{max-width:500px;margin:0 0 22px;color:#888;font-size:13px}.checkout-state .el-button{border-radius:2px}
 @media(max-width:760px){.checkout-page{padding:10px 8px 30px}.checkout-header{min-height:82px;padding:0 16px}.checkout-steps{display:none}.checkout-section{padding:0 14px 20px}.address-grid{grid-template-columns:1fr}.goods-table-head{display:none}.goods-row{grid-template-columns:1fr auto;gap:8px;padding:12px 0}.goods-info{grid-column:1/-1;padding:0}.unit-price{text-align:left}.quantity{text-align:right}.subtotal{grid-column:1/-1;text-align:right}.discount-row,.remark-row{grid-template-columns:1fr;gap:8px;padding:13px 0}.remark-row label{padding:0}.order-summary{padding:22px 14px 78px}.summary-lines{width:100%}.submit-order{right:14px;bottom:20px;width:calc(100% - 28px)}.delivery-address{line-height:1.7}.address-empty{align-items:flex-start;flex-direction:column;gap:16px}}
+.coupon-claim-control{display:flex;align-items:center;gap:10px;width:min(460px,100%)}.coupon-claim-control .el-select{flex:1;width:auto}.coupon-claim-control .el-button{flex:0 0 auto}
 </style>

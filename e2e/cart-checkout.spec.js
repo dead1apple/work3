@@ -48,7 +48,7 @@ test('favorite, canonical cart, rollback, delete, address edit, coupon and termi
 
   await page.getByRole('button', { name: '去结算' }).click()
   await expect(page).toHaveURL(/\/checkout\/cart$/)
-  await page.locator('.el-select').click()
+  await page.locator('.discount-row').filter({ hasText: '优惠券' }).first().locator('.el-select').click()
   await page.getByText(/满 3000 减 200/).click()
   await page.getByLabel('订单备注').fill('门口请电话联系')
   await page.getByRole('button', { name: '提交订单' }).dblclick()

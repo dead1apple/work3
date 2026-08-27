@@ -15,8 +15,10 @@ export const normalizeCartItem = (item = {}) => {
   const rawSkuId = cart.skuId ?? sku.id ?? cart.productId
   const rawPrice = item.price ?? item.skuPrice ?? sku.price
   const rawQuantity = cart.quantity ?? cart.buyQuantity
+  const rawShopId = cart.shopId ?? item.shopId ?? product.shopId ?? sku.shopId
   const id = toSafePositiveInteger(rawId)
   const skuId = toSafePositiveInteger(rawSkuId)
+  const shopId = toSafePositiveInteger(rawShopId)
   const price = toNonNegativeMoney(rawPrice, 0)
   const quantity = toBoundedPositiveInteger(rawQuantity, { fallback: 1, max: 99 })
   return {
@@ -27,6 +29,7 @@ export const normalizeCartItem = (item = {}) => {
     image: item.image || sku.image || product.mainImage || '',
     price,
     quantity,
+    ...(shopId != null ? { shopId } : {}),
     checked: cart.checked === true || cart.selected === true || cart.selected === 1,
     isValid: id != null && skuId != null && Number.isFinite(Number(rawPrice)) && Number(rawPrice) >= 0 && Number.isInteger(Number(rawQuantity)) && Number(rawQuantity) > 0,
   }
