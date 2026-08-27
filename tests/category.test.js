@@ -7,6 +7,7 @@ import {
   getProductCategoryTargets,
   normalizeCategoryProducts,
   normalizeCategoryTree,
+  resolveFeaturedCategoryVisual,
   selectFeaturedCategories,
 } from '../src/utils/category.js'
 
@@ -67,4 +68,13 @@ test('builds the filtered product route from a real category ID', () => {
     name: 'products',
     query: { categoryId: 11 },
   })
+})
+
+test('assigns semantic visuals to the featured category names instead of their position', () => {
+  assert.deepEqual(resolveFeaturedCategoryVisual('手机'), { icon: 'Iphone', tone: 'blue' })
+  assert.deepEqual(resolveFeaturedCategoryVisual('耳机'), { icon: 'Headset', tone: 'green' })
+  assert.deepEqual(resolveFeaturedCategoryVisual('智能手表'), { icon: 'Watch', tone: 'purple' })
+  assert.deepEqual(resolveFeaturedCategoryVisual('笔记本'), { icon: 'Notebook', tone: 'indigo' })
+  assert.deepEqual(resolveFeaturedCategoryVisual('冰箱'), { icon: 'Refrigerator', tone: 'cyan' })
+  assert.deepEqual(resolveFeaturedCategoryVisual('新分类'), { icon: 'Goods', tone: 'orange' })
 })

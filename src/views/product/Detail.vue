@@ -6,7 +6,7 @@ import { addFavorite, checkFavorite, getProductDetail, getProductReviews, remove
 import { useCartStore } from '../../store/cart.js'
 import { useUserStore } from '../../store/user.js'
 import { normalizeFavoriteState } from '../../utils/favorite.js'
-import { createRequestGenerationGate, findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail, normalizeProductImages } from '../../utils/productDetail.js'
+import { createRequestGenerationGate, findSkuBySelection, getInitialSkuSelection, isSkuOptionAvailable, normalizeProductDetail, normalizeProductImages, normalizeProductReview } from '../../utils/productDetail.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -35,13 +35,6 @@ const displayImages = computed(() => {
 })
 
 const formatPrice = (value) => Number(value || 0).toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-
-const normalizeReview = (item) => ({
-  name: item.user?.nickname || item.user?.username || item.nickname || item.username || '匿名用户',
-  avatar: item.user?.avatar || item.avatar || 'https://i.pravatar.cc/80?img=12',
-  content: item.content || item.comment || '用户未填写评价内容。',
-  date: item.createTime || '',
-})
 
 const resetProductState = () => {
   product.value = null
@@ -83,7 +76,7 @@ const loadProduct = async (routeProductId) => {
       if (!generation.isCurrent()) return
       const reviews = Array.isArray(reviewResult) ? reviewResult : reviewResult?.list || []
       generation.commit(() => {
-        product.value.reviews = reviews.map(normalizeReview)
+        product.value.reviews = reviews.map(normalizeProductReview)
         product.value.reviewCount = reviewResult?.total ?? product.value.reviews.length
       })
     } catch {

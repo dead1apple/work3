@@ -92,6 +92,7 @@ test('successful create without a payment number remains processing and starts r
 test('confirm failure after a payment number remains processing and starts reconciliation', async () => {
   const committed = []
   const polling = []
+  const warnings = []
 
   await submitSimulatedPayment({
     orderNo: 'O2',
@@ -101,12 +102,13 @@ test('confirm failure after a payment number remains processing and starts recon
     getPaymentStatus: async () => { throw new Error('status should poll later') },
     commitStatus: (status) => committed.push(status),
     startPolling: (order) => polling.push(order),
-    notify: { warning: () => {}, error: () => {}, info: () => {}, success: () => {} },
+    notify: { warning: (message) => warnings.push(message), error: () => {}, info: () => {}, success: () => {} },
   })
 
   assert.deepEqual(committed.map((status) => status.state), ['processing', 'processing'])
   assert.ok(committed.every((status) => status.canPay === false))
   assert.deepEqual(polling, ['O2'])
+  assert.deepEqual(warnings, [])
 })
 
 test('payment lifecycle suppresses stale ordering and invalidates on unmount', () => {

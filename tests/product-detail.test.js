@@ -6,7 +6,9 @@ import {
   findSkuBySelection,
   getInitialSkuSelection,
   isSkuOptionAvailable,
+  normalizeProductDescription,
   normalizeProductDetail,
+  normalizeProductReview,
 } from '../src/utils/productDetail.js'
 import * as productDetailUtils from '../src/utils/productDetail.js'
 
@@ -66,6 +68,27 @@ test('keeps data image urls intact instead of splitting their required comma', (
   const dataImage = 'data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%3E%3C%2Fsvg%3E'
 
   assert.deepEqual(productDetailUtils.normalizeProductImages(dataImage), [dataImage])
+})
+
+test('converts HTML product descriptions into readable text instead of displaying tags', () => {
+  assert.equal(typeof normalizeProductDescription, 'function')
+  assert.equal(
+    normalizeProductDescription('<p>OPPO Watch X2 智能手表 官方正品行货，享受全国联保服务。七天无理由退货，三十天质量问题换新。</p>'),
+    'OPPO Watch X2 智能手表 官方正品行货，享受全国联保服务。七天无理由退货，三十天质量问题换新。',
+  )
+})
+
+test('reads review content from the deployed nested review record', () => {
+  assert.equal(typeof normalizeProductReview, 'function')
+  assert.deepEqual(normalizeProductReview({
+    review: { content: '小马速递发货快，当日达', createTime: '2026-08-27 12:09:50' },
+    user: { nickname: '小张', avatar: '/zhang.png' },
+  }), {
+    name: '小张',
+    avatar: '/zhang.png',
+    content: '小马速递发货快，当日达',
+    date: '2026-08-27 12:09:50',
+  })
 })
 
 test('request generation gate blocks stale commits while allowing the latest generation', () => {

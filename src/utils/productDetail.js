@@ -15,6 +15,33 @@ export function normalizeProductImages(...sources) {
   return [...new Set(images.map((image) => String(image || '').trim()).filter(Boolean))].slice(0, 8)
 }
 
+export function normalizeProductDescription(value) {
+  const description = String(value || '').trim()
+  if (!description) return '暂无商品详情描述。'
+
+  return description
+    .replace(/<\s*br\s*\/?\s*>/gi, '\n')
+    .replace(/<\s*\/\s*(?:p|div|li|h[1-6])\s*>/gi, '\n')
+    .replace(/<[^>]*>/g, '')
+    .replace(/&(nbsp|#160);/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&lt;/gi, '<')
+    .replace(/&gt;/gi, '>')
+    .replace(/\s*\n\s*/g, '\n')
+    .trim()
+}
+
+export function normalizeProductReview(item = {}) {
+  const review = item?.review || item
+  const user = item?.user || review?.user || {}
+  return {
+    name: user.nickname || user.username || review.nickname || review.username || '匿名用户',
+    avatar: user.avatar || review.avatar || 'https://i.pravatar.cc/80?img=12',
+    content: review.content || review.comment || '用户未填写评价内容。',
+    date: review.createTime || '',
+  }
+}
+
 const normalizeSku = (sku) => {
   try {
     const specs = parseSpecs(sku?.specValues)
@@ -85,7 +112,7 @@ export function normalizeProductDetail(payload) {
     sales: raw.salesCount || raw.sales || 0,
     reviewCount: 0,
     images: normalizeProductImages(raw.mainImage, raw.images),
-    detail: raw.detail || '暂无商品详情描述。',
+    detail: normalizeProductDescription(raw.detail),
     options: Array.from(optionMap, ([label, values]) => ({ label, values })),
     skuList,
     reviews: [],

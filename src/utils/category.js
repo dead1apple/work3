@@ -28,6 +28,24 @@ export const selectFeaturedCategories = (categories = [], limit = 10) => {
   return Array.from(uniqueCategories.values()).slice(0, Math.max(0, limit))
 }
 
+const featuredCategoryVisuals = [
+  { match: /手机/, icon: 'Iphone', tone: 'blue' },
+  { match: /耳机/, icon: 'Headset', tone: 'green' },
+  { match: /手表|手环/, icon: 'Watch', tone: 'purple' },
+  { match: /笔记本/, icon: 'Notebook', tone: 'indigo' },
+  { match: /台式|电脑/, icon: 'Monitor', tone: 'pink' },
+  { match: /平板/, icon: 'Cellphone', tone: 'rose' },
+  { match: /冰箱/, icon: 'Refrigerator', tone: 'cyan' },
+  { match: /洗衣/, icon: 'Dish', tone: 'yellow' },
+  { match: /空调/, icon: 'WindPower', tone: 'lime' },
+  { match: /男装|女装|服装/, icon: 'Goods', tone: 'orange' },
+]
+
+export const resolveFeaturedCategoryVisual = (name) => {
+  const visual = featuredCategoryVisuals.find(({ match }) => match.test(String(name || '')))
+  return visual ? { icon: visual.icon, tone: visual.tone } : { icon: 'Goods', tone: 'orange' }
+}
+
 export const getProductCategoryTargets = (category) => {
   if (!category) return []
   return category.children?.length ? category.children : [category]

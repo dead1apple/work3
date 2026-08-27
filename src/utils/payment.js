@@ -146,7 +146,6 @@ export async function submitSimulatedPayment({
     if (createMayHaveSucceeded || paymentNo) {
       commitStatus(processingStatus())
       startPolling(orderNo)
-      safeNotify.warning(error?.message || '支付请求已提交，结果暂时无法确认，页面将继续自动查询')
       return { state: 'processing', reason: 'ambiguous-payment' }
     }
 
