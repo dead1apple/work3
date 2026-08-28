@@ -1,0 +1,269 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>商品详情方案 · 京东商城</title>
+  <style>
+    :root {
+      --red: #e1251b;
+      --red-deep: #c81e16;
+      --red-soft: #fff1ef;
+      --ink: #1f2933;
+      --muted: #7b8794;
+      --line: #e9edf1;
+      --canvas: #f5f6f7;
+      --amber: #f08b2f;
+      --shadow: 0 14px 40px rgba(31, 41, 51, .06);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body { margin: 0; color: var(--ink); background: var(--canvas); font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif; }
+    button { font: inherit; cursor: pointer; }
+    .topbar { height: 36px; color: #89939d; background: #f0f1f2; font-size: 12px; }
+    .topbar-inner, .header-inner, .page { width: min(1240px, calc(100% - 40px)); margin: 0 auto; }
+    .topbar-inner { display: flex; align-items: center; justify-content: space-between; height: 100%; }
+    .top-links { display: flex; gap: 20px; }
+    .header { background: #fff; border-bottom: 1px solid var(--line); }
+    .header-inner { display: flex; align-items: center; height: 72px; gap: 34px; }
+    .brand { display: flex; align-items: center; gap: 10px; color: var(--ink); text-decoration: none; min-width: 175px; }
+    .brand-mark { display: grid; place-items: center; width: 36px; height: 36px; color: #fff; background: var(--red); border-radius: 8px; font-weight: 900; letter-spacing: 0; }
+    .brand strong { font-size: 18px; letter-spacing: 0; }
+    .brand small { display: block; margin-top: 3px; color: #a0a8b2; font-size: 10px; letter-spacing: 1px; }
+    .search { display: flex; flex: 1; max-width: 560px; height: 40px; border: 2px solid var(--red); border-radius: 6px; overflow: hidden; }
+    .search input { min-width: 0; flex: 1; border: 0; outline: 0; padding: 0 14px; color: var(--ink); }
+    .search button { width: 72px; color: #fff; border: 0; background: var(--red); font-weight: 700; }
+    .header-action { margin-left: auto; color: #687481; font-size: 13px; white-space: nowrap; }
+    .header-action b { color: var(--red); }
+    .page { padding: 18px 0 60px; }
+    .breadcrumb { display: flex; gap: 8px; align-items: center; margin-bottom: 16px; color: #8c96a1; font-size: 12px; }
+    .breadcrumb a { color: #65717d; text-decoration: none; }
+    .breadcrumb a:hover { color: var(--red); }
+    .hero { display: grid; grid-template-columns: minmax(480px, 1fr) minmax(450px, .94fr); gap: 42px; padding: 28px; background: #fff; border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .gallery { min-width: 0; }
+    .main-image { position: relative; display: grid; place-items: center; height: 490px; overflow: hidden; background: #f7f8f9; }
+    .main-image img { width: 100%; height: 100%; object-fit: contain; transition: transform .25s ease; }
+    .main-image:hover img { transform: scale(1.04); }
+    .zoom-label { position: absolute; right: 14px; bottom: 14px; display: flex; gap: 6px; align-items: center; padding: 6px 10px; color: #63707c; background: rgba(255,255,255,.9); border: 1px solid var(--line); font-size: 11px; }
+    .thumbs { display: flex; gap: 10px; margin-top: 14px; }
+    .thumb { width: 68px; height: 68px; padding: 3px; background: #fff; border: 1px solid var(--line); }
+    .thumb.active { border: 2px solid var(--red); padding: 2px; }
+    .thumb img { width: 100%; height: 100%; object-fit: contain; }
+    .gallery-meta { display: flex; justify-content: space-between; margin-top: 12px; color: #9ba4ad; font-size: 11px; }
+    .product-info { min-width: 0; }
+    .badges { display: flex; gap: 8px; align-items: center; }
+    .badge { padding: 4px 7px; color: var(--red); background: var(--red-soft); border-radius: 3px; font-size: 11px; font-weight: 700; }
+    .badge.dark { color: #fff; background: #343b44; }
+    h1 { margin: 15px 0 8px; color: #20242b; font-size: 27px; line-height: 1.35; letter-spacing: 0; }
+    .subtitle { margin: 0 0 18px; color: #7f8a96; font-size: 13px; line-height: 1.7; }
+    .rating-line { display: flex; align-items: center; gap: 18px; padding-bottom: 17px; border-bottom: 1px solid var(--line); font-size: 12px; }
+    .rating { color: var(--amber); font-size: 16px; letter-spacing: 1px; }
+    .rating strong { margin-left: 5px; font-size: 14px; letter-spacing: 0; }
+    .rating-link { color: var(--red); text-decoration: none; }
+    .price-box { display: flex; align-items: baseline; gap: 12px; margin: 17px 0 0; padding: 15px 16px; background: var(--red-soft); }
+    .price-label { color: #a35b56; font-size: 12px; }
+    .price { color: var(--red); font-size: 38px; font-weight: 800; letter-spacing: 0; line-height: 1; }
+    .price small { margin-right: 3px; font-size: 18px; }
+    .market-price { color: #a3abb4; font-size: 12px; }
+    .promo-row, .delivery-row { display: flex; align-items: flex-start; min-height: 39px; padding: 12px 0 2px; font-size: 12px; }
+    .row-label { flex: 0 0 58px; color: #87919c; }
+    .coupon { display: inline-flex; align-items: center; gap: 8px; color: var(--red); }
+    .coupon b { padding: 3px 7px; color: #fff; background: var(--red); font-size: 11px; }
+    .delivery-row { border-top: 1px dashed #edf0f2; }
+    .delivery-main { color: #4b5662; }
+    .delivery-main strong { color: var(--red); }
+    .delivery-sub { display: block; margin-top: 5px; color: #929ca6; }
+    .sku-area { margin-top: 13px; padding-top: 14px; border-top: 1px solid var(--line); }
+    .sku-row { display: flex; align-items: center; gap: 14px; margin: 14px 0; }
+    .sku-label { flex: 0 0 50px; color: #697582; font-size: 12px; }
+    .sku-options { display: flex; flex-wrap: wrap; gap: 8px; }
+    .sku-option { min-width: 80px; padding: 8px 12px; color: #586571; background: #fff; border: 1px solid #cfd6dd; border-radius: 3px; font-size: 12px; }
+    .sku-option:hover, .sku-option.active { color: var(--red); border-color: var(--red); background: #fff8f7; }
+    .selected-summary { margin: 8px 0 0 64px; color: #8b96a0; font-size: 11px; }
+    .quantity-row { display: flex; align-items: center; gap: 14px; margin: 17px 0 0; }
+    .stepper { display: inline-flex; height: 32px; border: 1px solid #cfd6dd; }
+    .stepper button { width: 30px; color: #6b7680; border: 0; background: #f7f8f9; }
+    .stepper input { width: 40px; text-align: center; border: 0; border-right: 1px solid #cfd6dd; border-left: 1px solid #cfd6dd; outline: 0; }
+    .stock { color: #8a949e; font-size: 11px; }
+    .actions { display: grid; grid-template-columns: 1.15fr 1fr 42px; gap: 10px; margin-top: 23px; }
+    .action { height: 44px; border-radius: 4px; font-weight: 700; }
+    .action.cart { color: var(--red); border: 1px solid #f0aaa4; background: #fff3f1; }
+    .action.buy { color: #fff; border: 1px solid var(--red); background: var(--red); }
+    .action.buy:hover { background: var(--red-deep); }
+    .action.favorite { color: #707b86; border: 1px solid #d7dde2; background: #fff; font-size: 20px; }
+    .action.favorite.active { color: var(--red); border-color: #f0aaa4; background: var(--red-soft); }
+    .service-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 18px; padding: 15px 18px; background: #fff; border: 1px solid var(--line); }
+    .service-item { display: flex; gap: 9px; align-items: center; color: #596572; font-size: 12px; }
+    .service-icon { display: grid; place-items: center; width: 25px; height: 25px; color: var(--red); border: 1px solid #f4b9b4; border-radius: 50%; font-size: 12px; }
+    .anchor { position: sticky; top: 0; z-index: 5; display: flex; gap: 34px; align-items: center; height: 58px; margin-top: 28px; padding: 0 22px; background: rgba(255,255,255,.97); border: 1px solid var(--line); box-shadow: 0 5px 14px rgba(31,41,51,.04); }
+    .anchor a { position: relative; color: #65717d; text-decoration: none; font-size: 14px; }
+    .anchor a:hover, .anchor a.active { color: var(--red); font-weight: 700; }
+    .anchor a.active::after { position: absolute; right: 0; bottom: -19px; left: 0; height: 2px; background: var(--red); content: ""; }
+    .content-layout { display: grid; grid-template-columns: minmax(0, 1fr) 260px; gap: 20px; margin-top: 20px; }
+    .content-section { scroll-margin-top: 78px; padding: 26px 30px; background: #fff; border: 1px solid var(--line); }
+    .section-title { display: flex; align-items: baseline; justify-content: space-between; margin: 0 0 22px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .section-title h2 { margin: 0; font-size: 19px; }
+    .section-title span { color: #9ca5ae; font-size: 11px; font-weight: 400; }
+    .selling-points { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 26px; }
+    .point { padding: 15px; background: #fafbfc; border-left: 3px solid var(--red); }
+    .point b { display: block; margin-bottom: 6px; font-size: 13px; }
+    .point span { color: #87919c; font-size: 11px; line-height: 1.6; }
+    .spec-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .spec-table th, .spec-table td { padding: 12px 14px; text-align: left; border: 1px solid var(--line); }
+    .spec-table th { width: 130px; color: #687580; background: #fafbfc; font-weight: 500; }
+    .spec-table td { color: #4d5965; }
+    .detail-rich { margin-top: 28px; color: #66727d; font-size: 13px; line-height: 1.9; }
+    .detail-rich h3 { margin: 25px 0 8px; color: #2b333c; font-size: 16px; }
+    .detail-rich img { display: block; width: 100%; max-height: 370px; margin: 14px 0; object-fit: cover; }
+    .review-summary { display: grid; grid-template-columns: 160px 1fr; gap: 25px; align-items: center; padding: 18px 20px; background: #fff9f8; }
+    .score { color: var(--red); font-size: 42px; font-weight: 800; line-height: 1; text-align: center; }
+    .score small { display: block; margin-top: 8px; color: #9b8a87; font-size: 11px; font-weight: 400; }
+    .bar-row { display: grid; grid-template-columns: 42px 1fr 38px; align-items: center; gap: 8px; margin: 7px 0; color: #89939d; font-size: 11px; }
+    .bar { height: 6px; overflow: hidden; background: #f0d9d6; }
+    .bar i { display: block; height: 100%; background: var(--red); }
+    .review-filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 20px 0 4px; }
+    .filter { padding: 7px 13px; color: #687580; border: 1px solid #dfe4e8; background: #fff; border-radius: 3px; font-size: 11px; }
+    .filter.active { color: var(--red); border-color: #efb0aa; background: var(--red-soft); }
+    .review { display: flex; gap: 13px; padding: 20px 0; border-bottom: 1px solid var(--line); }
+    .avatar { width: 36px; height: 36px; border-radius: 50%; object-fit: cover; }
+    .review-body { flex: 1; }
+    .review-meta { display: flex; justify-content: space-between; gap: 12px; color: #4a5662; font-size: 12px; }
+    .review-meta time { color: #a1a9b2; font-size: 11px; }
+    .review-stars { margin: 7px 0; color: var(--amber); font-size: 12px; letter-spacing: 1px; }
+    .review p { margin: 0; color: #697580; font-size: 12px; line-height: 1.8; }
+    .side { align-self: start; position: sticky; top: 78px; }
+    .side-block { padding: 20px; background: #fff; border: 1px solid var(--line); }
+    .side-block + .side-block { margin-top: 14px; }
+    .side-heading { display: flex; align-items: center; gap: 10px; padding-bottom: 14px; border-bottom: 1px solid var(--line); }
+    .shop-logo { display: grid; place-items: center; width: 38px; height: 38px; color: #fff; background: #252b33; border-radius: 50%; font-size: 13px; font-weight: 800; }
+    .side-heading strong { font-size: 13px; }
+    .side-heading small { display: block; margin-top: 4px; color: #a0a8b2; font-size: 10px; }
+    .shop-score { display: flex; justify-content: space-between; margin: 16px 0; color: #7d8892; font-size: 11px; }
+    .shop-score b { color: var(--red); }
+    .side-link { display: block; padding: 9px 0; color: #687580; border-top: 1px solid #f0f2f4; font-size: 12px; text-decoration: none; }
+    .side-link:hover { color: var(--red); }
+    .recommend { display: grid; gap: 14px; margin-top: 15px; }
+    .recommend-item { display: grid; grid-template-columns: 58px 1fr; gap: 9px; align-items: center; }
+    .recommend-item img { width: 58px; height: 58px; object-fit: contain; background: #f7f8f9; }
+    .recommend-item p { margin: 0 0 5px; color: #5e6a75; font-size: 11px; line-height: 1.4; }
+    .recommend-item b { color: var(--red); font-size: 12px; }
+    .mobile-bar { display: none; }
+    .toast { position: fixed; right: 26px; bottom: 26px; z-index: 10; padding: 12px 16px; color: #fff; background: #29313a; box-shadow: var(--shadow); opacity: 0; transform: translateY(8px); transition: all .2s ease; pointer-events: none; font-size: 12px; }
+    .toast.show { opacity: 1; transform: translateY(0); }
+    @media (max-width: 900px) {
+      .topbar-inner, .header-inner, .page { width: min(100% - 24px, 720px); }
+      .header-inner { gap: 14px; }
+      .brand { min-width: auto; }
+      .brand small, .header-action { display: none; }
+      .hero { grid-template-columns: 1fr; gap: 26px; padding: 18px; }
+      .main-image { height: min(78vw, 450px); }
+      .content-layout { grid-template-columns: 1fr; }
+      .side { position: static; }
+    }
+    @media (max-width: 560px) {
+      .top-links { display: none; }
+      .topbar-inner { justify-content: flex-end; }
+      .header-inner { height: 58px; }
+      .brand strong { font-size: 16px; }
+      .search { height: 34px; }
+      .search button { width: 52px; font-size: 12px; }
+      .page { width: 100%; padding-top: 10px; padding-bottom: 78px; }
+      .breadcrumb { padding: 0 12px; white-space: nowrap; overflow: hidden; }
+      .hero { border-right: 0; border-left: 0; box-shadow: none; }
+      h1 { font-size: 22px; }
+      .service-strip { grid-template-columns: repeat(2, 1fr); margin: 12px; }
+      .anchor { gap: 20px; margin-top: 16px; overflow-x: auto; white-space: nowrap; }
+      .anchor a.active::after { bottom: -18px; }
+      .content-layout { margin-top: 12px; }
+      .content-section { padding: 20px 16px; border-right: 0; border-left: 0; }
+      .selling-points { grid-template-columns: 1fr; }
+      .review-summary { grid-template-columns: 110px 1fr; gap: 10px; padding: 14px; }
+      .score { font-size: 33px; }
+      .mobile-bar { position: fixed; right: 0; bottom: 0; left: 0; z-index: 8; display: grid; grid-template-columns: 48px 1fr 1fr; gap: 8px; padding: 10px 12px; background: #fff; border-top: 1px solid var(--line); box-shadow: 0 -4px 16px rgba(31,41,51,.08); }
+      .mobile-bar button { height: 40px; border-radius: 3px; font-size: 12px; font-weight: 700; }
+      .mobile-bar .mobile-fav { color: var(--red); border: 1px solid #efb0aa; background: var(--red-soft); font-size: 19px; }
+      .mobile-bar .mobile-cart { color: var(--red); border: 1px solid #efb0aa; background: #fff5f4; }
+      .mobile-bar .mobile-buy { color: #fff; border: 1px solid var(--red); background: var(--red); }
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar"><div class="topbar-inner"><span>京东商城 · 商品详情方案</span><div class="top-links"><span>你好，请登录</span><span>我的订单</span><span>客户服务</span></div></div></div>
+  <header class="header"><div class="header-inner">
+    <a class="brand" href="#top"><span class="brand-mark">JD</span><span><strong>京东商城</strong><small>REAL GOODS · SIMPLE SERVICE</small></span></a>
+    <form class="search" onsubmit="return false"><input aria-label="搜索商品" placeholder="搜索商品、品牌或关键词" /><button type="submit">搜索</button></form>
+    <div class="header-action">购物车 <b>2</b> 件</div>
+  </div></header>
+
+  <main id="top" class="page">
+    <nav class="breadcrumb"><a href="#top">首页</a><span>/</span><a href="#detail">手机数码</a><span>/</span><a href="#detail">手机</a><span>/</span><span>华为 Mate 70 Pro</span></nav>
+    <section class="hero" aria-label="商品首屏">
+      <div class="gallery">
+        <div class="main-image"><img id="mainImage" src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=900&q=85" alt="华为 Mate 70 Pro 曜石黑" /><span class="zoom-label">⌕ 悬停查看细节</span></div>
+        <div class="thumbs" role="list" aria-label="商品图片">
+          <button class="thumb active" data-image="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=900&q=85"><img src="https://images.unsplash.com/photo-1592899677977-9c10ca588bbd?auto=format&fit=crop&w=180&q=80" alt="正面" /></button>
+          <button class="thumb" data-image="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=900&q=85"><img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=180&q=80" alt="侧面" /></button>
+          <button class="thumb" data-image="https://images.unsplash.com/photo-1556656793-08538906a9f8?auto=format&fit=crop&w=900&q=85"><img src="https://images.unsplash.com/photo-1556656793-08538906a9f8?auto=format&fit=crop&w=180&q=80" alt="背面" /></button>
+          <button class="thumb" data-image="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=900&q=85"><img src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=180&q=80" alt="细节" /></button>
+        </div>
+        <div class="gallery-meta"><span>商品 ID：1 · 共 4 张图片</span><span>分享商品　举报</span></div>
+      </div>
+      <div class="product-info">
+        <div class="badges"><span class="badge dark">京东自营</span><span class="badge">新品</span><span class="badge">6期免息</span></div>
+        <h1>华为 Mate 70 Pro 12GB+256GB 曜石黑</h1>
+        <p class="subtitle">鸿蒙智能体验 · 旗舰影像系统 · 6.8英寸 OLED 临境显示</p>
+        <div class="rating-line"><span class="rating">★★★★★ <strong>4.9</strong></span><a class="rating-link" href="#reviews">98% 好评　<span>2,318 条评价</span></a><span>已售 10,000+</span></div>
+        <div class="price-box"><span class="price-label">京东价</span><strong class="price"><small>￥</small><span id="price">6,999.00</span></strong><del class="market-price">￥7,999.00</del></div>
+        <div class="promo-row"><span class="row-label">促销</span><span class="coupon"><b>满减</b> 满 5000 减 200　<a class="rating-link" href="#" onclick="showToast('优惠券示例，正式版接入活动接口');return false">领取优惠券</a></span></div>
+        <div class="delivery-row"><span class="row-label">配送</span><div class="delivery-main"><strong>现货</strong>　北京朝阳区　<span>预计明天送达</span><span class="delivery-sub">由京东发货 · 免运费 · 支持 7 天无理由退货</span></div></div>
+        <div class="sku-area">
+          <div class="sku-row"><span class="sku-label">颜色</span><div class="sku-options" data-group="颜色"><button class="sku-option active" data-value="曜石黑">曜石黑</button><button class="sku-option" data-value="雪域白">雪域白</button><button class="sku-option" data-value="冰晶蓝">冰晶蓝</button></div></div>
+          <div class="sku-row"><span class="sku-label">内存</span><div class="sku-options" data-group="内存"><button class="sku-option active" data-value="12+256">12GB+256GB</button><button class="sku-option" data-value="12+512">12GB+512GB</button></div></div>
+          <div id="selectedSummary" class="selected-summary">已选：曜石黑，12GB+256GB</div>
+          <div class="quantity-row"><span class="sku-label">数量</span><div class="stepper"><button id="minus" type="button">−</button><input id="quantity" value="1" inputmode="numeric" aria-label="购买数量" /><button id="plus" type="button">＋</button></div><span class="stock">库存 <b id="stock">100</b> 件</span></div>
+        </div>
+        <div class="actions"><button class="action cart" type="button" onclick="showToast('已加入购物车（演示）')">加入购物车</button><button class="action buy" type="button" onclick="showToast('立即购买（演示）')">立即购买</button><button id="favorite" class="action favorite" type="button" aria-label="收藏商品">♡</button></div>
+      </div>
+    </section>
+
+    <section class="service-strip" aria-label="服务承诺"><div class="service-item"><span class="service-icon">✓</span><span><b>正品保障</b><br />严格质检，放心购买</span></div><div class="service-item"><span class="service-icon">↗</span><span><b>京东物流</b><br />仓配一体，准时送达</span></div><div class="service-item"><span class="service-icon">↩</span><span><b>无忧退货</b><br />7 天无理由退货</span></div><div class="service-item"><span class="service-icon">◷</span><span><b>极速退款</b><br />售后审核快一步</span></div></section>
+
+    <nav class="anchor" aria-label="商品信息导航"><a class="active" href="#detail">商品介绍</a><a href="#specs">规格参数</a><a href="#package">包装清单</a><a href="#reviews">用户评价（2,318）</a><a href="#after-sale">售后保障</a></nav>
+
+    <div class="content-layout">
+      <div>
+        <section id="detail" class="content-section"><div class="section-title"><h2>商品介绍</h2><span>Product detail · 来自 product.detail 富文本字段</span></div><div class="selling-points"><div class="point"><b>旗舰影像系统</b><span>超聚光主摄，远近皆清晰，记录每个重要瞬间。</span></div><div class="point"><b>全新鸿蒙体验</b><span>跨设备协同更自然，常用功能一步直达。</span></div><div class="point"><b>长续航快充</b><span>大容量电池配合智能省电，满足全天使用。</span></div></div><div class="detail-rich"><h3>让每一次记录，都更接近真实</h3><p>华为 Mate 70 Pro 以旗舰性能和影像体验为核心，兼顾日常使用的轻快与稳定。页面正式接入后，这里会渲染接口返回的 <code>product.detail</code> 富文本 HTML。</p><img src="https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?auto=format&fit=crop&w=1200&q=85" alt="手机场景图" /><h3>细节设计</h3><p>轻薄机身、沉浸式显示和细腻材质，让功能信息与视觉体验保持克制而清晰。</p><img src="https://images.unsplash.com/photo-1556656793-08538906a9f8?auto=format&fit=crop&w=1200&q=85" alt="手机背面细节" /></div></section>
+        <section id="specs" class="content-section"><div class="section-title"><h2>规格参数</h2><span>来自 skuList.specValues / product 字段</span></div><table class="spec-table"><tbody><tr><th>商品名称</th><td>华为 Mate 70 Pro</td><th>商品 ID</th><td>1</td></tr><tr><th>运行内存</th><td>12GB</td><th>机身存储</th><td>256GB</td></tr><tr><th>屏幕尺寸</th><td>6.8 英寸 OLED</td><th>商品状态</th><td>上架中（status: 1）</td></tr><tr><th>当前 SKU</th><td>SKU-1 · 曜石黑</td><th>重量</th><td>0.22 kg</td></tr><tr><th>所属店铺</th><td>京东自营旗舰店（shopId: 100）</td><th>累计销量</th><td>10,000+</td></tr></tbody></table></section>
+        <section id="package" class="content-section"><div class="section-title"><h2>包装清单</h2><span>建议作为详情页结构化内容维护</span></div><table class="spec-table"><tbody><tr><th>主机</th><td>华为 Mate 70 Pro × 1</td></tr><tr><th>配件</th><td>充电器 × 1、数据线 × 1、取卡针 × 1</td></tr><tr><th>服务</th><td>电子说明书、保修凭证、京东售后服务</td></tr></tbody></table></section>
+        <section id="reviews" class="content-section"><div class="section-title"><h2>用户评价</h2><span>GET /api/products/1/reviews?page=1&amp;size=10</span></div><div class="review-summary"><div class="score">4.9<small>综合评分</small></div><div><div class="bar-row"><span>5 星</span><div class="bar"><i style="width:93%"></i></div><span>93%</span></div><div class="bar-row"><span>4 星</span><div class="bar"><i style="width:5%"></i></div><span>5%</span></div><div class="bar-row"><span>3 星</span><div class="bar"><i style="width:2%"></i></div><span>2%</span></div></div></div><div class="review-filters"><button class="filter active">全部（2318）</button><button class="filter">有图（486）</button><button class="filter">追评（128）</button><button class="filter">黑色款（892）</button></div><article class="review"><img class="avatar" src="https://i.pravatar.cc/80?img=12" alt="用户头像" /><div class="review-body"><div class="review-meta"><strong>小***7</strong><time>2026-08-21</time></div><div class="review-stars">★★★★★</div><p>外观很有质感，拍照和续航都符合预期，京东物流第二天就送到了。曜石黑搭配 12+256 规格刚好。</p></div></article><article class="review"><img class="avatar" src="https://i.pravatar.cc/80?img=32" alt="用户头像" /><div class="review-body"><div class="review-meta"><strong>风***行</strong><time>2026-08-16</time></div><div class="review-stars">★★★★★</div><p>系统流畅，屏幕显示很舒服。包装完整，客服回复也很快。</p></div></article></section>
+        <section id="after-sale" class="content-section"><div class="section-title"><h2>售后保障</h2><span>Support · 服务承诺</span></div><table class="spec-table"><tbody><tr><th>退货政策</th><td>签收后 7 天内，在不影响二次销售的情况下支持无理由退货。</td></tr><tr><th>质量问题</th><td>商品质量问题提供换新或维修服务，具体以售后审核为准。</td></tr><tr><th>客服支持</th><td>在线客服 09:00–22:00，订单和物流状态可追踪。</td></tr></tbody></table></section>
+      </div>
+      <aside class="side"><div class="side-block"><div class="side-heading"><span class="shop-logo">JD</span><span><strong>京东自营旗舰店</strong><small>品质服务 · 官方直营</small></span></div><div class="shop-score"><span>店铺评分 <b>4.9</b></span><span>全部商品</span></div><a class="side-link" href="#" onclick="showToast('店铺入口（演示）');return false">进入店铺　›</a><a class="side-link" href="#" onclick="showToast('联系客服（演示）');return false">联系客服　›</a></div><div class="side-block"><div class="section-title" style="margin-bottom:0"><h2 style="font-size:15px">看了又看</h2></div><div class="recommend"><div class="recommend-item"><img src="https://images.unsplash.com/photo-1601784551446-20c9e07cdbdb?auto=format&fit=crop&w=180&q=80" alt="手机" /><span><p>华为 Mate 系列保护壳</p><b>￥99.00</b></span></div><div class="recommend-item"><img src="https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=180&q=80" alt="耳机" /><span><p>无线降噪耳机</p><b>￥399.00</b></span></div><div class="recommend-item"><img src="https://images.unsplash.com/photo-1546435770-a3e426bf472b?auto=format&fit=crop&w=180&q=80" alt="平板" /><span><p>轻薄平板电脑</p><b>￥2,099.00</b></span></div></div></div></aside>
+    </div>
+  </main>
+  <div class="mobile-bar"><button id="mobileFavorite" class="mobile-fav" type="button" aria-label="收藏">♡</button><button class="mobile-cart" type="button" onclick="showToast('已加入购物车（演示）')">加入购物车</button><button class="mobile-buy" type="button" onclick="showToast('立即购买（演示）')">立即购买</button></div>
+  <div id="toast" class="toast" role="status"></div>
+  <script>
+    const skuPrices = { '曜石黑|12+256': ['6999.00', 100], '雪域白|12+256': ['6999.00', 64], '冰晶蓝|12+256': ['7099.00', 28], '曜石黑|12+512': ['7699.00', 35], '雪域白|12+512': ['7699.00', 16], '冰晶蓝|12+512': ['7799.00', 8] };
+    const selected = { 颜色: '曜石黑', 内存: '12+256' };
+    const mainImage = document.querySelector('#mainImage');
+    const price = document.querySelector('#price');
+    const stock = document.querySelector('#stock');
+    const summary = document.querySelector('#selectedSummary');
+    const updateSku = () => { const key = `${selected.颜色}|${selected.内存}`; const data = skuPrices[key] || ['6999.00', 0]; price.textContent = data[0]; stock.textContent = data[1]; summary.textContent = `已选：${selected.颜色}，${selected.内存 === '12+256' ? '12GB+256GB' : '12GB+512GB'}`; };
+    document.querySelectorAll('.thumb').forEach((button) => button.addEventListener('click', () => { document.querySelectorAll('.thumb').forEach((item) => item.classList.remove('active')); button.classList.add('active'); mainImage.src = button.dataset.image; }));
+    document.querySelectorAll('.sku-options').forEach((group) => group.addEventListener('click', (event) => { const button = event.target.closest('.sku-option'); if (!button) return; group.querySelectorAll('.sku-option').forEach((item) => item.classList.remove('active')); button.classList.add('active'); selected[group.dataset.group] = button.dataset.value; updateSku(); }));
+    const quantity = document.querySelector('#quantity');
+    document.querySelector('#minus').addEventListener('click', () => { quantity.value = Math.max(1, Number(quantity.value || 1) - 1); });
+    document.querySelector('#plus').addEventListener('click', () => { quantity.value = Math.min(Number(stock.textContent) || 1, Number(quantity.value || 1) + 1); });
+    const favoriteButtons = [document.querySelector('#favorite'), document.querySelector('#mobileFavorite')];
+    favoriteButtons.forEach((button) => button.addEventListener('click', () => { const active = button.classList.toggle('active'); favoriteButtons.forEach((item) => { item.classList.toggle('active', active); item.textContent = active ? '♥' : '♡'; }); showToast(active ? '已收藏商品（演示）' : '已取消收藏（演示）'); }));
+    document.querySelectorAll('.filter').forEach((button) => button.addEventListener('click', () => { document.querySelectorAll('.filter').forEach((item) => item.classList.remove('active')); button.classList.add('active'); }));
+    const anchors = document.querySelectorAll('.anchor a');
+    anchors.forEach((link) => link.addEventListener('click', () => { anchors.forEach((item) => item.classList.remove('active')); link.classList.add('active'); }));
+    let toastTimer;
+    function showToast(message) { const toast = document.querySelector('#toast'); toast.textContent = message; toast.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toast.classList.remove('show'), 1800); }
+    updateSku();
+  </script>
+</body>
+</html>

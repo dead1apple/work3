@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>京东商城 · 登录页设计提案</title>
+    <style>
+      :root {
+        --jd-red: #e1251b;
+        --jd-red-deep: #c91c14;
+        --ink: #20242b;
+        --body: #5f6875;
+        --muted: #8b95a5;
+        --line: #e8eaed;
+        --canvas: #f6f7f9;
+        --soft-red: #fff1f0;
+        --dark: #25282e;
+      }
+
+      * { box-sizing: border-box; }
+      html { background: var(--canvas); }
+      body {
+        min-width: 320px;
+        margin: 0;
+        color: var(--ink);
+        background: var(--canvas);
+        font-family: "PingFang SC", "Microsoft YaHei", Arial, sans-serif;
+      }
+
+      button, input { font: inherit; }
+      button { cursor: pointer; }
+      a { color: inherit; text-decoration: none; }
+
+      .showcase-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 24px;
+        min-height: 74px;
+        padding: 0 max(24px, calc((100vw - 1240px) / 2));
+        border-bottom: 1px solid var(--line);
+        background: rgba(255, 255, 255, .96);
+      }
+
+      .brand, .brand-copy, .header-right, .option-head, .option-meta, .field-top, .inline-row, .split-brand {
+        display: flex;
+        align-items: center;
+      }
+
+      .brand { gap: 11px; }
+      .brand-mark {
+        display: grid;
+        width: 36px;
+        height: 36px;
+        place-items: center;
+        border-radius: 10px;
+        color: #fff;
+        background: var(--jd-red);
+        font: 900 12px Arial, sans-serif;
+        letter-spacing: -1px;
+      }
+      .brand-copy { align-items: flex-start; flex-direction: column; gap: 2px; }
+      .brand-copy strong { font-size: 16px; }
+      .brand-copy small, .header-right { color: var(--muted); font-size: 11px; }
+      .brand-copy small { letter-spacing: .1em; }
+      .header-right { gap: 20px; }
+      .caption { letter-spacing: .16em; }
+      .back-link { color: var(--jd-red); font-size: 13px; font-weight: 700; }
+
+      main { width: min(1240px, calc(100% - 40px)); margin: 0 auto; padding: 42px 0 72px; }
+      .intro { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 27px; }
+      .intro-copy { max-width: 690px; }
+      .eyebrow { margin: 0 0 9px; color: var(--jd-red); font-size: 11px; font-weight: 800; letter-spacing: .18em; }
+      h1 { margin: 0; font-size: clamp(30px, 4vw, 44px); line-height: 1.1; letter-spacing: .01em; }
+      .intro-copy > p:not(.eyebrow) { margin: 12px 0 0; color: var(--body); font-size: 14px; line-height: 1.8; }
+
+      .switcher {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: flex-end;
+        gap: 6px;
+        min-width: 320px;
+      }
+      .switcher button {
+        min-height: 34px;
+        padding: 0 13px;
+        border: 1px solid var(--line);
+        border-radius: 7px;
+        color: var(--body);
+        background: #fff;
+        font-size: 12px;
+        transition: border-color .15s ease, color .15s ease, background .15s ease;
+      }
+      .switcher button:hover, .switcher button[aria-pressed="true"] { border-color: var(--jd-red); color: var(--jd-red); background: var(--soft-red); }
+      .switcher button:focus-visible, .demo-button:focus-visible, input:focus-visible, .text-link:focus-visible { outline: 3px solid rgba(225, 37, 27, .2); outline-offset: 2px; }
+
+      .options-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+      .option-card { overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+      .option-card.is-hidden { display: none; }
+      .option-head { justify-content: space-between; gap: 16px; min-height: 68px; padding: 0 20px; border-bottom: 1px solid var(--line); }
+      .option-meta { gap: 10px; }
+      .option-number { color: var(--jd-red); font: 800 12px Arial, sans-serif; letter-spacing: .12em; }
+      .option-head h2 { margin: 0; font-size: 16px; }
+      .option-head p { margin: 0; color: var(--muted); font-size: 11px; text-align: right; }
+
+      .mockup { min-height: 405px; padding: 28px; background: var(--canvas); }
+      .login-panel { width: min(100%, 360px); margin: 0 auto; padding: 26px 28px 24px; border: 1px solid var(--line); border-radius: 8px; background: #fff; box-shadow: 0 12px 30px rgba(32, 36, 43, .06); }
+      .mini-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); font-size: 13px; font-weight: 800; }
+      .mini-mark { display: grid; width: 28px; height: 28px; place-items: center; border-radius: 8px; color: #fff; background: var(--jd-red); font: 900 10px Arial, sans-serif; }
+      .login-panel .eyebrow { margin-top: 28px; }
+      .login-panel h3 { margin: 0; font-size: 25px; line-height: 1.2; }
+      .helper { margin: 9px 0 21px; color: var(--muted); font-size: 12px; line-height: 1.6; }
+      .field { display: block; margin-top: 13px; color: var(--body); font-size: 12px; font-weight: 700; }
+      .field input { display: block; width: 100%; height: 40px; margin-top: 7px; padding: 0 11px; border: 1px solid #d8dce2; border-radius: 6px; color: var(--ink); outline: 0; background: #fff; font-size: 13px; }
+      .field input:focus { border-color: var(--jd-red); box-shadow: 0 0 0 3px rgba(225, 37, 27, .1); }
+      .inline-row { justify-content: space-between; gap: 10px; margin-top: 14px; color: var(--muted); font-size: 11px; }
+      .check { display: inline-flex; align-items: center; gap: 6px; }
+      .check input { accent-color: var(--jd-red); }
+      .text-link { color: var(--jd-red); font-weight: 700; }
+      .demo-button { width: 100%; height: 42px; margin-top: 19px; border: 1px solid var(--jd-red); border-radius: 6px; color: #fff; background: var(--jd-red); font-size: 13px; font-weight: 800; transition: background .15s ease, border-color .15s ease; }
+      .demo-button:hover { border-color: var(--jd-red-deep); background: var(--jd-red-deep); }
+      .register-row { margin: 18px 0 0; color: var(--muted); font-size: 12px; text-align: center; }
+
+      .mockup-b { display: grid; grid-template-columns: 42% 58%; min-height: 405px; padding: 0; background: #fff; }
+      .dark-intro { display: flex; flex-direction: column; justify-content: space-between; padding: 30px 25px; color: #fff; background: var(--dark); }
+      .split-brand { gap: 9px; color: #fff; font-size: 13px; font-weight: 800; }
+      .split-brand .mini-mark { background: var(--jd-red); }
+      .dark-copy { margin-top: auto; }
+      .dark-copy .eyebrow { color: #ff9a93; }
+      .dark-copy h3 { max-width: 170px; margin: 0; color: #fff; font-size: 25px; line-height: 1.25; }
+      .dark-copy p { margin: 13px 0 0; color: #abb1ba; font-size: 12px; line-height: 1.75; }
+      .dark-foot { color: #767d88; font-size: 10px; letter-spacing: .12em; }
+      .light-form { padding: 31px 27px 25px; }
+      .light-form .helper { margin-bottom: 16px; }
+
+      .mockup-c { display: grid; place-items: center; min-height: 405px; padding: 24px; background: #fff; }
+      .minimal-panel { width: min(100%, 390px); padding: 23px 26px 20px; border-top: 3px solid var(--jd-red); border-bottom: 1px solid var(--line); background: #fff; }
+      .minimal-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+      .minimal-top h3 { margin: 4px 0 0; font-size: 24px; }
+      .minimal-top p { margin: 7px 0 0; color: var(--muted); font-size: 11px; }
+      .role-chip { padding: 4px 7px; border: 1px solid #f4c4c0; border-radius: 3px; color: var(--jd-red); background: var(--soft-red); font-size: 10px; font-weight: 700; white-space: nowrap; }
+      .minimal-panel .field input { border-color: #e1e4e8; border-radius: 2px; background: #fafafa; }
+      .minimal-panel .demo-button { border-radius: 2px; }
+      .minimal-panel .register-row { text-align: left; }
+      .notice-line { display: flex; align-items: center; gap: 8px; margin-top: 19px; padding-top: 13px; border-top: 1px solid #f0f1f3; color: var(--muted); font-size: 10px; }
+      .notice-line b { color: #2d8a52; font-size: 12px; }
+
+      .mockup-d { display: grid; grid-template-columns: minmax(0, 1fr) 145px; gap: 25px; min-height: 405px; padding: 32px 35px; background: #fff; }
+      .shortcut-form h3 { margin: 17px 0 0; font-size: 25px; }
+      .shortcut-form .helper { margin-bottom: 16px; }
+      .shortcut-form .demo-button { margin-top: 16px; }
+      .shortcut-note { margin: 13px 0 0; color: var(--muted); font-size: 10px; line-height: 1.6; }
+      .qr-area { display: flex; flex-direction: column; align-items: center; justify-content: center; border-left: 1px solid var(--line); padding-left: 24px; }
+      .qr-box { display: grid; width: 112px; height: 112px; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr); gap: 2px; padding: 8px; border: 1px solid #d8dce2; background: #fff; }
+      .qr-box i { display: block; background: var(--ink); }
+      .qr-box i:nth-child(3n + 1), .qr-box i:nth-child(5n + 2) { background: var(--jd-red); }
+      .qr-box i:nth-child(4n) { background: transparent; }
+      .qr-caption { margin: 12px 0 0; color: var(--body); font-size: 11px; font-weight: 700; }
+      .qr-caption small { display: block; margin-top: 5px; color: var(--muted); font-size: 10px; font-weight: 400; text-align: center; }
+
+      .design-note { margin-top: 18px; padding: 16px 20px; border-left: 3px solid var(--jd-red); color: var(--body); background: #fff; font-size: 12px; line-height: 1.7; }
+      .design-note strong { color: var(--ink); }
+
+      @media (max-width: 860px) {
+        .intro { align-items: flex-start; flex-direction: column; }
+        .switcher { justify-content: flex-start; min-width: 0; }
+        .options-grid { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 560px) {
+        .showcase-header { align-items: flex-start; flex-direction: column; gap: 12px; padding: 17px 20px; }
+        .header-right { width: 100%; justify-content: space-between; }
+        main { width: min(100% - 28px, 1240px); padding-top: 30px; }
+        .mockup { padding: 17px; }
+        .mockup-b, .mockup-d { grid-template-columns: 1fr; }
+        .dark-intro { min-height: 205px; }
+        .dark-copy { margin-top: 35px; }
+        .dark-copy h3 { max-width: none; font-size: 22px; }
+        .light-form { padding: 25px 20px; }
+        .mockup-d { gap: 17px; padding: 23px 20px; }
+        .qr-area { border-top: 1px solid var(--line); border-left: 0; padding: 18px 0 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <header class="showcase-header">
+      <a class="brand" href="/home" aria-label="返回京东商城首页">
+        <span class="brand-mark">JD</span>
+        <span class="brand-copy"><strong>京东商城</strong><small>LOGIN DESIGN STUDY</small></span>
+      </a>
+      <div class="header-right">
+        <span class="caption">AUTH / 04 OPTIONS</span>
+        <a class="back-link" href="/login">返回当前登录页</a>
+      </div>
+    </header>
+
+    <main>
+      <section class="intro">
+        <div class="intro-copy">
+          <p class="eyebrow">LOGIN EXPLORATION</p>
+          <h1>登录体验方案</h1>
+          <p>基于现有商城的京东红、深灰文字和浅灰画布，整理了四个可落地的登录方向。点击右侧按钮可聚焦查看单个方案。</p>
+        </div>
+        <div class="switcher" role="tablist" aria-label="登录方案筛选">
+          <button type="button" data-target="all" aria-pressed="true">全部方案</button>
+          <button type="button" data-target="a" aria-pressed="false">01 经典聚焦</button>
+          <button type="button" data-target="b" aria-pressed="false">02 品牌分区</button>
+          <button type="button" data-target="c" aria-pressed="false">03 轻量面板</button>
+          <button type="button" data-target="d" aria-pressed="false">04 快捷入口</button>
+        </div>
+      </section>
+
+      <section class="options-grid" aria-label="登录页设计方案">
+        <article class="option-card" data-option="a">
+          <header class="option-head">
+            <div class="option-meta"><span class="option-number">01</span><h2>经典聚焦</h2></div>
+            <p>最接近当前页面<br />强化层级与留白</p>
+          </header>
+          <div class="mockup">
+            <section class="login-panel">
+              <div class="mini-brand"><span class="mini-mark">JD</span><span>京东商城</span></div>
+              <p class="eyebrow">WELCOME BACK</p>
+              <h3>登录账号</h3>
+              <p class="helper">登录后继续探索你的购物清单与订单。</p>
+              <label class="field">用户名<input type="text" placeholder="请输入用户名" /></label>
+              <label class="field">密码<input type="password" placeholder="请输入密码" /></label>
+              <div class="inline-row"><label class="check"><input type="checkbox" /> 记住我</label><a class="text-link" href="#">忘记密码？</a></div>
+              <button class="demo-button" type="button">登录</button>
+              <p class="register-row">还没有账号？ <a class="text-link" href="#">立即注册</a></p>
+            </section>
+          </div>
+        </article>
+
+        <article class="option-card" data-option="b">
+          <header class="option-head">
+            <div class="option-meta"><span class="option-number">02</span><h2>品牌分区</h2></div>
+            <p>加强品牌识别<br />适合商城入口页</p>
+          </header>
+          <div class="mockup mockup-b">
+            <aside class="dark-intro">
+              <div class="split-brand"><span class="mini-mark">JD</span><span>京东商城</span></div>
+              <div class="dark-copy"><p class="eyebrow">JD SELECT</p><h3>每一次登录，都从发现好物开始。</h3><p>精选品质商品，清晰的订单与配送体验。</p></div>
+              <div class="dark-foot">REAL GOODS · SIMPLE SERVICE</div>
+            </aside>
+            <section class="light-form">
+              <p class="eyebrow">WELCOME BACK</p>
+              <h3>登录账号</h3>
+              <p class="helper">登录后继续你的购物旅程。</p>
+              <label class="field">用户名<input type="text" placeholder="请输入用户名" /></label>
+              <label class="field">密码<input type="password" placeholder="请输入密码" /></label>
+              <button class="demo-button" type="button">登录</button>
+              <p class="register-row">还没有账号？ <a class="text-link" href="#">立即注册</a></p>
+            </section>
+          </div>
+        </article>
+
+        <article class="option-card" data-option="c">
+          <header class="option-head">
+            <div class="option-meta"><span class="option-number">03</span><h2>轻量面板</h2></div>
+            <p>更轻、更快<br />适合高频登录</p>
+          </header>
+          <div class="mockup mockup-c">
+            <section class="minimal-panel">
+              <div class="minimal-top"><div><div class="mini-brand"><span class="mini-mark">JD</span><span>京东商城</span></div><h3>欢迎回来</h3><p>登录继续浏览商品</p></div><span class="role-chip">买家端</span></div>
+              <label class="field">用户名<input type="text" placeholder="手机号 / 用户名" /></label>
+              <label class="field">密码<input type="password" placeholder="请输入密码" /></label>
+              <div class="inline-row"><label class="check"><input type="checkbox" /> 记住登录</label><a class="text-link" href="#">找回密码</a></div>
+              <button class="demo-button" type="button">登录</button>
+              <p class="register-row">新用户？ <a class="text-link" href="#">创建账号</a></p>
+              <div class="notice-line"><b>✓</b><span>安全加密传输，保护账号信息</span></div>
+            </section>
+          </div>
+        </article>
+
+        <article class="option-card" data-option="d">
+          <header class="option-head">
+            <div class="option-meta"><span class="option-number">04</span><h2>快捷入口</h2></div>
+            <p>账号与扫码并列<br />适合多端运营</p>
+          </header>
+          <div class="mockup mockup-d">
+            <section class="shortcut-form">
+              <div class="mini-brand"><span class="mini-mark">JD</span><span>京东商城</span></div>
+              <h3>登录账号</h3>
+              <p class="helper">选择习惯的方式，快速进入商城。</p>
+              <label class="field">用户名<input type="text" placeholder="请输入用户名" /></label>
+              <label class="field">密码<input type="password" placeholder="请输入密码" /></label>
+              <button class="demo-button" type="button">账号登录</button>
+              <p class="shortcut-note">首次登录将自动同步购物车与收藏夹。</p>
+            </section>
+            <aside class="qr-area"><div class="qr-box" aria-label="二维码示意图"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><p class="qr-caption">扫码登录<small>打开京东 App 扫码</small></p></aside>
+          </div>
+        </article>
+      </section>
+
+      <p class="design-note"><strong>建议优先评审：</strong>方案 02 更有品牌记忆点，方案 03 改造成本最低，方案 04 适合后续接入扫码登录。四个方案都保留了当前项目的红色主按钮、浅灰画布和清晰表单层级。</p>
+    </main>
+
+    <script>
+      const buttons = [...document.querySelectorAll('.switcher button')]
+      const cards = [...document.querySelectorAll('.option-card')]
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', () => {
+          const target = button.dataset.target
+          buttons.forEach((item) => item.setAttribute('aria-pressed', String(item === button)))
+          cards.forEach((card) => card.classList.toggle('is-hidden', target !== 'all' && card.dataset.option !== target))
+        })
+      })
+    </script>
+  </body>
+</html>

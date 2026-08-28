@@ -51,6 +51,21 @@ test('keeps the user coupon id while reading nested template details', () => {
   assert.equal(result.list[0].statusText, '未使用')
 })
 
+test('normalizes the backend coupon view status field', () => {
+  const result = normalizeCouponList([{
+    userCouponId: 91,
+    couponTemplateId: 7,
+    userStatus: 0,
+    name: '平台满减券',
+    amount: 30,
+    minAmount: 199,
+  }], 'mine')
+
+  assert.equal(result.list[0].id, 91)
+  assert.equal(result.list[0].status, 0)
+  assert.equal(result.list[0].statusText, '未使用')
+})
+
 test('joins bare user coupons with public template values instead of displaying zero', () => {
   const minePayload = [{ id: 91, couponTemplateId: 7, status: 0 }]
   const templates = normalizeCouponList([{ id: 7, name: '平台满 200 减 30 券', amount: 30, minAmount: 200, type: 1 }], 'available').list

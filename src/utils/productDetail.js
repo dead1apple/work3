@@ -105,6 +105,14 @@ export function normalizeProductDetail(payload) {
 
   return {
     id: raw.id,
+    categoryId: raw.categoryId,
+    brandId: raw.brandId,
+    shopId: raw.shopId,
+    status: raw.status,
+    category: source.category || raw.category || null,
+    brand: source.brand || raw.brand || null,
+    shop: source.shop || source.shopInfo || raw.shop || null,
+    rating: raw.rating ?? source.rating ?? null,
     title: raw.name || raw.title || '未命名商品',
     subtitle: raw.subtitle || '',
     price: prices.length ? Math.min(...prices) : 0,

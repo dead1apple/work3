@@ -6,6 +6,7 @@ const STATUS_TEXT = {
   0: '未使用',
   1: '已使用',
   2: '已过期',
+  3: '已锁定待支付',
 }
 
 const toShopId = (value) => {
@@ -64,7 +65,7 @@ export function normalizeCouponList(payload, mode = 'available', templates = [])
   const list = readPayloadList(payload).map((item) => {
     const record = item?.userCoupon || item || {}
     const embeddedTemplate = item?.couponTemplate || item?.template || item?.coupon || record?.couponTemplate
-    const statusValue = record?.status ?? item?.status
+    const statusValue = record?.status ?? record?.userStatus ?? item?.status ?? item?.userStatus
     const status = mode === 'mine' && statusValue !== '' && statusValue != null ? toFiniteNumber(statusValue, 0) : null
     const templateId = record?.couponTemplateId ?? record?.templateId ?? item?.couponTemplateId ?? item?.templateId ?? embeddedTemplate?.id ?? item?.id
     const joinedTemplate = templateMap.get(Number(templateId))
