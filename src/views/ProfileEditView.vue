@@ -2,7 +2,8 @@
 import { computed, onMounted, reactive, ref } from 'vue'
 import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { getUserInfo, updateUserInfo } from '../api/index.js'
+import { Upload } from '@element-plus/icons-vue'
+import { getUserInfo, updateUserInfo, uploadImage } from '../api/index.js'
 import { useUserStore } from '../store/user.js'
 import { buildProfilePayload, normalizeUserProfile } from '../utils/profile.js'
 
@@ -14,6 +15,11 @@ const saving = ref(false)
 const loadError = ref(false)
 const imageError = ref(false)
 const originalPayload = ref('')
+const uploading = ref(false)
+const fileInputRef = ref()
+
+const AVATAR_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+const AVATAR_MAX_SIZE = 10 * 1024 * 1024
 
 const form = reactive({
   id: null,
@@ -29,6 +35,7 @@ const form = reactive({
 const avatarText = computed(() => (form.nickname || form.username || '用户').trim().slice(0, 1).toUpperCase())
 const avatarVisible = computed(() => Boolean(form.avatar) && !imageError.value)
 const isDirty = computed(() => originalPayload.value && JSON.stringify(buildProfilePayload(form)) !== originalPayload.value)
+const canUploadAvatar = computed(() => userStore.isMerchant)
 
 const validateAvatar = (_rule, value, callback) => {
   if (!value || /^(https?:\/\/|\/)/i.test(value.trim())) callback()
@@ -95,6 +102,36 @@ const saveProfile = async () => {
 
 const cancelEdit = () => router.push('/profile')
 
+const triggerAvatarUpload = () => fileInputRef.value?.click()
+
+const onAvatarFileChange = async (event) => {
+  const file = event.target.files?.[0]
+  event.target.value = ''
+  if (!file) return
+  if (!AVATAR_TYPES.includes(file.type)) {
+    ElMessage.error('仅支持 JPEG、PNG、GIF、WebP 格式的图片')
+    return
+  }
+  if (file.size > AVATAR_MAX_SIZE) {
+    ElMessage.error('图片大小不能超过 10MB')
+    return
+  }
+
+  uploading.value = true
+  try {
+    const payload = await uploadImage(file)
+    form.avatar = payload?.url || payload?.data?.url || ''
+    if (!form.avatar) throw new Error('上传接口未返回图片地址')
+    imageError.value = false
+    formRef.value?.clearValidate('avatar')
+    ElMessage.success('头像上传成功，保存资料后生效')
+  } catch (error) {
+    ElMessage.error(error?.message || '头像上传失败，请稍后重试')
+  } finally {
+    uploading.value = false
+  }
+}
+
 onBeforeRouteLeave(async () => {
   if (!isDirty.value || saving.value) return true
   try {
@@ -142,7 +179,15 @@ onMounted(loadProfile)
             <span v-else>{{ avatarText }}</span>
           </div>
           <h2>{{ form.nickname || '设置你的昵称' }}</h2>
-          <p>填写头像图片地址后，这里会显示预览。当前接口暂不支持本地图片上传。</p>
+          <template v-if="canUploadAvatar">
+            <el-button class="upload-button" size="large" :loading="uploading" @click="triggerAvatarUpload">
+              <el-icon v-if="!uploading"><Upload /></el-icon>
+              {{ uploading ? '上传中…' : '上传头像' }}
+            </el-button>
+            <p>支持 JPEG、PNG、GIF、WebP，10MB 以内</p>
+          </template>
+          <p v-else>填写头像图片地址后，这里会显示预览。本地图片上传仅对商家账号开放。</p>
+          <input ref="fileInputRef" class="avatar-file-input" type="file" :accept="AVATAR_TYPES.join(',')" @change="onAvatarFileChange" />
         </aside>
 
         <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="profile-form" @submit.prevent="saveProfile">
@@ -192,6 +237,6 @@ onMounted(loadProfile)
 </template>
 
 <style scoped>
-.profile-edit-page{min-height:calc(100vh - 136px);padding:24px 16px 48px;color:#333;background:#f5f5f5;font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif}.edit-card{width:min(100%,980px);min-height:620px;margin:0 auto;border:1px solid #eee;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.04)}.card-header{display:flex;align-items:center;justify-content:space-between;min-height:96px;padding:0 34px;border-bottom:1px solid #eee}.card-header p{margin:0 0 7px;color:#999;font-size:12px}.card-header h1{margin:0;color:#222;font-size:22px;font-weight:600}.back-link{border:0;color:#777;background:transparent;font:inherit;font-size:13px;cursor:pointer}.back-link:hover{color:#e1251b}.back-link:focus-visible{outline:2px solid #e1251b;outline-offset:4px}.back-link span{margin-left:4px;font-size:20px;vertical-align:-2px}.loading-area{padding:48px 11%}.edit-content{display:grid;grid-template-columns:260px minmax(0,1fr);gap:48px;padding:42px 56px 54px}.avatar-panel{padding:20px;text-align:center;border-right:1px solid #eee}.avatar-preview{display:grid;width:126px;height:126px;margin:0 auto 20px;overflow:hidden;place-items:center;border:5px solid #fff;border-radius:50%;color:#fff;background:linear-gradient(135deg,#e1251b,#ff6b62);box-shadow:0 0 0 1px #eee,0 10px 24px rgba(225,37,27,.15);font-size:42px;font-weight:700}.avatar-preview img{width:100%;height:100%;object-fit:cover}.avatar-panel h2{margin:0 0 10px;color:#333;font-size:18px}.avatar-panel p{margin:0;color:#999;font-size:12px;line-height:1.8}.profile-form{max-width:560px}.account-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}.account-item{padding:12px 14px;border:1px solid #eee;background:#fafafa}.account-item span,.account-item strong{display:block}.account-item span{margin-bottom:5px;color:#999;font-size:12px}.account-item strong{overflow:hidden;color:#555;font-size:14px;font-weight:500;text-overflow:ellipsis;white-space:nowrap}.profile-form :deep(.el-form-item){margin-bottom:22px}.profile-form :deep(.el-form-item__label){padding-bottom:7px;color:#555;font-weight:600}.profile-form :deep(.el-input__wrapper){border-radius:2px}.profile-form :deep(.el-input__wrapper.is-focus){box-shadow:0 0 0 1px #e1251b inset}.profile-form :deep(.el-date-editor){width:100%}.gender-group{display:flex}.gender-group :deep(.el-radio-button__inner){min-width:78px}.gender-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner){border-color:#e1251b;background:#e1251b;box-shadow:-1px 0 0 0 #e1251b}.form-actions{display:flex;justify-content:flex-end;gap:12px;padding-top:9px;border-top:1px solid #f0f0f0}.form-actions .el-button{min-width:112px;margin:18px 0 0;border-radius:2px}.error-area{display:flex;min-height:440px;flex-direction:column;align-items:center;justify-content:center;text-align:center}.error-area>span{display:grid;width:64px;height:64px;place-items:center;border-radius:50%;color:#e1251b;background:#fff1f0;font-size:30px;font-weight:700}.error-area h2{margin:18px 0 8px;font-size:18px}.error-area p{margin:0 0 22px;color:#999;font-size:13px}.error-area .el-button{border-radius:2px}
+.profile-edit-page{min-height:calc(100vh - 136px);padding:24px 16px 48px;color:#333;background:#f5f5f5;font-family:'PingFang SC','Microsoft YaHei',Arial,sans-serif}.edit-card{width:min(100%,980px);min-height:620px;margin:0 auto;border:1px solid #eee;background:#fff;box-shadow:0 2px 10px rgba(0,0,0,.04)}.card-header{display:flex;align-items:center;justify-content:space-between;min-height:96px;padding:0 34px;border-bottom:1px solid #eee}.card-header p{margin:0 0 7px;color:#999;font-size:12px}.card-header h1{margin:0;color:#222;font-size:22px;font-weight:600}.back-link{border:0;color:#777;background:transparent;font:inherit;font-size:13px;cursor:pointer}.back-link:hover{color:#e1251b}.back-link:focus-visible{outline:2px solid #e1251b;outline-offset:4px}.back-link span{margin-left:4px;font-size:20px;vertical-align:-2px}.loading-area{padding:48px 11%}.edit-content{display:grid;grid-template-columns:260px minmax(0,1fr);gap:48px;padding:42px 56px 54px}.avatar-panel{padding:20px;text-align:center;border-right:1px solid #eee}.avatar-preview{display:grid;width:126px;height:126px;margin:0 auto 20px;overflow:hidden;place-items:center;border:5px solid #fff;border-radius:50%;color:#fff;background:linear-gradient(135deg,#e1251b,#ff6b62);box-shadow:0 0 0 1px #eee,0 10px 24px rgba(225,37,27,.15);font-size:42px;font-weight:700}.avatar-preview img{width:100%;height:100%;object-fit:cover}.avatar-panel h2{margin:0 0 10px;color:#333;font-size:18px}.avatar-panel p{margin:0;color:#999;font-size:12px;line-height:1.8}.avatar-panel .upload-button{width:100%;margin:0 0 12px;border-radius:2px}.avatar-panel .upload-button .el-icon{margin-right:5px}.avatar-file-input{display:none}.profile-form{max-width:560px}.account-row{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:22px}.account-item{padding:12px 14px;border:1px solid #eee;background:#fafafa}.account-item span,.account-item strong{display:block}.account-item span{margin-bottom:5px;color:#999;font-size:12px}.account-item strong{overflow:hidden;color:#555;font-size:14px;font-weight:500;text-overflow:ellipsis;white-space:nowrap}.profile-form :deep(.el-form-item){margin-bottom:22px}.profile-form :deep(.el-form-item__label){padding-bottom:7px;color:#555;font-weight:600}.profile-form :deep(.el-input__wrapper){border-radius:2px}.profile-form :deep(.el-input__wrapper.is-focus){box-shadow:0 0 0 1px #e1251b inset}.profile-form :deep(.el-date-editor){width:100%}.gender-group{display:flex}.gender-group :deep(.el-radio-button__inner){min-width:78px}.gender-group :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner){border-color:#e1251b;background:#e1251b;box-shadow:-1px 0 0 0 #e1251b}.form-actions{display:flex;justify-content:flex-end;gap:12px;padding-top:9px;border-top:1px solid #f0f0f0}.form-actions .el-button{min-width:112px;margin:18px 0 0;border-radius:2px}.error-area{display:flex;min-height:440px;flex-direction:column;align-items:center;justify-content:center;text-align:center}.error-area>span{display:grid;width:64px;height:64px;place-items:center;border-radius:50%;color:#e1251b;background:#fff1f0;font-size:30px;font-weight:700}.error-area h2{margin:18px 0 8px;font-size:18px}.error-area p{margin:0 0 22px;color:#999;font-size:13px}.error-area .el-button{border-radius:2px}
 @media(max-width:760px){.profile-edit-page{padding:12px 10px 28px}.card-header{min-height:82px;padding:0 18px}.card-header h1{font-size:19px}.edit-content{grid-template-columns:1fr;gap:28px;padding:28px 18px 34px}.avatar-panel{padding:0 0 26px;border-right:0;border-bottom:1px solid #eee}.avatar-preview{width:104px;height:104px}.avatar-panel p{max-width:340px;margin:0 auto}.profile-form{max-width:none}.account-row{grid-template-columns:1fr}.form-actions{display:grid;grid-template-columns:1fr 1fr}.form-actions .el-button{width:100%}}
 </style>

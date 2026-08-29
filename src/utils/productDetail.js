@@ -34,12 +34,45 @@ export function normalizeProductDescription(value) {
 export function normalizeProductReview(item = {}) {
   const review = item?.review || item
   const user = item?.user || review?.user || {}
+  const numericRating = Number(review?.rating ?? review?.score)
+  const rating = Number.isFinite(numericRating) && numericRating >= 1 && numericRating <= 5
+    ? Math.round(numericRating)
+    : null
+  const isAnonymous = review?.isAnonymous === 1 || review?.isAnonymous === true
   return {
-    name: user.nickname || user.username || review.nickname || review.username || '匿名用户',
-    avatar: user.avatar || review.avatar || 'https://i.pravatar.cc/80?img=12',
+    id: review?.id,
+    name: isAnonymous ? '匿名用户' : (user.nickname || user.username || review?.nickname || review?.username || '匿名用户'),
+    avatar: isAnonymous ? '' : (user.avatar || review?.avatar || ''),
     content: review.content || review.comment || '用户未填写评价内容。',
     date: review.createTime || '',
+    rating,
+    images: normalizeProductImages(review.images || review.imageUrls),
+    reply: review.reply || '',
   }
+}
+
+export function summarizeProductReviews(reviews = []) {
+  const validRatings = (reviews || []).map((review) => Number(review?.rating)).filter((rating) => Number.isInteger(rating) && rating >= 1 && rating <= 5)
+  const total = validRatings.length
+  const counts = new Map([1, 2, 3, 4, 5].map((rating) => [rating, 0]))
+  validRatings.forEach((rating) => counts.set(rating, counts.get(rating) + 1))
+
+  return {
+    total,
+    average: total ? validRatings.reduce((sum, rating) => sum + rating, 0) / total : null,
+    favorableRate: total ? Math.round((validRatings.filter((rating) => rating >= 4).length / total) * 100) : null,
+    distribution: [5, 4, 3, 2, 1].map((rating) => ({
+      rating,
+      count: counts.get(rating),
+      percent: total ? Math.round((counts.get(rating) / total) * 100) : 0,
+    })),
+  }
+}
+
+export function filterProductReviews(reviews = [], filter = 'all') {
+  if (filter === 'image') return reviews.filter((review) => review?.images?.length)
+  if (filter === 'reply') return reviews.filter((review) => review?.reply)
+  return reviews
 }
 
 const normalizeSku = (sku) => {

@@ -4,11 +4,13 @@ import assert from 'node:assert/strict'
 import {
   createRequestGenerationGate,
   findSkuBySelection,
+  filterProductReviews,
   getInitialSkuSelection,
   isSkuOptionAvailable,
   normalizeProductDescription,
   normalizeProductDetail,
   normalizeProductReview,
+  summarizeProductReviews,
 } from '../src/utils/productDetail.js'
 import * as productDetailUtils from '../src/utils/productDetail.js'
 
@@ -84,11 +86,64 @@ test('reads review content from the deployed nested review record', () => {
     review: { content: '小马速递发货快，当日达', createTime: '2026-08-27 12:09:50' },
     user: { nickname: '小张', avatar: '/zhang.png' },
   }), {
+    id: undefined,
     name: '小张',
     avatar: '/zhang.png',
     content: '小马速递发货快，当日达',
     date: '2026-08-27 12:09:50',
+    rating: null,
+    images: [],
+    reply: '',
   })
+})
+
+test('normalizes documented review ratings, images, replies and anonymous state', () => {
+  const review = normalizeProductReview({
+    review: {
+      id: 24,
+      rating: 4,
+      content: '整体不错',
+      images: '/one.png,/two.png',
+      isAnonymous: 1,
+      reply: '感谢支持',
+    },
+    user: { nickname: '不应显示', avatar: '/private.png' },
+  })
+
+  assert.deepEqual(review, {
+    id: 24,
+    name: '匿名用户',
+    avatar: '',
+    content: '整体不错',
+    date: '',
+    rating: 4,
+    images: ['/one.png', '/two.png'],
+    reply: '感谢支持',
+  })
+})
+
+test('derives review score distribution and filters from loaded API records', () => {
+  const reviews = [
+    { rating: 5, images: ['/one.png'], reply: '' },
+    { rating: 4, images: [], reply: '感谢支持' },
+    { rating: 2, images: [], reply: '' },
+  ]
+
+  assert.deepEqual(summarizeProductReviews(reviews), {
+    total: 3,
+    average: 11 / 3,
+    favorableRate: 67,
+    distribution: [
+      { rating: 5, count: 1, percent: 33 },
+      { rating: 4, count: 1, percent: 33 },
+      { rating: 3, count: 0, percent: 0 },
+      { rating: 2, count: 1, percent: 33 },
+      { rating: 1, count: 0, percent: 0 },
+    ],
+  })
+  assert.equal(filterProductReviews(reviews, 'image').length, 1)
+  assert.equal(filterProductReviews(reviews, 'reply').length, 1)
+  assert.equal(filterProductReviews(reviews, 'all').length, 3)
 })
 
 test('request generation gate blocks stale commits while allowing the latest generation', () => {
