@@ -218,6 +218,10 @@ const routeApi = async ({ method, path, query, request, state }) => {
   }
   if (path === '/categories/tree' && method === 'GET') return ok(clone(categories))
   if (path === '/brands' && method === 'GET') return ok(clone(brands))
+  if (path === '/admin/shops/map' && method === 'GET') {
+    if (!requireAuth(state, request)) return fail(401, '未登录')
+    return ok([{ id: 100, shopName: '京东自营旗舰店', address: '北京市朝阳区京东大厦', location: '116.397428,39.90923' }])
+  }
   if (path === '/products' && method === 'GET') return ok(listProducts(query))
   if (path.match(/^\/products\/\d+$/) && method === 'GET') return ok(clone(findProduct(path.split('/').pop())))
   if (path.match(/^\/products\/\d+\/reviews$/) && method === 'GET') return ok({ list: clone(productReviews), total: productReviews.length })
@@ -372,6 +376,7 @@ export const test = base.extend({
   api: async ({ page }, use) => {
     const state = createState()
     const observability = await installObservability(page)
+    await page.route(/webapi\.amap\.com/, (route) => route.fulfill({ status: 200, contentType: 'application/javascript', body: 'window.AMap = {};' }))
     await page.route(/^http:\/\/127\.0\.0\.1:4173\/api\/.*/, async (route, request) => {
       const url = new URL(request.url())
       const result = await routeApi({ method: request.method(), path: url.pathname.replace(/^\/api/, ''), query: url.searchParams, request, state })

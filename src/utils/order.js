@@ -85,12 +85,13 @@ export function normalizeOrderDetail(payload) {
   const receiverPhone = firstDefined(address.receiverPhone, address.phone, orderSource.receiverPhone, '')
   const region = [address.province, address.city, address.district].filter(Boolean)
   const detailAddress = firstDefined(address.detailAddress, address.address, orderSource.detailAddress, '')
+  const receiverFullAddress = firstDefined(orderSource.receiverAddress, '')
   return {
     ...order,
     receiverName,
     receiverPhone,
     detailAddress,
-    fullAddress: [...region, detailAddress].filter(Boolean).join(' '),
+    fullAddress: [...region, detailAddress].filter(Boolean).join(' ') || receiverFullAddress,
     createTime: firstDefined(orderSource.createTime, orderSource.createdAt, ''),
     payTime: firstDefined(orderSource.payTime, ''),
     deliveryTime: firstDefined(orderSource.deliveryTime, orderSource.shipTime, ''),
