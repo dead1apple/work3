@@ -27,6 +27,10 @@
         UPDATE user SET last_login_time = #{lastLoginTime}, last_login_ip = #{lastLoginIp} WHERE id = #{id}
     </update>
 
+    <update id="updateAvatar">
+        UPDATE user SET avatar = #{avatarUrl} WHERE id = #{userId} AND deleted = 0
+    </update>
+
     <select id="findByUsername" resultType="com.ngsz.mall_server.pojo.User">
         SELECT * FROM user WHERE username = #{username} AND deleted = 0
     </select>

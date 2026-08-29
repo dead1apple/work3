@@ -125,6 +125,12 @@ public class UserServiceImpl implements UserService {
     }
 
     @Override
+    public void updateAvatar(Long userId, String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.isBlank()) throw new BusinessException("头像地址不能为空");
+        if (userMapper.updateAvatar(userId, avatarUrl) == 0) throw new BusinessException("用户不存在");
+    }
+
+    @Override
     public PageResult<User> listUsers(String keyword, Integer role, Integer status, Integer page, Integer size) {
         List<User> all = userMapper.findByCondition(keyword, role, status);
         int total = all.size();

@@ -12,6 +12,7 @@ public interface UserMapper {
     User findById(@Param("id") Long id);
     void insert(User user);
     void update(User user);
+    int updateAvatar(@Param("userId") Long userId, @Param("avatarUrl") String avatarUrl);
     void updateLoginInfo(User user);
     List<User> findAll();
     List<User> findByCondition(@Param("keyword") String keyword, @Param("role") Integer role, @Param("status") Integer status);

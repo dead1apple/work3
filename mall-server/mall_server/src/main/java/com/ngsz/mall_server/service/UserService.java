@@ -12,6 +12,7 @@ public interface UserService {
     String sendVerifyCode(String phone);
     User getUserInfo(Long userId);
     void updateUserInfo(User user);
+    void updateAvatar(Long userId, String avatarUrl);
     PageResult<User> listUsers(String keyword, Integer role, Integer status, Integer page, Integer size);
     void updateUserStatus(Long userId, Integer status);
 }

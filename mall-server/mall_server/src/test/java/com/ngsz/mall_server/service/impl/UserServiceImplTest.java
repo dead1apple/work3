@@ -182,6 +182,24 @@ class UserServiceImplTest {
         }
     }
 
+    @Test
+    void updateAvatarOnlyTargetsAuthenticatedUserAvatar() {
+        when(userMapper.updateAvatar(7L, "/uploads/images/avatar.png")).thenReturn(1);
+
+        userService.updateAvatar(7L, "/uploads/images/avatar.png");
+
+        verify(userMapper).updateAvatar(7L, "/uploads/images/avatar.png");
+    }
+
+    @Test
+    void updateAvatarRejectsMissingUser() {
+        when(userMapper.updateAvatar(99L, "/uploads/images/avatar.png")).thenReturn(0);
+
+        assertThatThrownBy(() -> userService.updateAvatar(99L, "/uploads/images/avatar.png"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("用户不存在");
+    }
+
     private static LoginDTO loginDto(String username, String password) {
         LoginDTO dto = new LoginDTO();
         dto.setUsername(username);
