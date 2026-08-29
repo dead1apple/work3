@@ -81,6 +81,40 @@ class AdminSecurityInterceptorTest {
     }
 
     @Test
+    void allowsAnyLoggedInUserToReadShopMapPoints() throws Exception {
+        AdminSecurityInterceptor interceptor = new AdminSecurityInterceptor(securityService);
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("GET", "/api/admin/shops/map");
+
+        try (MockedStatic<StpUtil> stp = mockStatic(StpUtil.class)) {
+            stp.when(StpUtil::isLogin).thenReturn(true);
+
+            assertThat(interceptor.preHandle(
+                    request, new MockHttpServletResponse(), new Object())).isTrue();
+        }
+
+        verifyNoInteractions(securityService);
+    }
+
+    @Test
+    void stillRejectsAnonymousShopMapRequest() {
+        AdminSecurityInterceptor interceptor = new AdminSecurityInterceptor(securityService);
+        MockHttpServletRequest request =
+                new MockHttpServletRequest("GET", "/api/admin/shops/map");
+
+        try (MockedStatic<StpUtil> stp = mockStatic(StpUtil.class)) {
+            stp.when(StpUtil::isLogin).thenReturn(false);
+
+            assertThatThrownBy(() -> interceptor.preHandle(
+                    request, new MockHttpServletResponse(), new Object()))
+                    .isInstanceOf(BusinessException.class)
+                    .hasMessage("请先登录管理员账号");
+        }
+
+        verifyNoInteractions(securityService);
+    }
+
+    @Test
     void recordsNonGetRequestAfterCompletion() throws Exception {
         AdminSecurityInterceptor interceptor = new AdminSecurityInterceptor(securityService);
         MockHttpServletRequest request = new MockHttpServletRequest("PUT", "/api/admin/users/9/status");

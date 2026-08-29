@@ -38,6 +38,11 @@ public class AdminSecurityInterceptor implements HandlerInterceptor {
         if (!StpUtil.isLogin()) {
             throw new BusinessException("请先登录管理员账号");
         }
+        // 店铺地图点位是只读公开数据（店名/坐标/地址/评分/Logo），
+        // 登录用户即可访问，用于订单详情物流地图展示卖家发货位置
+        if (isPublicShopMapRequest(request)) {
+            return true;
+        }
         AdminSecurityService.AdminContext context = securityService.loadAdminContext(
                 StpUtil.getLoginIdAsLong(), request.getRequestURI());
         request.setAttribute(ADMIN_CONTEXT_ATTRIBUTE, context);
@@ -88,6 +93,11 @@ public class AdminSecurityInterceptor implements HandlerInterceptor {
 
     private static boolean isMutation(HttpServletRequest request) {
         return !"GET".equalsIgnoreCase(request.getMethod());
+    }
+
+    private static boolean isPublicShopMapRequest(HttpServletRequest request) {
+        return "GET".equalsIgnoreCase(request.getMethod())
+                && "/api/admin/shops/map".equals(request.getRequestURI());
     }
 
     private static String clientIp(HttpServletRequest request) {
