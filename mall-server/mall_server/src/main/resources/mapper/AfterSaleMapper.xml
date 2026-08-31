@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.ngsz.mall_server.mapper.AfterSaleMapper">
+    <insert id="insertTicket" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO after_sale_ticket
+            (ticket_no, user_id, shop_id, order_id, order_no, order_item_id,
+             product_id, sku_id, type, reason_type, description, status)
+        VALUES
+            (#{ticketNo}, #{userId}, #{shopId}, #{orderId}, #{orderNo}, #{orderItemId},
+             #{productId}, #{skuId}, #{type}, #{reasonType}, #{description}, #{status})
+    </insert>
+
+    <insert id="insertAttachment" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO after_sale_attachment
+            (ticket_id, user_id, url, object_key, file_name, file_size)
+        VALUES (#{ticketId}, #{userId}, #{url}, #{objectKey}, #{fileName}, #{fileSize})
+    </insert>
+
+    <insert id="insertMessage" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO after_sale_message (ticket_id, sender_id, sender_type, content)
+        VALUES (#{ticketId}, #{senderId}, #{senderType}, #{content})
+    </insert>
+
+    <insert id="insertOperation">
+        INSERT INTO after_sale_operation_log
+            (ticket_id, operator_id, operator_type, operation,
+             before_status, after_status, reason)
+        VALUES (#{ticketId}, #{operatorId}, #{operatorType}, #{operation},
+                #{beforeStatus}, #{afterStatus}, #{reason})
+    </insert>
+
+    <select id="findByTicketNo" resultType="com.ngsz.mall_server.pojo.AfterSaleTicket">
+        SELECT id, ticket_no AS ticketNo, user_id AS userId, shop_id AS shopId,
+               order_id AS orderId, order_no AS orderNo, order_item_id AS orderItemId,
+               product_id AS productId, sku_id AS skuId, type, reason_type AS reasonType,
+               description, status, reject_reason AS rejectReason,
+               final_result AS finalResult, create_time AS createTime,
+               update_time AS updateTime, close_time AS closeTime
+        FROM after_sale_ticket
+        WHERE ticket_no = #{ticketNo} AND deleted = 0
+    </select>
+
+    <select id="findByTicketNoForUpdate" resultType="com.ngsz.mall_server.pojo.AfterSaleTicket">
+        SELECT id, ticket_no AS ticketNo, user_id AS userId, shop_id AS shopId,
+               order_id AS orderId, order_no AS orderNo, order_item_id AS orderItemId,
+               product_id AS productId, sku_id AS skuId, type, reason_type AS reasonType,
+               description, status, reject_reason AS rejectReason,
+               final_result AS finalResult, create_time AS createTime,
+               update_time AS updateTime, close_time AS closeTime
+        FROM after_sale_ticket
+        WHERE ticket_no = #{ticketNo} AND deleted = 0
+        FOR UPDATE
+    </select>
+
+    <select id="findByOrderItemId" resultType="com.ngsz.mall_server.pojo.AfterSaleTicket">
+        SELECT id, ticket_no AS ticketNo, user_id AS userId, shop_id AS shopId,
+               order_id AS orderId, order_no AS orderNo, order_item_id AS orderItemId,
+               product_id AS productId, sku_id AS skuId, type, reason_type AS reasonType,
+               description, status, reject_reason AS rejectReason,
+               final_result AS finalResult, create_time AS createTime,
+               update_time AS updateTime, close_time AS closeTime
+        FROM after_sale_ticket
+        WHERE order_item_id = #{orderItemId} AND deleted = 0
+    </select>
+
+    <sql id="ticketColumns">
+        id, ticket_no AS ticketNo, user_id AS userId, shop_id AS shopId,
+        order_id AS orderId, order_no AS orderNo, order_item_id AS orderItemId,
+        product_id AS productId, sku_id AS skuId, type, reason_type AS reasonType,
+        description, status, reject_reason AS rejectReason,
+        final_result AS finalResult, create_time AS createTime,
+        update_time AS updateTime, close_time AS closeTime
+    </sql>
+
+    <select id="findByUser" resultType="com.ngsz.mall_server.pojo.AfterSaleTicket">
+        SELECT <include refid="ticketColumns"/> FROM after_sale_ticket
+        WHERE user_id = #{userId} AND deleted = 0
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY create_time DESC, id DESC LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByUser" resultType="int">
+        SELECT COUNT(*) FROM after_sale_ticket
+        WHERE user_id = #{userId} AND deleted = 0
+        <if test="status != null">AND status = #{status}</if>
+    </select>
+
+    <select id="findByShop" resultType="com.ngsz.mall_server.pojo.AfterSaleTicket">
+        SELECT <include refid="ticketColumns"/> FROM after_sale_ticket
+        WHERE shop_id = #{shopId} AND deleted = 0
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY create_time DESC, id DESC LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countByShop" resultType="int">
+        SELECT COUNT(*) FROM after_sale_ticket
+        WHERE shop_id = #{shopId} AND deleted = 0
+        <if test="status != null">AND status = #{status}</if>
+    </select>
+
+    <select id="findForPlatform" resultType="com.ngsz.mall_server.pojo.AfterSaleTicket">
+        SELECT <include refid="ticketColumns"/> FROM after_sale_ticket
+        WHERE deleted = 0
+        <if test="status != null">AND status = #{status}</if>
+        ORDER BY create_time DESC, id DESC LIMIT #{offset}, #{size}
+    </select>
+
+    <select id="countForPlatform" resultType="int">
+        SELECT COUNT(*) FROM after_sale_ticket WHERE deleted = 0
+        <if test="status != null">AND status = #{status}</if>
+    </select>
+
+    <select id="findAttachments" resultType="com.ngsz.mall_server.pojo.AfterSaleAttachment">
+        SELECT id, ticket_id AS ticketId, user_id AS userId, url,
+               object_key AS objectKey, file_name AS fileName,
+               file_size AS fileSize, create_time AS createTime
+        FROM after_sale_attachment WHERE ticket_id = #{ticketId} ORDER BY id
+    </select>
+
+    <select id="findMessages" resultType="com.ngsz.mall_server.pojo.AfterSaleMessage">
+        SELECT id, ticket_id AS ticketId, sender_id AS senderId,
+               sender_type AS senderType, content, create_time AS createTime
+        FROM after_sale_message WHERE ticket_id = #{ticketId} ORDER BY id
+    </select>
+
+    <update id="updateWorkflow">
+        UPDATE after_sale_ticket
+        SET status = #{status}, reject_reason = #{rejectReason},
+            final_result = #{finalResult}, update_time = CURRENT_TIMESTAMP
+        <if test="close">, close_time = CURRENT_TIMESTAMP</if>
+        WHERE id = #{id} AND deleted = 0
+    </update>
+</mapper>

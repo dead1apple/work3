@@ -32,7 +32,7 @@ public class AdminSecurityService {
 
     private static final Set<String> ADMIN_MODULES = Set.of(
             "dashboard", "audits", "users", "products", "orders",
-            "shops", "coupons", "catalog", "config", "security"
+            "shops", "coupons", "catalog", "config", "security", "after-sales"
     );
 
     private final JdbcTemplate jdbcTemplate;
