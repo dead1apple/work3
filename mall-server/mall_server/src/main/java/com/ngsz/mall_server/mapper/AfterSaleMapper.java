@@ -35,6 +35,7 @@ public interface AfterSaleMapper {
                                           @Param("offset") Integer offset, @Param("size") Integer size);
     int countForPlatform(@Param("status") Integer status);
     List<AfterSaleAttachment> findAttachments(@Param("ticketId") Long ticketId);
+    int countAttachments(@Param("ticketId") Long ticketId);
     List<AfterSaleMessage> findMessages(@Param("ticketId") Long ticketId);
     List<AfterSaleOperationLog> findOperationLogs(@Param("ticketId") Long ticketId);
     int updateWorkflow(@Param("id") Long id, @Param("status") Integer status,

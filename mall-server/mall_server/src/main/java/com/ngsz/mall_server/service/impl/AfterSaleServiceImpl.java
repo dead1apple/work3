@@ -11,9 +11,13 @@ import com.ngsz.mall_server.pojo.AfterSaleTicket;
 import com.ngsz.mall_server.pojo.Order;
 import com.ngsz.mall_server.pojo.OrderItem;
 import com.ngsz.mall_server.pojo.dto.AfterSaleActionRequest;
+import com.ngsz.mall_server.pojo.dto.AfterSaleAttachmentRequest;
 import com.ngsz.mall_server.pojo.dto.AfterSaleMessageRequest;
+import com.ngsz.mall_server.pojo.dto.AfterSaleRefundRequest;
 import com.ngsz.mall_server.pojo.dto.AfterSaleResolveRequest;
 import com.ngsz.mall_server.pojo.dto.CreateAfterSaleRequest;
+import com.ngsz.mall_server.pojo.dto.AdminRefundOrderRequest;
+import com.ngsz.mall_server.service.AdminPlatformService;
 import com.ngsz.mall_server.service.AfterSaleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -42,13 +46,16 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     private final AfterSaleMapper afterSaleMapper;
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
+    private final AdminPlatformService adminPlatformService;
 
     public AfterSaleServiceImpl(AfterSaleMapper afterSaleMapper,
                                 OrderMapper orderMapper,
-                                OrderItemMapper orderItemMapper) {
+                                OrderItemMapper orderItemMapper,
+                                AdminPlatformService adminPlatformService) {
         this.afterSaleMapper = afterSaleMapper;
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
+        this.adminPlatformService = adminPlatformService;
     }
 
     @Override
@@ -81,7 +88,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         List<CreateAfterSaleRequest.AttachmentRequest> attachments = request.getAttachments() == null
                 ? List.of() : request.getAttachments();
         for (CreateAfterSaleRequest.AttachmentRequest source : attachments) {
-            validateAttachment(source);
+            if (source == null) throw new BusinessException("附件信息不完整");
+            validateAttachment(source.getUrl(), source.getObjectKey(), source.getFileName(), source.getFileSize());
             AfterSaleAttachment attachment = new AfterSaleAttachment();
             attachment.setTicketId(ticket.getId()); attachment.setUserId(userId);
             attachment.setUrl(source.getUrl().trim()); attachment.setObjectKey(source.getObjectKey().trim());
@@ -112,6 +120,36 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         ensureOpen(ticket);
         addMessage(ticket, userId, "USER", request);
         if (ticket.getStatus() == WAIT_USER_INFO) transition(ticket, userId, "USER", "SUBMIT_INFO", MERCHANT_PROCESSING, request.getContent());
+    }
+
+    @Override
+    @Transactional
+    public void addUserAttachments(Long userId, String ticketNo, AfterSaleAttachmentRequest request) {
+        AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
+        if (!userId.equals(ticket.getUserId())) throw new BusinessException("工单不存在");
+        ensureOpen(ticket);
+        if (request == null || request.getAttachments() == null || request.getAttachments().isEmpty()) {
+            throw new BusinessException("补充附件不能为空");
+        }
+        int existingCount = afterSaleMapper.countAttachments(ticket.getId());
+        if (existingCount + request.getAttachments().size() > 9) {
+            throw new BusinessException("单个工单最多 9 个附件");
+        }
+        for (AfterSaleAttachmentRequest.Attachment source : request.getAttachments()) {
+            if (source == null) throw new BusinessException("附件信息不完整");
+            validateAttachment(source.getUrl(), source.getObjectKey(), source.getFileName(), source.getFileSize());
+            AfterSaleAttachment attachment = new AfterSaleAttachment();
+            attachment.setTicketId(ticket.getId());
+            attachment.setUserId(userId);
+            attachment.setUrl(source.getUrl().trim());
+            attachment.setObjectKey(source.getObjectKey().trim());
+            attachment.setFileName(source.getFileName());
+            attachment.setFileSize(source.getFileSize());
+            afterSaleMapper.insertAttachment(attachment);
+        }
+        if (ticket.getStatus() == WAIT_USER_INFO) {
+            transition(ticket, userId, "USER", "SUBMIT_INFO", MERCHANT_PROCESSING, "用户补充售后附件");
+        }
     }
 
     @Override
@@ -240,6 +278,32 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     @Transactional
+    public void refundByPlatform(Long adminId, String ticketNo, AfterSaleRefundRequest request) {
+        AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
+        if (ticket.getStatus() != PLATFORM_PROCESSING && ticket.getStatus() != REJECTED) {
+            throw new BusinessException("当前工单不能执行平台退款");
+        }
+        if (request == null || request.getAmount() == null
+                || request.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+            throw new BusinessException("退款金额必须大于 0");
+        }
+        String reason = required(request.getReason(), "退款原因不能为空");
+        OrderItem item = orderItemMapper.findById(ticket.getOrderItemId());
+        if (item == null || item.getTotalAmount() == null) {
+            throw new BusinessException("订单明细不存在或金额异常");
+        }
+        if (request.getAmount().compareTo(item.getTotalAmount()) > 0) {
+            throw new BusinessException("退款金额不能超过当前售后商品金额");
+        }
+        AdminRefundOrderRequest refundRequest = new AdminRefundOrderRequest();
+        refundRequest.setAmount(request.getAmount());
+        refundRequest.setReason(reason);
+        adminPlatformService.refundOrder(adminId, ticket.getOrderNo(), refundRequest);
+        transition(ticket, adminId, "PLATFORM", "REFUND", RESOLVED, reason);
+    }
+
+    @Override
+    @Transactional
     public void closeByPlatform(Long adminId, String ticketNo, AfterSaleActionRequest request) {
         AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
         String reason = required(request == null ? null : request.getReason(), "关闭原因不能为空");
@@ -310,13 +374,14 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         }
     }
 
-    private static void validateAttachment(CreateAfterSaleRequest.AttachmentRequest attachment) {
-        if (attachment == null || attachment.getUrl() == null || attachment.getObjectKey() == null
-                || attachment.getUrl().isBlank() || attachment.getObjectKey().isBlank()) {
+    private static void validateAttachment(String url, String objectKey, String fileName, Long fileSize) {
+        if (url == null || objectKey == null || url.isBlank() || objectKey.isBlank()) {
             throw new BusinessException("附件信息不完整");
         }
-        if (attachment.getUrl().length() > 1000 || attachment.getObjectKey().length() > 500) {
-            throw new BusinessException("附件地址过长");
+        if (url.length() > 1000 || objectKey.length() > 500
+                || (fileName != null && fileName.length() > 255)
+                || (fileSize != null && fileSize <= 0)) {
+            throw new BusinessException("附件信息不合法");
         }
     }
 

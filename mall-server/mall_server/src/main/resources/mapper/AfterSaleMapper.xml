@@ -117,6 +117,10 @@
         FROM after_sale_attachment WHERE ticket_id = #{ticketId} ORDER BY id
     </select>
 
+    <select id="countAttachments" resultType="int">
+        SELECT COUNT(*) FROM after_sale_attachment WHERE ticket_id = #{ticketId}
+    </select>
+
     <select id="findMessages" resultType="com.ngsz.mall_server.pojo.AfterSaleMessage">
         SELECT id, ticket_id AS ticketId, sender_id AS senderId,
                sender_type AS senderType, content, create_time AS createTime

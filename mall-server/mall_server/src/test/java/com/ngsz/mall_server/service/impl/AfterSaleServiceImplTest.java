@@ -8,7 +8,10 @@ import com.ngsz.mall_server.pojo.AfterSaleTicket;
 import com.ngsz.mall_server.pojo.Order;
 import com.ngsz.mall_server.pojo.OrderItem;
 import com.ngsz.mall_server.pojo.dto.AfterSaleActionRequest;
+import com.ngsz.mall_server.pojo.dto.AfterSaleAttachmentRequest;
+import com.ngsz.mall_server.pojo.dto.AfterSaleRefundRequest;
 import com.ngsz.mall_server.pojo.dto.CreateAfterSaleRequest;
+import com.ngsz.mall_server.service.AdminPlatformService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -28,6 +31,7 @@ class AfterSaleServiceImplTest {
     @Mock private AfterSaleMapper afterSaleMapper;
     @Mock private OrderMapper orderMapper;
     @Mock private OrderItemMapper orderItemMapper;
+    @Mock private AdminPlatformService adminPlatformService;
     @InjectMocks private AfterSaleServiceImpl service;
 
     @Test
@@ -112,6 +116,52 @@ class AfterSaleServiceImplTest {
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("当前工单不能取消");
         verify(afterSaleMapper, never()).updateWorkflow(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void userCanAddAttachmentsAndSubmitRequestedInfo() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.WAIT_USER_INFO);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+        when(afterSaleMapper.countAttachments(1L)).thenReturn(1);
+        when(afterSaleMapper.updateWorkflow(1L, AfterSaleServiceImpl.MERCHANT_PROCESSING,
+                null, null, false)).thenReturn(1);
+
+        AfterSaleAttachmentRequest request = new AfterSaleAttachmentRequest();
+        AfterSaleAttachmentRequest.Attachment attachment = new AfterSaleAttachmentRequest.Attachment();
+        attachment.setUrl("https://oss.example/evidence.jpg");
+        attachment.setObjectKey("after-sales/evidence.jpg");
+        request.setAttachments(java.util.List.of(attachment));
+
+        service.addUserAttachments(100L, "AS123", request);
+
+        verify(afterSaleMapper).insertAttachment(any());
+        verify(afterSaleMapper).insertOperation(1L, 100L, "USER", "SUBMIT_INFO",
+                AfterSaleServiceImpl.WAIT_USER_INFO, AfterSaleServiceImpl.MERCHANT_PROCESSING,
+                "用户补充售后附件");
+    }
+
+    @Test
+    void platformRefundUsesExistingRefundFlowAndWaitsForConfirmation() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.PLATFORM_PROCESSING);
+        ticket.setOrderNo("ORDER-12");
+        ticket.setOrderItemId(4L);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+        OrderItem item = item(4L, 12L);
+        item.setTotalAmount(new java.math.BigDecimal("99.90"));
+        when(orderItemMapper.findById(4L)).thenReturn(item);
+        when(afterSaleMapper.updateWorkflow(1L, AfterSaleServiceImpl.RESOLVED,
+                null, "平台判定商品存在质量问题", false)).thenReturn(1);
+
+        AfterSaleRefundRequest request = new AfterSaleRefundRequest();
+        request.setAmount(new java.math.BigDecimal("50.00"));
+        request.setReason("平台判定商品存在质量问题");
+
+        service.refundByPlatform(88L, "AS123", request);
+
+        verify(adminPlatformService).refundOrder(any(), org.mockito.ArgumentMatchers.eq("ORDER-12"), any());
+        verify(afterSaleMapper).insertOperation(1L, 88L, "PLATFORM", "REFUND",
+                AfterSaleServiceImpl.PLATFORM_PROCESSING, AfterSaleServiceImpl.RESOLVED,
+                "平台判定商品存在质量问题");
     }
 
     @Test

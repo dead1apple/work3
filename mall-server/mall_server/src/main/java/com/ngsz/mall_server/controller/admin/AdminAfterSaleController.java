@@ -5,6 +5,7 @@ import com.ngsz.mall_server.common.result.PageResult;
 import com.ngsz.mall_server.common.result.Result;
 import com.ngsz.mall_server.pojo.AfterSaleTicket;
 import com.ngsz.mall_server.pojo.dto.AfterSaleActionRequest;
+import com.ngsz.mall_server.pojo.dto.AfterSaleRefundRequest;
 import com.ngsz.mall_server.pojo.dto.AfterSaleMessageRequest;
 import com.ngsz.mall_server.pojo.dto.AfterSaleResolveRequest;
 import com.ngsz.mall_server.service.AfterSaleService;
@@ -55,6 +56,14 @@ public class AdminAfterSaleController {
     public Result<?> resolve(@PathVariable String ticketNo, @Valid @RequestBody AfterSaleResolveRequest request) {
         afterSaleService.resolve(StpUtil.getLoginIdAsLong(), ticketNo, request);
         return Result.success("平台处理完成，等待用户确认");
+    }
+
+    @Operation(summary = "平台执行售后退款", description = "对平台处理中或商家拒绝的工单执行退款，退款成功后等待用户确认关闭工单")
+    @PutMapping("/{ticketNo}/refund")
+    public Result<?> refund(@PathVariable String ticketNo,
+                            @Valid @RequestBody AfterSaleRefundRequest request) {
+        afterSaleService.refundByPlatform(StpUtil.getLoginIdAsLong(), ticketNo, request);
+        return Result.success("退款完成，等待用户确认");
     }
 
     @Operation(summary = "平台关闭售后工单")

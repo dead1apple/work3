@@ -5,6 +5,7 @@ import com.ngsz.mall_server.common.result.PageResult;
 import com.ngsz.mall_server.common.result.Result;
 import com.ngsz.mall_server.pojo.AfterSaleTicket;
 import com.ngsz.mall_server.pojo.dto.AfterSaleActionRequest;
+import com.ngsz.mall_server.pojo.dto.AfterSaleAttachmentRequest;
 import com.ngsz.mall_server.pojo.dto.AfterSaleMessageRequest;
 import com.ngsz.mall_server.pojo.dto.CreateAfterSaleRequest;
 import com.ngsz.mall_server.service.AfterSaleService;
@@ -38,7 +39,7 @@ public class AfterSaleController {
     @Operation(summary = "查询我的售后工单")
     @GetMapping
     public Result<PageResult<AfterSaleTicket>> list(
-            @Parameter(description = "工单状态：0待商家处理，1商家处理中，2待补充材料，3待用户确认，4平台处理中，5已解决，6已关闭，7已拒绝")
+            @Parameter(description = "工单状态：0待商家处理，1商家处理中，2待补充材料，3待用户确认，4平台处理中，5已解决，6已关闭，7已拒绝，8已取消")
             @RequestParam(required = false) Integer status,
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "20") Integer size) {
@@ -57,6 +58,14 @@ public class AfterSaleController {
     public Result<?> message(@PathVariable String ticketNo, @Valid @RequestBody AfterSaleMessageRequest request) {
         afterSaleService.addUserMessage(StpUtil.getLoginIdAsLong(), ticketNo, request);
         return Result.success("留言成功");
+    }
+
+    @Operation(summary = "补充售后工单附件", description = "用户向自己的未关闭售后工单追加 OSS 图片附件，单个工单最多 9 个附件")
+    @PostMapping("/{ticketNo}/attachments")
+    public Result<?> attachments(@PathVariable String ticketNo,
+                                 @Valid @RequestBody AfterSaleAttachmentRequest request) {
+        afterSaleService.addUserAttachments(StpUtil.getLoginIdAsLong(), ticketNo, request);
+        return Result.success("附件补充成功");
     }
 
     @Operation(summary = "申请平台介入", description = "商家拒绝售后申请后，用户可以申请平台介入")
