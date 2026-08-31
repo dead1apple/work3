@@ -22,8 +22,10 @@ import com.ngsz.mall_server.service.AfterSaleService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -157,11 +159,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     public void requestPlatform(Long userId, String ticketNo, AfterSaleActionRequest request) {
         AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
         if (!userId.equals(ticket.getUserId())) throw new BusinessException("工单不存在");
-        required(request == null ? null : request.getReason(), "申请原因不能为空");
+        String reason = required(request == null ? null : request.getReason(), "申请原因不能为空");
         if (ticket.getStatus() != REJECTED) {
             throw new BusinessException("商家拒绝后才能申请平台介入");
         }
-        transition(ticket, userId, "USER", "PLATFORM_REQUEST", PLATFORM_PROCESSING, request.getReason());
+        transition(ticket, userId, "USER", "PLATFORM_REQUEST", PLATFORM_PROCESSING, reason);
     }
 
     @Override
@@ -259,9 +261,10 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     public void addPlatformMessage(Long adminId, String ticketNo, AfterSaleMessageRequest request) {
         AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
         if (ticket.getStatus() == CLOSED || ticket.getStatus() == CANCELLED) throw new BusinessException("工单已关闭");
+        String content = required(request == null ? null : request.getContent(), "留言内容不能为空");
         addMessage(ticket, adminId, "PLATFORM", request);
         if (ticket.getStatus() == REJECTED || ticket.getStatus() == WAIT_MERCHANT) {
-            transition(ticket, adminId, "PLATFORM", "TAKE_OVER", PLATFORM_PROCESSING, request.getContent());
+            transition(ticket, adminId, "PLATFORM", "TAKE_OVER", PLATFORM_PROCESSING, content);
         }
     }
 
@@ -284,8 +287,11 @@ public class AfterSaleServiceImpl implements AfterSaleService {
             throw new BusinessException("当前工单不能执行平台退款");
         }
         if (request == null || request.getAmount() == null
-                || request.getAmount().compareTo(java.math.BigDecimal.ZERO) <= 0) {
+                || request.getAmount().compareTo(BigDecimal.ZERO) <= 0) {
             throw new BusinessException("退款金额必须大于 0");
+        }
+        if (request.getAmount().scale() > 2) {
+            throw new BusinessException("退款金额最多保留两位小数");
         }
         String reason = required(request.getReason(), "退款原因不能为空");
         OrderItem item = orderItemMapper.findById(ticket.getOrderItemId());
@@ -307,7 +313,9 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     public void closeByPlatform(Long adminId, String ticketNo, AfterSaleActionRequest request) {
         AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
         String reason = required(request == null ? null : request.getReason(), "关闭原因不能为空");
-        if (ticket.getStatus() == CLOSED) throw new BusinessException("工单已关闭");
+        if (ticket.getStatus() == CLOSED || ticket.getStatus() == CANCELLED) {
+            throw new BusinessException("工单已关闭");
+        }
         transition(ticket, adminId, "PLATFORM", "CLOSE", CLOSED, reason);
     }
 
@@ -386,7 +394,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
     }
 
     private static String normalizeEnum(String value, List<String> allowed, String message) {
-        String normalized = required(value, message).toUpperCase();
+        String normalized = required(value, message).toUpperCase(Locale.ROOT);
         if (!allowed.contains(normalized)) throw new BusinessException(message);
         return normalized;
     }

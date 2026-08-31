@@ -141,6 +141,31 @@ class AfterSaleServiceImplTest {
     }
 
     @Test
+    void userCannotAddAttachmentToAnotherUsersTicket() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.WAIT_MERCHANT);
+        ticket.setUserId(101L);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+
+        assertThatThrownBy(() -> service.addUserAttachments(100L, "AS123", attachmentRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("工单不存在");
+        verify(afterSaleMapper, never()).countAttachments(any());
+        verify(afterSaleMapper, never()).insertAttachment(any());
+    }
+
+    @Test
+    void cannotExceedAttachmentLimit() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.WAIT_MERCHANT);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+        when(afterSaleMapper.countAttachments(1L)).thenReturn(9);
+
+        assertThatThrownBy(() -> service.addUserAttachments(100L, "AS123", attachmentRequest()))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("单个工单最多 9 个附件");
+        verify(afterSaleMapper, never()).insertAttachment(any());
+    }
+
+    @Test
     void platformRefundUsesExistingRefundFlowAndWaitsForConfirmation() {
         AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.PLATFORM_PROCESSING);
         ticket.setOrderNo("ORDER-12");
@@ -162,6 +187,40 @@ class AfterSaleServiceImplTest {
         verify(afterSaleMapper).insertOperation(1L, 88L, "PLATFORM", "REFUND",
                 AfterSaleServiceImpl.PLATFORM_PROCESSING, AfterSaleServiceImpl.RESOLVED,
                 "平台判定商品存在质量问题");
+    }
+
+    @Test
+    void platformCannotRefundMoreThanCurrentItemAmount() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.PLATFORM_PROCESSING);
+        ticket.setOrderNo("ORDER-12");
+        ticket.setOrderItemId(4L);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+        OrderItem item = item(4L, 12L);
+        item.setTotalAmount(new java.math.BigDecimal("99.90"));
+        when(orderItemMapper.findById(4L)).thenReturn(item);
+
+        AfterSaleRefundRequest request = new AfterSaleRefundRequest();
+        request.setAmount(new java.math.BigDecimal("100.00"));
+        request.setReason("平台退款");
+
+        assertThatThrownBy(() -> service.refundByPlatform(88L, "AS123", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("退款金额不能超过当前售后商品金额");
+        verify(adminPlatformService, never()).refundOrder(any(), any(), any());
+        verify(afterSaleMapper, never()).updateWorkflow(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
+    void cancelledTicketCannotBeClosedByPlatform() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.CANCELLED);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+        AfterSaleActionRequest request = new AfterSaleActionRequest();
+        request.setReason("关闭工单");
+
+        assertThatThrownBy(() -> service.closeByPlatform(88L, "AS123", request))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("工单已关闭");
+        verify(afterSaleMapper, never()).updateWorkflow(any(), any(), any(), any(), anyBoolean());
     }
 
     @Test
@@ -199,6 +258,15 @@ class AfterSaleServiceImplTest {
         request.setType("REFUND");
         request.setReasonType("QUALITY");
         request.setDescription("商品存在质量问题");
+        return request;
+    }
+
+    private static AfterSaleAttachmentRequest attachmentRequest() {
+        AfterSaleAttachmentRequest request = new AfterSaleAttachmentRequest();
+        AfterSaleAttachmentRequest.Attachment attachment = new AfterSaleAttachmentRequest.Attachment();
+        attachment.setUrl("https://oss.example/evidence.jpg");
+        attachment.setObjectKey("after-sales/evidence.jpg");
+        request.setAttachments(java.util.List.of(attachment));
         return request;
     }
 
