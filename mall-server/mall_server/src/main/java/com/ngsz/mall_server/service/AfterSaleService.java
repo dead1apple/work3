@@ -15,6 +15,7 @@ public interface AfterSaleService {
     Map<String, Object> detailForUser(Long userId, String ticketNo);
     void addUserMessage(Long userId, String ticketNo, AfterSaleMessageRequest request);
     void requestPlatform(Long userId, String ticketNo, AfterSaleActionRequest request);
+    void cancel(Long userId, String ticketNo);
     void confirm(Long userId, String ticketNo);
 
     PageResult<AfterSaleTicket> listForMerchant(Long shopId, Integer status, Integer page, Integer size);

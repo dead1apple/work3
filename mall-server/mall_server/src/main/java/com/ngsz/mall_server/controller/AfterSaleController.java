@@ -66,6 +66,13 @@ public class AfterSaleController {
         return Result.success("平台介入申请已提交");
     }
 
+    @Operation(summary = "取消售后工单", description = "仅允许取消待商家处理或待补充材料的工单")
+    @PutMapping("/{ticketNo}/cancel")
+    public Result<?> cancel(@PathVariable String ticketNo) {
+        afterSaleService.cancel(StpUtil.getLoginIdAsLong(), ticketNo);
+        return Result.success("售后工单已取消");
+    }
+
     @Operation(summary = "确认售后处理结果")
     @PutMapping("/{ticketNo}/confirm")
     public Result<?> confirm(@PathVariable String ticketNo) {

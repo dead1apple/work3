@@ -123,6 +123,16 @@
         FROM after_sale_message WHERE ticket_id = #{ticketId} ORDER BY id
     </select>
 
+    <select id="findOperationLogs" resultType="com.ngsz.mall_server.pojo.AfterSaleOperationLog">
+        SELECT id, ticket_id AS ticketId, operator_id AS operatorId,
+               operator_type AS operatorType, operation,
+               before_status AS beforeStatus, after_status AS afterStatus,
+               reason, create_time AS createTime
+        FROM after_sale_operation_log
+        WHERE ticket_id = #{ticketId}
+        ORDER BY id
+    </select>
+
     <update id="updateWorkflow">
         UPDATE after_sale_ticket
         SET status = #{status}, reject_reason = #{rejectReason},

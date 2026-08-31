@@ -90,6 +90,31 @@ class AfterSaleServiceImplTest {
     }
 
     @Test
+    void userCanCancelTicketBeforeMerchantDecision() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.WAIT_MERCHANT);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+        when(afterSaleMapper.updateWorkflow(1L, AfterSaleServiceImpl.CANCELLED,
+                null, null, true)).thenReturn(1);
+
+        service.cancel(100L, "AS123");
+
+        verify(afterSaleMapper).insertOperation(1L, 100L, "USER", "CANCEL",
+                AfterSaleServiceImpl.WAIT_MERCHANT, AfterSaleServiceImpl.CANCELLED,
+                "用户主动取消售后申请");
+    }
+
+    @Test
+    void cannotCancelTicketAfterMerchantHasStartedProcessing() {
+        AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.MERCHANT_PROCESSING);
+        when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);
+
+        assertThatThrownBy(() -> service.cancel(100L, "AS123"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("当前工单不能取消");
+        verify(afterSaleMapper, never()).updateWorkflow(any(), any(), any(), any(), anyBoolean());
+    }
+
+    @Test
     void merchantCannotOperateAnotherShopTicket() {
         AfterSaleTicket ticket = ticket("AS123", 7L, AfterSaleServiceImpl.WAIT_MERCHANT);
         when(afterSaleMapper.findByTicketNoForUpdate("AS123")).thenReturn(ticket);

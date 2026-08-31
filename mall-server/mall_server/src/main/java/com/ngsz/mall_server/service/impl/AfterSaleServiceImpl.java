@@ -128,6 +128,17 @@ public class AfterSaleServiceImpl implements AfterSaleService {
 
     @Override
     @Transactional
+    public void cancel(Long userId, String ticketNo) {
+        AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
+        if (!userId.equals(ticket.getUserId())) throw new BusinessException("工单不存在");
+        if (ticket.getStatus() != WAIT_MERCHANT && ticket.getStatus() != WAIT_USER_INFO) {
+            throw new BusinessException("当前工单不能取消");
+        }
+        transition(ticket, userId, "USER", "CANCEL", CANCELLED, "用户主动取消售后申请");
+    }
+
+    @Override
+    @Transactional
     public void confirm(Long userId, String ticketNo) {
         AfterSaleTicket ticket = requireTicketForUpdate(ticketNo);
         if (!userId.equals(ticket.getUserId())) throw new BusinessException("工单不存在");
@@ -249,7 +260,8 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         int before = ticket.getStatus();
         if (afterSaleMapper.updateWorkflow(ticket.getId(), afterStatus,
                 afterStatus == REJECTED ? reason : ticket.getRejectReason(),
-                afterStatus == RESOLVED ? reason : ticket.getFinalResult(), afterStatus == CLOSED) != 1) {
+                afterStatus == RESOLVED ? reason : ticket.getFinalResult(),
+                afterStatus == CLOSED || afterStatus == CANCELLED) != 1) {
             throw new BusinessException("工单状态已变化，请刷新后重试");
         }
         afterSaleMapper.insertOperation(ticket.getId(), operatorId, operatorType, operation, before, afterStatus, reason);
@@ -261,6 +273,7 @@ public class AfterSaleServiceImpl implements AfterSaleService {
         result.put("ticket", ticket);
         result.put("attachments", afterSaleMapper.findAttachments(ticket.getId()));
         result.put("messages", afterSaleMapper.findMessages(ticket.getId()));
+        result.put("operationLogs", afterSaleMapper.findOperationLogs(ticket.getId()));
         result.put("orderItem", orderItemMapper.findById(ticket.getOrderItemId()));
         return result;
     }

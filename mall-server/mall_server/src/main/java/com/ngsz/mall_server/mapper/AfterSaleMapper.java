@@ -2,6 +2,7 @@ package com.ngsz.mall_server.mapper;
 
 import com.ngsz.mall_server.pojo.AfterSaleAttachment;
 import com.ngsz.mall_server.pojo.AfterSaleMessage;
+import com.ngsz.mall_server.pojo.AfterSaleOperationLog;
 import com.ngsz.mall_server.pojo.AfterSaleTicket;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
@@ -35,6 +36,7 @@ public interface AfterSaleMapper {
     int countForPlatform(@Param("status") Integer status);
     List<AfterSaleAttachment> findAttachments(@Param("ticketId") Long ticketId);
     List<AfterSaleMessage> findMessages(@Param("ticketId") Long ticketId);
+    List<AfterSaleOperationLog> findOperationLogs(@Param("ticketId") Long ticketId);
     int updateWorkflow(@Param("id") Long id, @Param("status") Integer status,
                        @Param("rejectReason") String rejectReason,
                        @Param("finalResult") String finalResult,
